@@ -1,24 +1,17 @@
 import argparse
 import logging
 import os
-from pathlib import Path
 import statistics
+import subprocess
 import sys
 import threading
 import time
-import subprocess
+from pathlib import Path
 
-from dotenv import load_dotenv
 import regex
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.logging import RichHandler
-
-from PySubtrans.MKV import (
-    preprocess_timecodes,
-    postprocess_timecodes,
-    filter_subtitles,
-)
-from PySubtrans.MKV.Config import MKVConfig, TranslationMode
 
 from PySubtrans import (
     batch_subtitles,
@@ -26,6 +19,12 @@ from PySubtrans import (
     init_translator,
     preprocess_subtitles,
 )
+from PySubtrans.MKV import (
+    filter_subtitles,
+    postprocess_timecodes,
+    preprocess_timecodes,
+)
+from PySubtrans.MKV.Config import MKVConfig, TranslationMode
 from PySubtrans.SubtitleProject import SubtitleProject
 
 # Configure rich console and logging
@@ -59,6 +58,13 @@ LANGUAGE_SUFFIX_PATTERN = regex.compile(r"^\.[a-z]{2,3}(?:-[a-z]{2,3})?$", regex
 
 # Gemini 3.x and later should be left at the default temperature
 GEMINI_3_MODEL_PATTERN = regex.compile(r"gemini-[3-9]", regex.IGNORECASE)
+
+# Readability limits handed to fix-finnish-subs, matching the translation prompt budget
+# (same values as exsubs)
+FINNISH_FIXER_WIDTH_LIMIT = 42
+FINNISH_FIXER_MAX_CPS = 17.0
+FINNISH_FIXER_TARGET_CPS = 15.0
+
 SEASON_EPISODE_PATTERN = regex.compile(
     r"S(\d{1,2})E(\d{1,3})"  # S01E02
     r"|(\d{1,2})x(\d{1,3})"  # 1x02
@@ -161,46 +167,46 @@ def _sisusub_ai_review_enabled() -> bool:
     return (os.getenv("SISUSUB_AI_REVIEW") or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _run_finnish_subtitle_fixer(translated_file: Path) -> int:
-    """Run fix-finnish-subs once and return its exit status."""
-    command = ["fix-finnish-subs", str(translated_file)]
-    if not _sisusub_ai_review_enabled():
-        command.insert(1, "--no-ai-review")
-    result = subprocess.run(command, check=False)
-    return result.returncode
-
-
 def _fix_finnish_subtitles(translated_file: Path) -> None:
+    """Run fix-finnish-subs on the translated subtitle file.
+
+    This runs exactly once: the fixer chain is not idempotent (merge fixers chain further and
+    the gap fixer re-shifts timings), so re-running it on failure degrades the output.
+    """
     if not translated_file.exists():
         logger.warning(f"Cannot fix subtitles; {translated_file} does not exist")
         return
 
     report_file = translated_file.with_stem(translated_file.stem + "_unfixed").with_suffix(".txt")
 
-    first_exit = _run_finnish_subtitle_fixer(translated_file)
-    if first_exit == 0:
+    command = [
+        "fix-finnish-subs",
+        str(translated_file),
+        "--report",
+        str(report_file),
+        "--width-limit",
+        str(FINNISH_FIXER_WIDTH_LIMIT),
+        "--max-cps",
+        str(FINNISH_FIXER_MAX_CPS),
+        "--cps-target",
+        str(FINNISH_FIXER_TARGET_CPS),
+    ]
+    if not _sisusub_ai_review_enabled():
+        command.append("--no-ai-review")
+
+    result = subprocess.run(command, check=False)
+
+    if result.returncode == 0:
         logger.info(f"Fixed subtitles with fix-finnish-subs: {translated_file.name}")
-        return
-
-    logger.warning(
-        "fix-finnish-subs returned non-zero exit status %s for %s; retrying once",
-        first_exit,
-        translated_file,
-    )
-    second_exit = _run_finnish_subtitle_fixer(translated_file)
-    if second_exit == 0:
-        logger.info(
-            "Fixed subtitles with fix-finnish-subs after retry: %s",
-            translated_file.name,
+    else:
+        logger.warning(
+            "fix-finnish-subs returned non-zero exit status %s for %s",
+            result.returncode,
+            translated_file,
         )
-        return
 
-    logger.warning(
-        "fix-finnish-subs completed with remaining issues for %s (exit %s). See report: %s",
-        translated_file,
-        second_exit,
-        report_file,
-    )
+    if report_file.exists():
+        console.print(f"  Readability report: {report_file}")
 
 
 class TranslationMetrics:
