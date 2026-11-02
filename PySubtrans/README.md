@@ -6,19 +6,13 @@ This package makes these capabilities available as a library that you can incorp
 
 ## Installation
 
-Basic installation with support for OpenRouter, DeepSeek or any server with an OpenAI-compatible API.
-
-```bash
-pip install pysubtrans
-```
-
-Additional specialized provider integrations are delivered as optional extras, so that you only install the SDKs for providers you intend to use:
+This fork supports three providers: Gemini, OpenAI and Claude. Each provider's SDK is delivered as an optional extra, so that you only install the SDKs for providers you intend to use:
 
 ```bash
 pip install pysubtrans[openai]
 pip install pysubtrans[gemini]
 pip install pysubtrans[claude]
-pip install pysubtrans[openai,gemini,claude,mistral,bedrock]
+pip install pysubtrans[openai,gemini,claude]
 ```
 
 ## Quick start: translate a subtitle file
@@ -58,10 +52,10 @@ from PySubtrans import init_options, init_project, init_translator
 
 # Create a project and translate the subtitles
 project_settings = init_options(
-    provider='OpenRouter',
-    model='qwen/qwen3-235b-a22b:free',
+    provider='Gemini',
+    model='gemini-3.1-flash-lite',
     target_language='Spanish',
-    api_key='your-openrouter-api-key',
+    api_key='your-gemini-api-key',
     preprocess_subtitles=True,
     scene_threshold=60,
     max_batch_size=100,
@@ -146,30 +140,6 @@ translator.TranslateSubtitles(subtitles)
 
 Note that different providers may require different settings. See the [LLM-Subtrans](https://github.com/machinewrapped/llm-subtrans/) documentation for details on supported providers.
 
-OpenRouter and DeepSeek are supported natively, along with connection to any server with an OpenAI chat-compatible API.
-
-```python
-from PySubtrans import init_options, init_translation_provider
-
-# Connect to deepseek
-options = init_options(
-    model="deepseek-chat", 
-    api_base="https://api.deepseek.com",
-    api_key="sk-..."
-)
-
-provider = init_translation_provider("DeepSeek", options)
-
-# Connect to locally hosted model server (e.g. LM Studio)
-options = init_options(
-    server_address='http://localhost:8000',
-    supports_conversation=True,
-    max_tokens=4096
-)
-
-provider = init_translation_provider("Custom Server", options)
-```
-
 #### Translation Events
 
 `SubtitleTranslator` emits events during the translation process using the [blinker](https://pythonhosted.org/blinker/) signal library.
@@ -230,8 +200,6 @@ Translations can be streamed for real-time updates rather than waiting for compl
 - OpenAI (Reasoning Models only)
 - Claude
 - Google Gemini
-- OpenRouter
-- DeepSeek
 
 **Enabling Streaming:**
 ```python
@@ -266,19 +234,16 @@ translator.TranslateSubtitles(subtitles)
 `init_translator` will automatically construct a `TranslationProvider` based on the provided options, but it may be useful to construct one explicitly as each supported provider presents slightly different options.
 
 ```python
-  from PySubtrans import SubtitleTranslator, SettingsType
-  from PySubtrans.Providers.Provider_OpenRouter import
-  OpenRouterProvider
+from PySubtrans import SubtitleTranslator, SettingsType
+from PySubtrans.Providers.Provider_Gemini import GeminiProvider
 
-  openrouter = OpenRouterProvider(SettingsType({
-      'api_key': 'your_openrouter_api_key',
-      'use_default_model': False,
-      'model_family': "Google",  # Note: should be "Google" not "Gemini"
-      'model': "Gemini 2.5 Flash Lite",
-      'temperature': 0.2
-  }))
+gemini = GeminiProvider(SettingsType({
+    'api_key': 'your_gemini_api_key',
+    'model': 'gemini-3.1-flash-lite',
+    'temperature': 1.0
+}))
 
-translator = SubtitleTranslator(settings, openrouter)
+translator = SubtitleTranslator(settings, gemini)
 ```
 
 A provider can be constructed once and then used to initalise multiple `SubtitleTranslator` instances.

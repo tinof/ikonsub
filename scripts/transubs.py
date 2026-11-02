@@ -423,8 +423,6 @@ def _env_default_mode() -> TranslationMode | None:
         return TranslationMode.GEMINI
     if key in {"claude", "anthropic"}:
         return TranslationMode.CLAUDE
-    if key in {"deepseek"}:
-        return TranslationMode.DEEPSEEK
     return None
 
 
@@ -453,14 +451,12 @@ def translate_srt_file(
         TranslationMode.GEMINI: "Gemini",
         TranslationMode.CHATGPT: "OpenAI",
         TranslationMode.CLAUDE: "Claude",
-        TranslationMode.DEEPSEEK: "DeepSeek",
     }
 
     mode = {
         "gemini": TranslationMode.GEMINI,
         "gpt": TranslationMode.CHATGPT,
         "claude": TranslationMode.CLAUDE,
-        "deepseek": TranslationMode.DEEPSEEK,
     }.get(provider_flag or "gemini", TranslationMode.GEMINI)
 
     provider = provider_map.get(mode, "Gemini")
@@ -557,8 +553,6 @@ def translate_srt_file(
         env_temp = os.getenv("OPENAI_TEMPERATURE") or env_temp
     elif mode == TranslationMode.CLAUDE:
         env_temp = os.getenv("CLAUDE_TEMPERATURE") or env_temp
-    elif mode == TranslationMode.DEEPSEEK:
-        env_temp = os.getenv("DEEPSEEK_TEMPERATURE") or env_temp
 
     # Gemini 3.x is documented to degrade (repetition loops) at reduced temperature, so it
     # keeps the model default; other providers benefit from a low temperature on a
@@ -810,7 +804,6 @@ def main() -> int:
     mode_group.add_argument("--gemini", action="store_true", help="Use Gemini model (default)")
     mode_group.add_argument("--gpt", action="store_true", help="Use ChatGPT model")
     mode_group.add_argument("--claude", action="store_true", help="Use Claude model")
-    mode_group.add_argument("--deepseek", action="store_true", help="Use DeepSeek model")
     parser.add_argument("-l", "--language", help="Target language (default from config)")
     parser.add_argument(
         "--proofread",
@@ -869,15 +862,11 @@ def main() -> int:
         provider_flag = "gpt"
     elif env_mode == TranslationMode.CLAUDE:
         provider_flag = "claude"
-    elif env_mode == TranslationMode.DEEPSEEK:
-        provider_flag = "deepseek"
 
     if args.gpt:
         provider_flag = "gpt"
     elif args.claude:
         provider_flag = "claude"
-    elif args.deepseek:
-        provider_flag = "deepseek"
 
     # Directory mode: process all untranslated subtitles in current directory
     if args.file is None:

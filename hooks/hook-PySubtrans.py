@@ -1,5 +1,7 @@
 import logging
 
+logger = logging.getLogger(__name__)
+
 try:
     from PyInstaller.utils.hooks import collect_submodules  # type: ignore
 
@@ -8,4 +10,4 @@ try:
     hiddenimports += collect_submodules("PySubtrans.Formats")
 
 except ImportError:
-    logging.info("PyInstaller not found, skipping hook")
+    logger.info("PyInstaller not found, skipping hook")

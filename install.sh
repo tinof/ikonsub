@@ -35,36 +35,6 @@ function install_provider() {
     scripts_to_generate+=("$script_name")
 }
 
-function install_bedrock() {
-    echo "WARNING: Amazon Bedrock setup is not recommended for most users."
-    echo "The setup requires AWS credentials, region configuration, and enabling specific model access in the AWS Console."
-    echo "Proceed only if you are familiar with AWS configuration."
-    echo
-
-    read -p "Enter your AWS Access Key ID: " access_key
-    read -p "Enter your AWS Secret Access Key: " secret_key
-    read -p "Enter your AWS Region (e.g., us-east-1): " region
-
-    if [ -f ".env" ]; then
-        # Remove existing provider settings
-        sed -i.bak "/^AWS_ACCESS_KEY_ID=/d" .env
-        sed -i.bak "/^AWS_SECRET_ACCESS_KEY=/d" .env
-        sed -i.bak "/^AWS_REGION=/d" .env
-        sed -i.bak "/^PROVIDER=/d" .env
-        rm -f .env.bak
-    fi
-
-    echo "PROVIDER=Bedrock" >> .env
-    echo "AWS_ACCESS_KEY_ID=$access_key" >> .env
-    echo "AWS_SECRET_ACCESS_KEY=$secret_key" >> .env
-    echo "AWS_REGION=$region" >> .env
-
-    extras+=("bedrock")
-    scripts_to_generate+=("bedrock-subtrans")
-
-    echo "Bedrock setup complete. Default provider set to Bedrock."
-}
-
 if [ ! -d "scripts" ]; then
     echo "Please run the script from the root directory of the project."
     exit 1
@@ -77,10 +47,10 @@ if ! python3 --version &>/dev/null; then
 fi
 
 PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
-MIN_VERSION="3.10.0"
+MIN_VERSION="3.11.0"
 
 if [[ "$(printf '%s\n' "$MIN_VERSION" "$PYTHON_VERSION" | sort -V | head -n1)" != "$MIN_VERSION" ]]; then
-    echo "Detected Python version is less than 3.10.0. Please upgrade your Python version."
+    echo "Detected Python version is less than 3.11.0. Please upgrade your Python version."
     exit 1
 else
     echo "Python version is compatible."
@@ -104,32 +74,17 @@ python3 -m venv envsubtrans
 source envsubtrans/bin/activate
 
 extras=()
-scripts_to_generate=("llm-subtrans" "batch-translate")
+scripts_to_generate=("batch-translate")
 
 echo "Installing command line modules..."
 
-# Optional: configure OpenRouter API key
-echo "Optional: Configure OpenRouter API key (default provider)"
-read -p "Enter your OpenRouter API Key (optional): " openrouter_key
-if [ -n "$openrouter_key" ]; then
-    if [ -f ".env" ]; then
-        # Remove any existing OpenRouter API key
-        sed -i.bak "/^OPENROUTER_API_KEY=/d" .env
-        rm -f .env.bak
-    fi
-    echo "OPENROUTER_API_KEY=$openrouter_key" >> .env
-fi
-
-echo "Select additional providers to install:"
+echo "Select providers to install:"
 echo "0 = None"
 echo "1 = OpenAI"
 echo "2 = Google Gemini"
 echo "3 = Anthropic Claude"
-echo "4 = DeepSeek"
-echo "5 = Mistral"
-echo "6 = Bedrock (AWS)"
-echo "a = All except Bedrock"
-read -p "Enter your choice (0/1/2/3/4/5/6/a): " provider_choice
+echo "a = All"
+read -p "Enter your choice (0/1/2/3/a): " provider_choice
 
 case $provider_choice in
     0)
@@ -144,21 +99,10 @@ case $provider_choice in
     3)
         install_provider "Claude" "CLAUDE" "claude" "claude-subtrans" "set_default"
         ;;
-    4)
-        install_provider "DeepSeek" "DEEPSEEK" "" "deepseek-subtrans" "set_default"
-        ;;
-    5)
-        install_provider "Mistral" "MISTRAL" "mistral" "mistral-subtrans" "set_default"
-        ;;
-    6)
-        install_bedrock
-        ;;
     a)
         install_provider "Google Gemini" "GEMINI" "gemini" "gemini-subtrans" ""
         install_provider "OpenAI" "OPENAI" "openai" "gpt-subtrans" ""
         install_provider "Claude" "CLAUDE" "claude" "claude-subtrans" ""
-        install_provider "DeepSeek" "DEEPSEEK" "" "deepseek-subtrans" ""
-        install_provider "Mistral" "MISTRAL" "mistral" "mistral-subtrans" ""
         ;;
     *)
         echo "Invalid choice. Exiting installation."

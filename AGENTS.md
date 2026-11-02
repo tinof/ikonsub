@@ -4,7 +4,7 @@
 
 `CLAUDE.md` is a symlink to this file — edit `AGENTS.md`; both names resolve to the same content.
 
-Project uses Python 3.10+. NEVER import or use deprecated typing members like List, Union or Iterator.
+Project uses Python 3.11+ (developed and installed on 3.14). NEVER import or use deprecated typing members like List, Union or Iterator.
 
 Secrets are stored in a .env file - NEVER read the contents of the file.
 
@@ -45,11 +45,9 @@ Provider-specific dependencies are gated behind extras in `pyproject.toml`:
 
 | Extra | Dependencies | Required For |
 | --- | --- | --- |
-| `openai` | `openai` | GPT, Azure providers |
+| `openai` | `openai` | OpenAI (GPT) provider |
 | `gemini` | `google-genai`, `google-api-core` | Gemini / Vertex AI provider |
 | `claude` | `anthropic` | Claude provider |
-| `mistral` | `mistralai` | Mistral provider |
-| `bedrock` | `boto3` | AWS Bedrock provider |
 | `mkv` | `subtitle_filter`, `chardet`, `filelock`, `rich` | MKV subtitle extraction |
 
 **If a provider extra is not installed, the provider silently won't register and you'll get `Unknown translation provider` errors at runtime.**
@@ -80,7 +78,7 @@ All of the above are also available as `make` targets:
 ## Project Structure Overview
 
 - `PySubtrans/`: Core subtitle translation engine, providers, parsing, and helpers.
-  - `Providers/`: Pluggable translation provider implementations (Gemini, OpenAI, Claude, etc.).
+  - `Providers/`: Translation provider implementations. This fork keeps only Gemini, OpenAI and Claude.
   - `Formats/`: Subtitle format handlers (SRT, ASS/SSA, VTT) with auto-discovery registry.
   - `Helpers/`: Shared utilities, test base classes (`LoggedTestCase`, `DummyProvider`).
 - `scripts/`: CLI entrypoints and supporting automation scripts.
@@ -185,6 +183,7 @@ Consult `docs/architecture.md` for detailed information on the project architect
   `git remote add upstream https://github.com/machinewrapped/llm-subtrans.git`
 - Preferred workflow for public main: merge (not rebase) to preserve history and avoid force-pushes.
 - Keep our CLI-only customizations intact: do not reintroduce GUI or Windows-specific code.
+- Keep only the Gemini, OpenAI and Claude providers. When upstream changes a provider we deleted (Azure, Bedrock, Custom Server, DeepSeek, Mistral, OpenRouter), resolve the conflict by keeping it deleted.
 
 ### Quick Steps
 

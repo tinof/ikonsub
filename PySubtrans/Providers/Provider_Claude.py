@@ -35,7 +35,7 @@ else:
             <p>To use Claude you need to provide an <a href="https://console.anthropic.com/settings/keys">Anthropic API Key </a>.</p>
             """
 
-            default_model = "claude-3-5-haiku-latest"
+            default_model = "claude-haiku-5-5"
 
             def __init__(self, settings: SettingsType):
                 super().__init__(
@@ -57,9 +57,6 @@ else:
                                 "max_thinking_tokens"
                             )
                             or env_int("CLAUDE_MAX_THINKING_TOKENS", 1024),
-                            "temperature": settings.get_float(
-                                "temperature", env_float("CLAUDE_TEMPERATURE", 0.0)
-                            ),
                             "rate_limit": settings.get_float(
                                 "rate_limit", env_float("CLAUDE_RATE_LIMIT", 10.0)
                             ),
@@ -84,10 +81,6 @@ else:
             @property
             def max_tokens(self) -> int:
                 return self.settings.get_int("max_tokens") or 8192
-
-            @property
-            def max_thinking_tokens(self) -> int:
-                return self.settings.get_int("max_thinking_tokens") or 1024
 
             def GetTranslationClient(self, settings: SettingsType) -> TranslationClient:
                 client_settings: dict = deepcopy(self.settings)
@@ -150,12 +143,6 @@ else:
                                     "Stream translations in realtime as they are generated"
                                 ),
                             ),
-                            "temperature": (
-                                float,
-                                _(
-                                    "The temperature to use for translations (default 0.0)"
-                                ),
-                            ),
                             "rate_limit": (
                                 float,
                                 _(
@@ -178,7 +165,9 @@ else:
                 if self.allow_thinking:
                     options["max_thinking_tokens"] = (
                         int,
-                        _("The maximum number of tokens to use for thinking"),
+                        _(
+                            "The maximum number of tokens to use for thinking (Claude 4.5 and older)"
+                        ),
                     )
 
                 options["proxy"] = (

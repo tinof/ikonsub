@@ -3,6 +3,7 @@ import time
 from typing import Any
 
 import anthropic
+import regex
 
 from PySubtrans.Helpers import FormatMessages
 from PySubtrans.Helpers.Localization import _
@@ -14,6 +15,12 @@ from PySubtrans.TranslationPrompt import TranslationPrompt
 from PySubtrans.TranslationRequest import TranslationRequest
 
 linesep = "\n"
+
+# Claude 4.5 and older take a fixed thinking budget and reject adaptive thinking.
+# Claude 4.6 and newer take adaptive thinking; 4.7 and newer reject budget_tokens.
+MANUAL_THINKING_MODEL_PATTERN = regex.compile(
+    r"^claude-(?:3-.*|(?:opus|sonnet|haiku)-4(?:-[015])?(?:-\d{8})?)$", regex.IGNORECASE
+)
 
 
 class AnthropicClient(TranslationClient):
@@ -48,13 +55,16 @@ class AnthropicClient(TranslationClient):
 
     @property
     def thinking(self) -> dict | anthropic.NotGiven:
-        if self.allow_thinking:
+        if not self.allow_thinking:
+            return anthropic.NOT_GIVEN
+
+        if MANUAL_THINKING_MODEL_PATTERN.match(self.model or ""):
             return {
                 "type": "enabled",
                 "budget_tokens": self.settings.get_int("max_thinking_tokens", 1024),
             }
 
-        return anthropic.NOT_GIVEN
+        return {"type": "adaptive"}
 
     def _request_translation(
         self, request: TranslationRequest, temperature: float | None = None
@@ -148,7 +158,10 @@ class AnthropicClient(TranslationClient):
 
     def _get_client_response(self, request: TranslationRequest, temperature: float):
         """
-        Handle both streaming and non-streaming API calls with retry logic
+        Handle both streaming and non-streaming API calls with retry logic.
+
+        temperature is not sent: API version 2026-10-21 (anthropic SDK 2.x) rejects
+        temperature, top_p and top_k on every model.
         """
         if self.model is None:
             raise TranslationError(_("No model specified"))
@@ -168,7 +181,6 @@ class AnthropicClient(TranslationClient):
                         thinking=self.thinking,  # type: ignore
                         messages=prompt.content,  # type: ignore
                         system=prompt.system_prompt,
-                        temperature=temperature if not self.allow_thinking else 1,
                         max_tokens=self.max_tokens,
                     ) as stream:
                         for text in stream.text_stream:
@@ -183,7 +195,6 @@ class AnthropicClient(TranslationClient):
                         thinking=self.thinking,  # type: ignore
                         messages=prompt.content,  # type: ignore
                         system=prompt.system_prompt,
-                        temperature=temperature if not self.allow_thinking else 1,
                         max_tokens=self.max_tokens,
                     )
 

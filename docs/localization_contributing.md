@@ -114,7 +114,7 @@ A helper script automates extraction, merging, compilation, and a light-weight m
 - Note any tricky strings or context-sensitive decisions, or missing translations
 
 ## Tools
-- Python 3.10+
+- Python 3.11+
 - Optional: gettext (`msgmerge`, `msgfmt`) and/or Poedit
 - Project scripts:
   - `scripts/update_translations.py` — end-to-end extraction, merge, compile, and dict seeding

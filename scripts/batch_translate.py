@@ -11,7 +11,7 @@ QUICK START:
 Important options:
 - source_path: Directory containing subtitle files to translate
 - destination_path: Directory to write translated subtitle files
-- provider: Translation service (required - e.g. "OpenRouter", "Gemini")
+- provider: Translation service (required - "Gemini", "OpenAI" or "Claude")
 - api_key: Your API key for the selected provider
 - model: Specific model to use
 - target_language: The language subtitles should be translated into
@@ -23,7 +23,7 @@ Important options:
 Options can be specified by:
 - Passing command line arguments
 - Editing DEFAULT_OPTIONS in this script
-- Via environment variables (e.g. OPENROUTER_API_KEY=sk-...) or a .env file
+- Via environment variables (e.g. GEMINI_API_KEY=...) or a .env file
 - Any combination of the above, in order of precedence
 
 EXAMPLES:
@@ -63,16 +63,15 @@ from PySubtrans.SettingsType import redact_sensitive_values
 # Default configuration options for batch processing.
 # These can be overridden by command line arguments.
 # Any unspecified options will use PySubtrans defaults.
-# Some providers may require additional options to be set (e.g. server_address, use_default_model).
 DEFAULT_OPTIONS = SettingsType(
     {
         "source_path": "./subtitles",
         "destination_path": "./translated",
         "target_language": "English",  # The language to translate subtitles to
         "output_format": None,  # Optional format override, e.g. "srt". If not specified, inferred from source file.
-        "provider": "OpenRouter",  # Translation provider to use, e.g. "Gemini"
+        "provider": "Gemini",  # Translation provider to use: "Gemini", "OpenAI" or "Claude"
         "api_key": None,  # Your API key for the selected provider
-        "model": "qwen/qwen3-235b-a22b:free",  # Your preferred model name
+        "model": "gemini-3.1-flash-lite",  # Your preferred model name
         "prompt": "Translate these subtitles into [target_language]",  # High level prompt template
         "instruction_file": "instructions.txt",  # Optional file containing detailed instructions for the translator
         "scene_threshold": 60.0,  # Scene detection threshold in seconds
