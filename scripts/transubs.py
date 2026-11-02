@@ -835,6 +835,12 @@ def main() -> int:
         action="store_true",
         help="Do not print end-of-run translation metrics",
     )
+    parser.add_argument(
+        "--usage-json",
+        metavar="PATH",
+        help="Write the Gemini token usage of the run (per model and location) to PATH, "
+        "also when the run fails",
+    )
 
     args = parser.parse_args()
 
@@ -883,6 +889,8 @@ def main() -> int:
         logger.error(f"Subtitle file not found: {sub_path}")
         return 1
 
+    if args.usage_json:
+        _persist_usage(Path(args.usage_json))
     try:
         translate_srt_file(
             sub_path,
@@ -896,6 +904,20 @@ def main() -> int:
     except Exception as e:
         logger.error(f"Translation failed: {e}")
         return 1
+
+
+def _persist_usage(path: Path) -> None:
+    """Keep the run's Gemini usage in `path` for a caller that prices it.
+
+    The ledger rewrites the file after every response, so it holds what was billed even
+    when the caller kills this process at its timeout. A failure here is only logged.
+    """
+    try:
+        from PySubtrans.Providers.Clients.GeminiClient import USAGE_LEDGER
+
+        USAGE_LEDGER.persist_to(path)
+    except Exception as e:
+        logger.warning(f"Could not record usage to {path}: {e}")
 
 
 if __name__ == "__main__":
