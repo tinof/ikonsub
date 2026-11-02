@@ -53,6 +53,10 @@ else:
                             "thinking": settings.get_bool("thinking", False),
                             "max_tokens": settings.get_int("max_tokens")
                             or env_int("CLAUDE_MAX_TOKENS", 4096),
+                            "max_thinking_tokens": settings.get_int(
+                                "max_thinking_tokens"
+                            )
+                            or env_int("CLAUDE_MAX_THINKING_TOKENS", 1024),
                             "rate_limit": settings.get_float(
                                 "rate_limit", env_float("CLAUDE_RATE_LIMIT", 10.0)
                             ),
@@ -156,6 +160,14 @@ else:
                                 _("Enable thinking mode for translations"),
                             ),
                         }
+                    )
+
+                if self.allow_thinking:
+                    options["max_thinking_tokens"] = (
+                        int,
+                        _(
+                            "The maximum number of tokens to use for thinking (Claude 4.5 and older)"
+                        ),
                     )
 
                 options["proxy"] = (
