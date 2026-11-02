@@ -416,7 +416,7 @@ def _env_default_mode() -> TranslationMode | None:
     """Resolve default mode from environment.
 
     Honors `LLMSUBTRANS_DEFAULT_MODE` (preferred) and `EXSUBS_DEFAULT_MODE`.
-    Accepted values (case-insensitive): gemini, gpt/openai/chatgpt, claude, deepseek.
+    Accepted values (case-insensitive): gemini, gpt/openai/chatgpt, claude.
     """
     raw = os.getenv("LLMSUBTRANS_DEFAULT_MODE") or os.getenv("EXSUBS_DEFAULT_MODE")
     if not raw:
@@ -428,8 +428,6 @@ def _env_default_mode() -> TranslationMode | None:
         return TranslationMode.GEMINI
     if key in {"claude", "anthropic"}:
         return TranslationMode.CLAUDE
-    if key in {"deepseek"}:
-        return TranslationMode.DEEPSEEK
     return None
 
 
@@ -756,7 +754,6 @@ def translate_subtitles(
         TranslationMode.GEMINI: "Gemini",
         TranslationMode.CHATGPT: "OpenAI",
         TranslationMode.CLAUDE: "Claude",
-        TranslationMode.DEEPSEEK: "DeepSeek",
     }
 
     provider = provider_map.get(mode, "Gemini")
@@ -881,8 +878,6 @@ def translate_subtitles(
         env_temp = os.getenv("OPENAI_TEMPERATURE") or env_temp
     elif mode == TranslationMode.CLAUDE:
         env_temp = os.getenv("CLAUDE_TEMPERATURE") or env_temp
-    elif mode == TranslationMode.DEEPSEEK:
-        env_temp = os.getenv("DEEPSEEK_TEMPERATURE") or env_temp
 
     # Gemini 3.x is documented to degrade (repetition loops) at reduced temperature, so it keeps
     # the model default; other providers benefit from a low temperature on a format-critical task.
@@ -1138,13 +1133,6 @@ def main():
         dest="mode",
         const=TranslationMode.CLAUDE,
         help="Use Claude model",
-    )
-    mode_group.add_argument(
-        "--deepseek",
-        action="store_const",
-        dest="mode",
-        const=TranslationMode.DEEPSEEK,
-        help="Use DeepSeek model",
     )
 
     parser.add_argument("-l", "--language", help="Target language")

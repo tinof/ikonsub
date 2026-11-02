@@ -7,7 +7,7 @@ name = "llm-subtrans"
 dynamic = ["version"]
 description = "CLI subtitle translation tool with MKV extraction using large language models (Linux/macOS)"
 readme = "readme.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
 dependencies = [
     "python-dotenv",
@@ -31,11 +31,8 @@ dependencies = [
 
 [project.optional-dependencies]
 openai = ["openai"]
-azure = ["openai"]
 gemini = ["google-genai", "google-api-core"]
 claude = ["anthropic"]
-mistral = ["mistralai"]
-bedrock = ["boto3"]
 mkv = ["subtitle_filter", "chardet", "filelock", "rich"]
 
 [dependency-groups]
@@ -49,14 +46,9 @@ dev = [
 default-groups = ["dev"]
 
 [project.scripts]
-llm-subtrans = "scripts.llm_subtrans:main"
 gpt-subtrans = "scripts.gpt_subtrans:main"
 gemini-subtrans = "scripts.gemini_subtrans:main"
 claude-subtrans = "scripts.claude_subtrans:main"
-deepseek-subtrans = "scripts.deepseek_subtrans:main"
-mistral-subtrans = "scripts.mistral_subtrans:main"
-bedrock-subtrans = "scripts.bedrock_subtrans:main"
-azure-subtrans = "scripts.azure_subtrans:main"
 batch-translate = "scripts.batch_translate:main"
 exsubs = "scripts.exsubs:main"
 transubs = "scripts.transubs:main"
@@ -78,8 +70,11 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py314"
 extend-exclude = ["PySubtrans", "scripts", "tests"]
+
+[tool.ruff.format]
+exclude = ["*.md"]
 
 [tool.ruff.lint]
 extend-select = ["I", "UP", "B"]
@@ -88,7 +83,7 @@ extend-select = ["I", "UP", "B"]
 "tests/**/*.py" = ["ALL"]
 
 [tool.basedpyright]
-pythonVersion = "3.12"
+pythonVersion = "3.14"
 include = ["src", "tests"]
 typeCheckingMode = "off"
 reportAny = false

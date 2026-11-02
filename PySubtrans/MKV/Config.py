@@ -11,7 +11,6 @@ class TranslationMode(str, Enum):
     CHATGPT = "chatgpt"
     CLAUDE = "claude"
     GEMINI = "gemini"
-    DEEPSEEK = "deepseek"
 
 
 # Centralized mappings to reduce duplication
@@ -19,28 +18,24 @@ MODE_TO_CMD = {
     TranslationMode.CHATGPT: ["gpt-subtrans"],
     TranslationMode.CLAUDE: ["claude-subtrans"],
     TranslationMode.GEMINI: ["gemini-subtrans"],
-    TranslationMode.DEEPSEEK: ["deepseek-subtrans"],
 }
 
 MODE_TO_DEFAULT_MODEL = {
     TranslationMode.CHATGPT: "gpt-4o-mini",
-    TranslationMode.CLAUDE: "claude-3-5-haiku-latest",
+    TranslationMode.CLAUDE: "claude-haiku-5-5",
     TranslationMode.GEMINI: "gemini-3.1-flash-lite",
-    TranslationMode.DEEPSEEK: "deepseek-chat",
 }
 
 MODE_TO_ENV = {
     TranslationMode.CHATGPT: "OPENAI_API_KEY",
     TranslationMode.CLAUDE: "CLAUDE_API_KEY",
     TranslationMode.GEMINI: "GEMINI_API_KEY",
-    TranslationMode.DEEPSEEK: "DEEPSEEK_API_KEY",
 }
 
 MODE_TO_RATE_LIMIT = {
     TranslationMode.CHATGPT: "5000",
     TranslationMode.CLAUDE: "600",
     TranslationMode.GEMINI: "1000",
-    TranslationMode.DEEPSEEK: "4000",
 }
 
 

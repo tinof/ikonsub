@@ -68,7 +68,6 @@ uv run python tools/subtitle_metrics.py translated.fi.srt --source english.srt
 | `--gemini`            | Use Gemini model (default)                                                     |
 | `--gpt`               | Use OpenAI GPT model                                                           |
 | `--claude`            | Use Anthropic Claude model                                                     |
-| `--deepseek`          | Use DeepSeek model                                                             |
 | `-l`, `--language`    | Target language (e.g., `Finnish`, `Spanish`)                                   |
 | `-i`, `--interactive` | Manually select subtitle track to extract                                      |
 | `--no-filter`         | Preserve music cues, fonts, effects, etc. (disabled by default)                |
@@ -104,7 +103,6 @@ transubs --no-filter input.srt -l German
 | `--gemini`         | Use Gemini model (default)                            |
 | `--gpt`            | Use OpenAI GPT model                                  |
 | `--claude`         | Use Anthropic Claude model                            |
-| `--deepseek`       | Use DeepSeek model                                    |
 | `-l`, `--language` | Target language                                       |
 | `--proofread`      | Fix flow/grammar without translating                  |
 | `--no-filter`      | Preserve music cues, fonts, effects, etc.             |
@@ -114,13 +112,12 @@ transubs --no-filter input.srt -l German
 
 ---
 
-### 3. `llm-subtrans` — Universal Tool
+### 3. `gemini-subtrans`, `gpt-subtrans`, `claude-subtrans` — Provider Tools
 
-The base tool for fine-grained control, legacy compatibility, or specific provider usage not covered by the wrapper scripts. Run `llm-subtrans --help` for all options.
+The base tools for fine-grained control not covered by the wrapper scripts. Supported providers are Gemini, OpenAI and Claude. Run `gemini-subtrans --help` for all options.
 
 ```sh
-# Auto-select model via OpenRouter
-llm-subtrans --auto -l Japanese subtitle.srt
+gemini-subtrans --target_language Japanese subtitle.srt
 ```
 
 ---

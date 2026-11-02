@@ -48,11 +48,9 @@ class AnthropicClient(TranslationClient):
 
     @property
     def thinking(self) -> dict | anthropic.NotGiven:
+        # Claude 4.7+ models reject budget_tokens; adaptive thinking replaces it.
         if self.allow_thinking:
-            return {
-                "type": "enabled",
-                "budget_tokens": self.settings.get_int("max_thinking_tokens", 1024),
-            }
+            return {"type": "adaptive"}
 
         return anthropic.NOT_GIVEN
 
@@ -148,7 +146,10 @@ class AnthropicClient(TranslationClient):
 
     def _get_client_response(self, request: TranslationRequest, temperature: float):
         """
-        Handle both streaming and non-streaming API calls with retry logic
+        Handle both streaming and non-streaming API calls with retry logic.
+
+        temperature is not sent: API version 2026-10-21 (anthropic SDK 2.x) rejects
+        temperature, top_p and top_k on every model.
         """
         if self.model is None:
             raise TranslationError(_("No model specified"))
@@ -168,7 +169,6 @@ class AnthropicClient(TranslationClient):
                         thinking=self.thinking,  # type: ignore
                         messages=prompt.content,  # type: ignore
                         system=prompt.system_prompt,
-                        temperature=temperature if not self.allow_thinking else 1,
                         max_tokens=self.max_tokens,
                     ) as stream:
                         for text in stream.text_stream:
@@ -183,7 +183,6 @@ class AnthropicClient(TranslationClient):
                         thinking=self.thinking,  # type: ignore
                         messages=prompt.content,  # type: ignore
                         system=prompt.system_prompt,
-                        temperature=temperature if not self.allow_thinking else 1,
                         max_tokens=self.max_tokens,
                     )
 

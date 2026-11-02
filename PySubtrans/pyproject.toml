@@ -27,21 +27,12 @@ dependencies = [
 openai = [
     "openai"
 ]
-azure = [
-    "openai"
-]
 gemini = [
     "google-genai",
     "google-api-core"
 ]
 claude = [
     "anthropic"
-]
-mistral = [
-    "mistralai"
-]
-bedrock = [
-    "boto3"
 ]
 
 [project.urls]

@@ -128,8 +128,6 @@ Several translation clients support streaming responses for real-time translatio
 - **OpenAI (Reasoning Models)** (`OpenAIReasoningClient`) - Uses OpenAI's streaming API with event-based response handling
 - **Claude** (`AnthropicClient`) - Supports streaming via Anthropic's streaming API
 - **Gemini** (`GeminiClient`) - Uses Google's streaming response format
-- **Custom Server** (`CustomClient`) - Handles Server-Sent Events (SSE) with robust parsing
-- **OpenRouter/DeepSeek** (`OpenRouterClient`, `DeepSeekClient`) - `CustomClient` with streaming support
 
 **Streaming Architecture:**
 - **`TranslationRequest`** class encapsulates streaming state and logic to maintain stateless clients

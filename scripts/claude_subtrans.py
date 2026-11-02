@@ -20,7 +20,7 @@ def main() -> int:
 
     # Provider configuration
     provider = "Claude"
-    default_model = os.getenv("CLAUDE_MODEL") or "claude-3-haiku-20240307"
+    default_model = os.getenv("CLAUDE_MODEL") or "claude-haiku-5-5"
 
     parser = CreateArgParser("Translates subtitles using Anthropic's Claude AI")
     parser.add_argument(
