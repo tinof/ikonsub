@@ -148,6 +148,15 @@ def _normalise_translated_output(
     return desired_file
 
 
+def _sisusub_ai_review_enabled() -> bool:
+    """Whether fix-finnish-subs may run its AI review pass (off unless SISUSUB_AI_REVIEW is true).
+
+    The pass makes one Gemini call per flagged cue: about 12 minutes and $1.50 an episode in the
+    2026-10-23 pipeline review (sisusub docs/pipeline-review-2026-10-23.md). Same rule as transubs.
+    """
+    return (os.getenv("SISUSUB_AI_REVIEW") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _fix_finnish_subtitles(translated_file: Path) -> None:
     """
     Run fix-finnish-subs on the translated subtitle file.
@@ -175,6 +184,9 @@ def _fix_finnish_subtitles(translated_file: Path) -> None:
         "--cps-target",
         str(FINNISH_FIXER_TARGET_CPS),
     ]
+
+    if not _sisusub_ai_review_enabled():
+        command.append("--no-ai-review")
 
     if os.getenv("EXSUBS_FIXER_VERBOSE"):
         command.append("--verbose")
@@ -775,7 +787,7 @@ def translate_subtitles(
     # Check if user set env var explicitly to avoid overriding their preference
     if parallel_batches and not max_batch_size_arg and not os.getenv("MAX_BATCH_SIZE"):
         # Default to smaller batches for parallel mode to utilize workers
-        max_batch_size = 200
+        max_batch_size = 150
     max_context_summaries = int(os.getenv("MAX_CONTEXT_SUMMARIES") or 10)
     rate_limit: float | None = None
 
@@ -1232,26 +1244,19 @@ def main():
     env_mode = _env_default_mode()
     mode = args.mode or env_mode or config.default_translation_mode
 
-    # Auto-optimize for Gemini 3.0 (Enable parallel by default)
-    if mode == TranslationMode.GEMINI and not args.no_parallel:
-        gemini_model = os.getenv("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
-        model_lower = gemini_model.lower()
-
-        # Check for Gemini 3.0 models (flash or pro) or explicitly 'flash'
-        is_modern_gemini = "flash" in model_lower or "pro" in model_lower
-
-        # Auto-enable parallel if not explicitly disabled
-        if is_modern_gemini and not args.parallel:
-            args.parallel = True
+    # Gemini on Vertex runs parallel batches by default, as in transubs. Vertex has no RPM
+    # limit to pace; a Gemini API key keeps sequential mode unless --parallel is given.
+    if mode == TranslationMode.GEMINI and not args.no_parallel and _using_vertex():
+        args.parallel = True
 
     # Set defaults for parallel mode if enabled
     if args.parallel:
         if args.parallel_workers is None:
             # Optimize for high-concurrency models (Gemini 3)
             args.parallel_workers = 8
-        if args.max_batch_size is None:
-            # Optimize for parallel execution (smaller batches)
-            args.max_batch_size = 200
+        if args.max_batch_size is None and not os.getenv("MAX_BATCH_SIZE"):
+            # 150 lines scored level with sequential batches in the 2026-10-23 A/B (transubs)
+            args.max_batch_size = 150
 
     # Fallback default for workers if not parallel or not set
     if args.parallel_workers is None:
