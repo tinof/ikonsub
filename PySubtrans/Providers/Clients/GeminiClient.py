@@ -377,6 +377,8 @@ class GeminiClient(TranslationClient):
                 else None
             )
 
+        # A retried request starts from scratch, not after the failed attempt's text
+        request.ResetStreamingProgress()
         # Streaming: process chunks and create complete response
         stream = gemini_client.models.generate_content_stream(
             model=model,

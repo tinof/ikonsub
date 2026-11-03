@@ -191,6 +191,7 @@ class AnthropicClient(TranslationClient):
                     raise TranslationError(_("System prompt is required"))
 
                 if request.is_streaming and self.enable_streaming:
+                    request.ResetStreamingProgress()
                     with client.messages.stream(
                         model=self.model,
                         thinking=self.thinking,  # type: ignore

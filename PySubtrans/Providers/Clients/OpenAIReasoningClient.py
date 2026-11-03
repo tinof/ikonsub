@@ -174,6 +174,8 @@ class OpenAIReasoningClient(OpenAIClient):
         # Convert message dicts to properly typed input parameters
         input_params = self._convert_to_input_params(request.prompt.content)
 
+        # A retried request starts from scratch, not after the failed attempt's text
+        request.ResetStreamingProgress()
         stream = self.client.responses.create(
             model=self.model,
             input=input_params,

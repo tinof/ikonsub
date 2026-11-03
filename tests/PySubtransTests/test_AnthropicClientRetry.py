@@ -121,6 +121,9 @@ class AnthropicClientRetryTests(LoggedTestCase):
 
         self.assertLoggedEqual("stream attempts", 2, sdk.messages.stream.call_count)
         self.assertLoggedEqual("non-streaming calls", 0, sdk.messages.create.call_count)
+        self.assertLoggedEqual(
+            "retry does not append to the dropped attempt", "1. Hei", request.accumulated_text
+        )
 
     @skip_if_debugger_attached
     def test_request_errors_fail_fast(self) -> None:
