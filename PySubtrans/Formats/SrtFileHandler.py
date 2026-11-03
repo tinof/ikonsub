@@ -5,6 +5,7 @@ from typing import TextIO
 import srt
 
 from PySubtrans.Helpers.Localization import _
+from PySubtrans.Helpers.Text import IsRightToLeftText
 from PySubtrans.SubtitleData import SubtitleData
 from PySubtrans.SubtitleError import SubtitleParseError
 from PySubtrans.SubtitleFileHandler import (
@@ -56,8 +57,6 @@ class SrtFileHandler(SubtitleFileHandler):
         Returns:
             str: SRT formatted subtitle content
         """
-        from PySubtrans.Helpers.Text import IsRightToLeftText
-
         # Filter out invalid lines and renumber for SRT compliance
         output_lines = []
         start_number = data.start_line_number or 1

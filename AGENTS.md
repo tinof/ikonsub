@@ -102,6 +102,8 @@ All of the above are also available as `make` targets:
 
 **CRITICAL RULE: NEVER add imports in the middle of functions or methods - ALL imports MUST be at the top of the file.**
 
+The few existing exceptions are deliberate: the module-level `try`/`except ImportError` guards in `Provider_*.py` (a missing extra must not break import), the lazy `PySubtrans.Providers`/`PySubtrans.Formats` registry imports (circular imports), and two lazy imports in `scripts/transubs.py` (circular import, ~3 s startup). Do not add more.
+
 - **Naming**: PascalCase for classes and methods, snake_case for variables
 - **Imports**: Standard lib -> third-party -> local, alphabetical within groups
 - **Class structure**: Docstring -> constants -> init -> properties -> public methods -> private methods
@@ -118,6 +120,7 @@ All of the above are also available as `make` targets:
 ## Testing and Validation
 
 - Always run `make check` and `make test` before finishing a task.
+- `make check` lints, format-checks and type-checks `PySubtrans/`, `scripts/`, `tools/` and `tests/`: ruff with a pinned `select` list (ruff 0.17 widened its defaults, so do not switch back to `extend-select`) at 88 columns, and basedpyright in standard mode, which also fails on unneeded `# type: ignore` comments.
 - If needed for compatibility validation, run `uv run python tests/unit_tests.py`.
 
 ## Finnish Readability Pipeline (development notes)

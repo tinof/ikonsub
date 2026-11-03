@@ -163,8 +163,6 @@ def GetSourceBasedContext(
     Get context for a batch using SOURCE TEXT only (not translated output).
     This enables parallel batch translation by pre-computing all context upfront.
     """
-    from PySubtrans.Helpers.Parse import ParseNames
-
     with subtitles.lock:
         scene = subtitles.GetScene(scene_number)
         if not scene:

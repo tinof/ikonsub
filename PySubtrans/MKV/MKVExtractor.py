@@ -4,6 +4,15 @@ import subprocess
 import time
 from pathlib import Path
 
+from ffmpeg_progress_yield import FfmpegProgress
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
+
 logger = logging.getLogger("exsubs")
 
 # ffprobe reads files on network mounts (nzbdav/rclone); a stalled read must not hang the run
@@ -271,8 +280,8 @@ def extract_track_with_progress(
 ) -> bool:
     """Extract subtitle from MKV file using ffmpeg with progress bar.
 
-    Uses ffmpeg-progress-yield for real-time progress feedback when available.
-    Falls back to simple subprocess execution if the library is not installed.
+    Uses ffmpeg-progress-yield for real-time progress feedback when a console is given,
+    and a quiet subprocess run otherwise.
     """
     try:
         # Build ffmpeg command - note: we don't use -v error here to allow
@@ -296,58 +305,40 @@ def extract_track_with_progress(
                 f"[blue]Extracting subtitle track {track_id} from {video_file.name}...[/blue]"
             )
 
-            try:
-                from ffmpeg_progress_yield import FfmpegProgress
-                from rich.progress import (
-                    BarColumn,
-                    Progress,
-                    SpinnerColumn,
-                    TextColumn,
-                    TimeElapsedColumn,
-                )
+            # Get video duration for progress override (subtitle streams may not report duration)
+            duration = _get_video_duration(video_file)
 
-                # Get video duration for progress override (subtitle streams may not report duration)
-                duration = _get_video_duration(video_file)
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                TimeElapsedColumn(),
+                console=console,
+                transient=True,
+            ) as progress:
+                task = progress.add_task("Extracting", total=100)
 
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    BarColumn(),
-                    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                    TimeElapsedColumn(),
-                    console=console,
-                    transient=True,
-                ) as progress:
-                    task = progress.add_task("Extracting", total=100)
+                with FfmpegProgress(cmd) as ff:
+                    for pct in ff.run_command_with_progress(duration_override=duration):
+                        progress.update(task, completed=pct)
 
-                    with FfmpegProgress(cmd) as ff:
-                        for pct in ff.run_command_with_progress(
-                            duration_override=duration
-                        ):
-                            progress.update(task, completed=pct)
+                    # Check for errors in stderr
+                    stderr_output = ff.stderr or ""
 
-                        # Check for errors in stderr
-                        stderr_output = ff.stderr or ""
+            elapsed = time.time() - start_time
 
-                elapsed = time.time() - start_time
+            # Verify file was created
+            if not subtitle_file.exists() or subtitle_file.stat().st_size == 0:
+                logger.error("Subtitle file was not created or is empty")
+                if stderr_output:
+                    logger.error(f"ffmpeg stderr: {stderr_output}")
+                return False
 
-                # Verify file was created
-                if not subtitle_file.exists() or subtitle_file.stat().st_size == 0:
-                    logger.error("Subtitle file was not created or is empty")
-                    if stderr_output:
-                        logger.error(f"ffmpeg stderr: {stderr_output}")
-                    return False
+            console.print(f"[green]✓ Extracted in {elapsed:.1f}s[/green]")
+            return True
 
-                console.print(f"[green]✓ Extracted in {elapsed:.1f}s[/green]")
-                return True
-
-            except ImportError:
-                logger.debug(
-                    "ffmpeg-progress-yield not available, falling back to simple extraction"
-                )
-                # Fall through to simple extraction below
-
-        # Simple extraction without progress (fallback or progress disabled)
+        # Simple extraction without progress
         # Use -v error to suppress output when not showing progress
         cmd_quiet = cmd.copy()
         cmd_quiet.insert(2, "-v")
