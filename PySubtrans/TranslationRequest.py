@@ -1,9 +1,10 @@
 from collections.abc import Callable
-from typing import Any, TypeAlias
-from PySubtrans.TranslationPrompt import TranslationPrompt
-from PySubtrans.Translation import Translation
+from typing import Any
 
-StreamingCallback: TypeAlias = Callable[[Translation], None] | None
+from PySubtrans.Translation import Translation
+from PySubtrans.TranslationPrompt import TranslationPrompt
+
+type StreamingCallback = Callable[[Translation], None] | None
 
 
 class TranslationRequest:

@@ -1,13 +1,12 @@
-import os
 import logging
-
+import os
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 
+from PySubtrans import batch_subtitles, init_options, preprocess_subtitles
 from PySubtrans.Helpers import GetOutputPath
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Helpers.Parse import ParseNames
-from PySubtrans import batch_subtitles, preprocess_subtitles, init_options
 from PySubtrans.Options import Options, config_dir
 from PySubtrans.Substitutions import Substitutions
 from PySubtrans.SubtitleFormatRegistry import SubtitleFormatRegistry

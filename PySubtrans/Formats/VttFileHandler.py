@@ -1,16 +1,17 @@
-import regex
 from datetime import timedelta
 from typing import TextIO
 
+import regex
+
+from PySubtrans.Helpers.Localization import _
+from PySubtrans.SubtitleData import SubtitleData
+from PySubtrans.SubtitleError import SubtitleParseError
 from PySubtrans.SubtitleFileHandler import (
     SubtitleFileHandler,
     default_encoding,
     fallback_encoding,
 )
 from PySubtrans.SubtitleLine import SubtitleLine
-from PySubtrans.SubtitleData import SubtitleData
-from PySubtrans.SubtitleError import SubtitleParseError
-from PySubtrans.Helpers.Localization import _
 
 
 class VttFileHandler(SubtitleFileHandler):
@@ -35,10 +36,10 @@ class VttFileHandler(SubtitleFileHandler):
 
     def load_file(self, path: str) -> SubtitleData:
         try:
-            with open(path, "r", encoding=default_encoding) as f:
+            with open(path, encoding=default_encoding) as f:
                 return self.parse_file(f)
         except UnicodeDecodeError:
-            with open(path, "r", encoding=fallback_encoding) as f:
+            with open(path, encoding=fallback_encoding) as f:
                 return self.parse_file(f)
 
     def parse_file(self, file_obj: TextIO) -> SubtitleData:
@@ -49,7 +50,7 @@ class VttFileHandler(SubtitleFileHandler):
         except UnicodeDecodeError:
             raise  # Re-raise UnicodeDecodeError for fallback handling
         except Exception as e:
-            raise SubtitleParseError(_("Failed to parse file: {}").format(str(e)), e)
+            raise SubtitleParseError(_("Failed to parse file: {}").format(str(e)), e) from e
 
     def parse_string(self, content: str) -> SubtitleData:
         """Parse string content and return SubtitleData with lines and metadata."""
@@ -71,7 +72,7 @@ class VttFileHandler(SubtitleFileHandler):
         except Exception as e:
             if isinstance(e, SubtitleParseError):
                 raise
-            raise SubtitleParseError(_("Failed to parse content: {}").format(str(e)), e)
+            raise SubtitleParseError(_("Failed to parse content: {}").format(str(e)), e) from e
 
     def compose(self, data: SubtitleData) -> str:
         """Compose subtitle lines into WebVTT format string."""

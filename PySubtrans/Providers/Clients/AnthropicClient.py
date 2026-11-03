@@ -11,8 +11,8 @@ from PySubtrans.Helpers import FormatMessages
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Options import SettingsType
 from PySubtrans.SubtitleError import TranslationError, TranslationImpossibleError
-from PySubtrans.TranslationClient import TranslationClient
 from PySubtrans.Translation import Translation
+from PySubtrans.TranslationClient import TranslationClient
 from PySubtrans.TranslationPrompt import TranslationPrompt
 from PySubtrans.TranslationRequest import TranslationRequest
 

@@ -1,9 +1,8 @@
 import logging
-
 import time
+from json import JSONDecodeError
 from typing import Any
 
-from json import JSONDecodeError
 import openai  # type: ignore
 
 from PySubtrans.Helpers import FormatMessages

@@ -12,6 +12,7 @@ from PySubtrans.SubtitleBatcher import SubtitleBatcher
 from PySubtrans.SubtitleEditor import SubtitleEditor
 from PySubtrans.SubtitleLine import SubtitleLine
 from PySubtrans.Subtitles import Subtitles
+
 from ..TestData.chinese_dinner import chinese_dinner_data
 
 
@@ -339,7 +340,7 @@ class SubtitleEditorTests(SubtitleTestCase):
                             len(batch.translated),
                         )
 
-                        for orig, trans in zip(batch.originals, batch.translated):
+                        for orig, trans in zip(batch.originals, batch.translated, strict=True):
                             self.assertLoggedEqual(
                                 f"line {orig.number} number matches",
                                 orig.number,

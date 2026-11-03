@@ -4,7 +4,7 @@ from enum import Enum
 
 import regex
 
-from PySubtrans.Helpers import GetValueName, GetValueFromName
+from PySubtrans.Helpers import GetValueFromName, GetValueName
 from PySubtrans.Helpers.Parse import ParseDelayFromHeader, ParseNames
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Instructions import DEFAULT_TASK_TYPE

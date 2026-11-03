@@ -1,10 +1,9 @@
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any
+
 import regex
 
-from PySubtrans.Instructions import DEFAULT_TASK_TYPE
-from PySubtrans.Options import Options
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Helpers.SubtitleHelpers import MergeTranslations
 from PySubtrans.Helpers.Text import (
@@ -13,12 +12,14 @@ from PySubtrans.Helpers.Text import (
     RemovePromptMarkers,
     RemoveTimingAnnotations,
 )
-from PySubtrans.SubtitleLine import SubtitleLine
+from PySubtrans.Instructions import DEFAULT_TASK_TYPE
+from PySubtrans.Options import Options
 from PySubtrans.SubtitleError import (
     NoTranslationError,
     TranslationError,
     UntranslatedLinesError,
 )
+from PySubtrans.SubtitleLine import SubtitleLine
 from PySubtrans.SubtitleValidator import SubtitleValidator
 from PySubtrans.Translation import Translation
 

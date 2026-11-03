@@ -67,23 +67,21 @@ pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.ruff]
-line-length = 100
+line-length = 88
 target-version = "py314"
-extend-exclude = ["PySubtrans", "scripts", "tests"]
 
 [tool.ruff.format]
 exclude = ["*.md"]
 
 [tool.ruff.lint]
-extend-select = ["I", "UP", "B"]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["ALL"]
+# Pinned: ruff 0.17 enables a much larger default set, so extend-select would drift with
+# every ruff upgrade
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "RUF100"]
+# StrEnum changes str() and format() of members, which settings files and logs rely on
+ignore = ["UP042"]
 
 [tool.basedpyright]
 pythonVersion = "3.14"
-include = ["src", "tests"]
-typeCheckingMode = "off"
-reportAny = false
-reportImplicitStringConcatenation = false
-reportMissingTypeStubs = false
+include = ["PySubtrans", "scripts", "tools", "tests"]
+typeCheckingMode = "standard"
+reportUnnecessaryTypeIgnoreComment = "error"

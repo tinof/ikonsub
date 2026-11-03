@@ -1,4 +1,5 @@
 from typing import cast
+
 from PySubtrans.Options import Options
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.TranslationClient import TranslationClient

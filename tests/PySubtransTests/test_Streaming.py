@@ -1,9 +1,8 @@
 import threading
-
 from copy import deepcopy
 from datetime import timedelta
 
-from PySubtrans.Helpers.TestCases import SubtitleTestCase, DummyTranslationClient
+from PySubtrans.Helpers.TestCases import DummyTranslationClient, SubtitleTestCase
 from PySubtrans.Helpers.Tests import log_info, skip_if_debugger_attached
 from PySubtrans.SettingsType import SettingsType, SettingType
 from PySubtrans.SubtitleBatch import SubtitleBatch

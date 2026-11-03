@@ -1,8 +1,8 @@
-from collections.abc import Callable
 import functools
 import logging
 import os
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 

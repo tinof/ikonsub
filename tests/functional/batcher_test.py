@@ -1,7 +1,8 @@
 import os
+
+from PySubtrans.Helpers.Tests import RunTestOnAllSubtitleFiles, separator
 from PySubtrans.SubtitleBatcher import SubtitleBatcher
 from PySubtrans.Subtitles import Subtitles
-from PySubtrans.Helpers.Tests import RunTestOnAllSubtitleFiles, separator
 
 
 def analyze_scenes(scenes):
@@ -41,7 +42,7 @@ def batcher_test(subtitles: Subtitles, logger, options):
         batcher = SubtitleBatcher(options)
         scenes = batcher.BatchSubtitles(subtitles.originals)
     except Exception as e:
-        raise Exception(f"Error in batcher.BatchSubtitles: {e}")
+        raise Exception(f"Error in batcher.BatchSubtitles: {e}") from e
 
     # Analyze scenes
     (

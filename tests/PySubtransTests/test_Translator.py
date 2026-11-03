@@ -13,8 +13,8 @@ from PySubtrans.Helpers.Tests import log_info, log_test_name
 from PySubtrans.SubtitleBatch import SubtitleBatch
 from PySubtrans.SubtitleBatcher import SubtitleBatcher
 from PySubtrans.SubtitleEditor import SubtitleEditor
-from PySubtrans.Subtitles import Subtitles
 from PySubtrans.SubtitleError import TranslationError, TranslationImpossibleError
+from PySubtrans.Subtitles import Subtitles
 from PySubtrans.SubtitleScene import SubtitleScene
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
 from PySubtrans.TranslationEvents import TranslationEvents

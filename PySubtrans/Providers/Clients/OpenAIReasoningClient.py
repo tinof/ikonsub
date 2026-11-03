@@ -1,3 +1,5 @@
+from typing import Any, Literal, cast
+
 from openai import (
     APIConnectionError,
     APITimeoutError,
@@ -12,16 +14,15 @@ from openai import (
 from openai.types import responses as responses_types
 from openai.types.responses import (
     EasyInputMessageParam,
-    ResponseInputParam,
-    ResponseTextDeltaEvent,
     ResponseCompletedEvent,
     ResponseFailedEvent,
     ResponseIncompleteEvent,
+    ResponseInputParam,
+    ResponseTextDeltaEvent,
 )
-from openai.types.shared_params.reasoning import Reasoning
 from openai.types.shared.reasoning_effort import ReasoningEffort
+from openai.types.shared_params.reasoning import Reasoning
 
-from typing import Any, Literal, cast
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Providers.Clients.OpenAIClient import OpenAIClient
 from PySubtrans.SettingsType import SettingsType

@@ -1,16 +1,13 @@
 import logging
-from typing import Any
-import regex
 from datetime import timedelta
+from typing import Any
+
+import regex
 
 from PySubtrans.Helpers.SubtitleHelpers import FindSplitPoint, GetProportionalDuration
 from PySubtrans.Helpers.Text import (
-    dialog_marker,
-    split_sequences,
-    break_sequences,
-    sentence_end_punctuation,
-    BreakLongLine,
     BreakDialogOnOneLine,
+    BreakLongLine,
     CompileDialogSplitPattern,
     CompileFillerWordsPattern,
     ConvertWhitespaceBlocksToNewlines,
@@ -19,6 +16,10 @@ from PySubtrans.Helpers.Text import (
     NormaliseDialogTags,
     RemoveFillerWords,
     StripMarkup,
+    break_sequences,
+    dialog_marker,
+    sentence_end_punctuation,
+    split_sequences,
 )
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleLine import SubtitleLine

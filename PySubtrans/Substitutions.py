@@ -1,7 +1,8 @@
 import logging
-from typing import Any
-import regex
 from enum import Enum
+from typing import Any
+
+import regex
 
 from PySubtrans.Helpers import GetValueFromName
 
@@ -79,7 +80,7 @@ class Substitutions:
         result = [self.PerformSubstitutions(line) for line in input]
         replacements = {
             line: new_line
-            for line, new_line in zip(input, result)
+            for line, new_line in zip(input, result, strict=True)
             if new_line != str(line)
         }
         return result, replacements
@@ -111,7 +112,7 @@ class Substitutions:
             try:
                 return self.Mode(mode)
             except ValueError:
-                raise ValueError(f"No enum member for value: {mode}")
+                raise ValueError(f"No enum member for value: {mode}") from None
 
         return GetValueFromName(mode, list(self.Mode))
 
@@ -141,7 +142,7 @@ class Substitutions:
                     substitutions[before] = after
                 elif sub.strip():
                     try:
-                        with open(sub, "r", encoding="utf-8", newline="") as f:
+                        with open(sub, encoding="utf-8", newline="") as f:
                             for line in [line.strip() for line in f if line.strip()]:
                                 if "::" in line:
                                     before, after = line.split("::")

@@ -1,19 +1,21 @@
 from __future__ import annotations
-from collections.abc import Mapping, MutableMapping
-from copy import deepcopy
+
 import json
 import logging
 import os
+from collections.abc import Mapping, MutableMapping
+from copy import deepcopy
 from typing import Any
+
 import dotenv
 
-from PySubtrans.Helpers.Version import VersionNumberLessThan
-from PySubtrans.Instructions import Instructions, default_user_prompt
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Helpers.Resources import config_dir, old_config_dir
 from PySubtrans.Helpers.Text import standard_filler_words
+from PySubtrans.Helpers.Version import VersionNumberLessThan
+from PySubtrans.Instructions import Instructions, default_user_prompt
 from PySubtrans.ProviderSettingsView import ProviderSettingsView
-from PySubtrans.SettingsType import SettingType, SettingsType
+from PySubtrans.SettingsType import SettingsType, SettingType
 from PySubtrans.version import __version__
 
 settings_path = os.path.join(config_dir, "settings.json")
@@ -216,7 +218,7 @@ class Options(SettingsType):
             return False
 
         try:
-            with open(settings_path, "r", encoding="utf-8") as settings_file:
+            with open(settings_path, encoding="utf-8") as settings_file:
                 settings = json.load(settings_file)
 
             if not settings:
@@ -235,7 +237,7 @@ class Options(SettingsType):
             return True
 
         except Exception as e:
-            logging.debug("Error loading settings from {}: {}".format(settings_path, e))
+            logging.debug(f"Error loading settings from {settings_path}: {e}")
             logging.error(_("Error loading settings from {}").format(settings_path))
             return False
 
@@ -273,7 +275,7 @@ class Options(SettingsType):
             return True
 
         except Exception as e:
-            logging.debug("Error saving settings to {}: {}".format(settings_path, e))
+            logging.debug(f"Error saving settings to {settings_path}: {e}")
             logging.error(_("Error saving settings to {}").format(settings_path))
             return False
 

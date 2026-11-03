@@ -2,9 +2,9 @@ import json
 
 from PySubtrans.Helpers.Color import Color
 from PySubtrans.SettingsType import SettingsType
-from PySubtrans.SubtitleLine import SubtitleLine
 from PySubtrans.SubtitleBatch import SubtitleBatch
 from PySubtrans.SubtitleError import TranslationError
+from PySubtrans.SubtitleLine import SubtitleLine
 from PySubtrans.Subtitles import Subtitles
 from PySubtrans.SubtitleScene import SubtitleScene
 from PySubtrans.Translation import Translation
@@ -53,7 +53,7 @@ class SubtitleEncoder(json.JSONEncoder):
             }
         elif isinstance(obj, SubtitleScene):
             return {
-                "scene": getattr(obj, "number"),
+                "scene": obj.number,
                 "batchcount": obj.size,
                 "linecount": obj.linecount,
                 "all_translated": obj.all_translated,
@@ -66,12 +66,12 @@ class SubtitleEncoder(json.JSONEncoder):
             }
         elif isinstance(obj, SubtitleBatch):
             return {
-                "scene": getattr(obj, "scene"),
-                "batch": getattr(obj, "number"),
+                "scene": obj.scene,
+                "batch": obj.number,
                 "size": obj.size,
                 "all_translated": obj.all_translated,
                 "errors": obj.errors if obj.errors else None,
-                "summary": getattr(obj, "summary"),
+                "summary": obj.summary,
                 "originals": obj._originals,
                 "translated": obj._translated,
                 "context": {
@@ -88,9 +88,9 @@ class SubtitleEncoder(json.JSONEncoder):
                 "start": obj.start.total_seconds() if obj.start else None,
                 "end": obj.end.total_seconds() if obj.end else None,
                 "content": obj.content,
-                "metadata": getattr(obj, "metadata"),
-                "translation": getattr(obj, "translation"),
-                "original": getattr(obj, "original"),
+                "metadata": obj.metadata,
+                "translation": obj.translation,
+                "original": obj.original,
             }
         elif isinstance(obj, Translation):
             return {"content": obj.content}
@@ -113,7 +113,7 @@ class SubtitleEncoder(json.JSONEncoder):
 
 class SubtitleDecoder(json.JSONDecoder):
     def __init__(self, *args, **kwargs):
-        super().__init__(object_hook=_object_hook, *args, **kwargs)
+        super().__init__(*args, object_hook=_object_hook, **kwargs)
 
 
 def _object_hook(dct):

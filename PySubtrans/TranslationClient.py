@@ -7,11 +7,11 @@ from PySubtrans.Options import Options
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleError import TranslationError
 from PySubtrans.SubtitleLine import SubtitleLine
+from PySubtrans.Translation import Translation
+from PySubtrans.TranslationEvents import TranslationEvents
 from PySubtrans.TranslationParser import TranslationParser
 from PySubtrans.TranslationPrompt import TranslationPrompt, default_prompt_template
-from PySubtrans.Translation import Translation
-from PySubtrans.TranslationRequest import TranslationRequest, StreamingCallback
-from PySubtrans.TranslationEvents import TranslationEvents
+from PySubtrans.TranslationRequest import StreamingCallback, TranslationRequest
 
 linesep = "\n"
 

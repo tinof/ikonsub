@@ -1,5 +1,5 @@
-from datetime import timedelta
 import unittest
+from datetime import timedelta
 
 from PySubtrans.Options import Options
 from PySubtrans.SubtitleBatcher import SubtitleBatcher

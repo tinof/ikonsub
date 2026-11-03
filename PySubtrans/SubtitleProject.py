@@ -1,19 +1,18 @@
 import json
-import os
 import logging
+import os
 import threading
 
 from PySubtrans.Helpers import GetOutputPath
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Helpers.Parse import ParseNames
 from PySubtrans.Options import Options
-from PySubtrans.Substitutions import Substitutions
 from PySubtrans.SettingsType import SettingsType
+from PySubtrans.Substitutions import Substitutions
 from PySubtrans.SubtitleEditor import SubtitleEditor
 from PySubtrans.SubtitleError import SubtitleError, TranslationAbortedError
 from PySubtrans.SubtitleFormatRegistry import SubtitleFormatRegistry
 from PySubtrans.Subtitles import Subtitles
-
 from PySubtrans.SubtitleScene import SubtitleScene
 from PySubtrans.SubtitleSerialisation import SubtitleDecoder, SubtitleEncoder
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
@@ -403,7 +402,7 @@ class SubtitleProject:
             with self.lock:
                 logging.info(_("Reading project data from {}").format(str(filepath)))
 
-                with open(filepath, "r", encoding=default_encoding, newline="") as f:
+                with open(filepath, encoding=default_encoding, newline="") as f:
                     self.subtitles: Subtitles = json.load(f, cls=SubtitleDecoder)
 
                 with SubtitleEditor(self.subtitles) as editor:

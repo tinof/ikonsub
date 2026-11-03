@@ -1,16 +1,16 @@
+import os
+import tempfile
 import unittest
 from datetime import timedelta
-import tempfile
-import os
 
-from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Formats.SSAFileHandler import SSAFileHandler
-from PySubtrans.SubtitleLine import SubtitleLine
-from PySubtrans.SubtitleData import SubtitleData
-from PySubtrans.SubtitleError import SubtitleParseError
+from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Helpers.Tests import (
     skip_if_debugger_attached,
 )
+from PySubtrans.SubtitleData import SubtitleData
+from PySubtrans.SubtitleError import SubtitleParseError
+from PySubtrans.SubtitleLine import SubtitleLine
 
 
 class TestSSAFileHandler(LoggedTestCase):
@@ -107,7 +107,7 @@ Dialogue: 0,0:00:07.00,0:00:09.00,Default,,0,0,0,,Third subtitle line
             "Parsed line count", len(self.expected_lines), len(lines)
         )
 
-        for i, (expected, actual) in enumerate(zip(self.expected_lines, lines)):
+        for i, (expected, actual) in enumerate(zip(self.expected_lines, lines, strict=True)):
             with self.subTest(line_number=i + 1):
                 self.assertEqual(actual.number, expected.number)
                 self.assertEqual(actual.start, expected.start)
@@ -272,7 +272,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         )
 
         # Compare line properties
-        for original, round_trip in zip(original_lines, round_trip_lines):
+        for original, round_trip in zip(original_lines, round_trip_lines, strict=True):
             self.assertEqual(original.start, round_trip.start)
             self.assertEqual(original.end, round_trip.end)
             self.assertEqual(original.text, round_trip.text)

@@ -1,6 +1,7 @@
 import logging
-import regex as re
 from pathlib import Path
+
+import regex as re
 
 from PySubtrans.Helpers.Text import markup_pattern
 
@@ -90,7 +91,7 @@ def _manual_encoding_conversion(sub_file: Path) -> bool:
     """Fallback encoding conversion without chardet"""
     try:
         # Try UTF-8 first
-        with open(sub_file, "r", encoding="utf-8") as f:
+        with open(sub_file, encoding="utf-8") as f:
             content = f.read()
         return True
     except UnicodeDecodeError:
@@ -101,7 +102,7 @@ def _manual_encoding_conversion(sub_file: Path) -> bool:
 
     for encoding in encodings:
         try:
-            with open(sub_file, "r", encoding=encoding) as f:
+            with open(sub_file, encoding=encoding) as f:
                 content = f.read()
 
             # Convert to UTF-8
@@ -125,7 +126,7 @@ def preprocess_timecodes(sub_file: Path):
         raise ValueError("Could not convert subtitle file to UTF-8 encoding")
 
     # Now read with UTF-8 encoding
-    with open(sub_file, "r", encoding="utf-8") as f:
+    with open(sub_file, encoding="utf-8") as f:
         content = f.read()
 
     # Replace first colon in timecodes with full-width colon to avoid splitting issues
@@ -137,7 +138,7 @@ def preprocess_timecodes(sub_file: Path):
 
 def postprocess_timecodes(sub_file: Path):
     """Restore original timecode format after filtering"""
-    with open(sub_file, "r", encoding="utf-8") as f:
+    with open(sub_file, encoding="utf-8") as f:
         content = f.read()
 
     # Replace full-width colon back with regular colon

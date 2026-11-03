@@ -1,5 +1,6 @@
-import regex as re
 from pathlib import Path
+
+import regex as re
 
 
 class VideoFile:

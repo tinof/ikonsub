@@ -19,8 +19,8 @@ from PySubtrans.Providers.Clients.OpenAIReasoningClient import OpenAIReasoningCl
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleError import (
     TranslationError,
-    TranslationResponseError,
     TranslationImpossibleError,
+    TranslationResponseError,
 )
 from PySubtrans.TranslationPrompt import TranslationPrompt
 from PySubtrans.TranslationRequest import TranslationRequest

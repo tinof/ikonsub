@@ -1,9 +1,9 @@
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any
 
-from PySubtrans.SubtitleBatch import SubtitleBatch
 from PySubtrans.Helpers.SubtitleHelpers import ResyncTranslatedLines
+from PySubtrans.SubtitleBatch import SubtitleBatch
 from PySubtrans.SubtitleLine import SubtitleLine
 
 
@@ -136,7 +136,7 @@ class SubtitleScene:
 
         return updated
 
-    def MergeScenes(self, merged_scenes: list["SubtitleScene"]):
+    def MergeScenes(self, merged_scenes: list[SubtitleScene]):
         """
         Merge another scene into this scene
         """

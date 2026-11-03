@@ -1,35 +1,20 @@
 import argparse
 import logging
 import os
-from pathlib import Path
-import statistics
 import shutil
+import statistics
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+from pathlib import Path
 
+import regex
 from dotenv import load_dotenv
 from filelock import FileLock
-import regex
 from rich.console import Console
 from rich.logging import RichHandler
-
-from PySubtrans.MKV import (
-    MKVConfig,
-    TranslationMode,
-    VideoFile,
-    get_mkv_subtitle_tracks,
-    select_track_interactively,
-    select_best_track_with_fallback,
-    extract_track_with_progress,
-    preprocess_timecodes,
-    postprocess_timecodes,
-    filter_subtitles,
-    run_diagnostics,
-)
-from PySubtrans.MKV.Config import MODE_TO_DEFAULT_MODEL, MODE_TO_ENV, MODE_TO_RATE_LIMIT
 
 from PySubtrans import (
     batch_subtitles,
@@ -38,6 +23,20 @@ from PySubtrans import (
     preprocess_subtitles,
 )
 from PySubtrans.Helpers.Localization import _
+from PySubtrans.MKV import (
+    MKVConfig,
+    TranslationMode,
+    VideoFile,
+    extract_track_with_progress,
+    filter_subtitles,
+    get_mkv_subtitle_tracks,
+    postprocess_timecodes,
+    preprocess_timecodes,
+    run_diagnostics,
+    select_best_track_with_fallback,
+    select_track_interactively,
+)
+from PySubtrans.MKV.Config import MODE_TO_DEFAULT_MODEL, MODE_TO_ENV, MODE_TO_RATE_LIMIT
 from PySubtrans.SubtitleProject import SubtitleProject
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
 

@@ -289,9 +289,9 @@ def extract_track_with_progress(
             try:
                 from ffmpeg_progress_yield import FfmpegProgress
                 from rich.progress import (
+                    BarColumn,
                     Progress,
                     SpinnerColumn,
-                    BarColumn,
                     TextColumn,
                     TimeElapsedColumn,
                 )

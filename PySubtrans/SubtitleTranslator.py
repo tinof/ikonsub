@@ -1,28 +1,22 @@
-from os import linesep
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from os import linesep
 from typing import Any
 
+from PySubtrans.Helpers import FormatErrorMessages
 from PySubtrans.Helpers.ContextHelpers import (
     GetBatchContext,
     PrecomputeAllBatchContexts,
 )
-from PySubtrans.Helpers.SubtitleHelpers import MergeTranslations
 from PySubtrans.Helpers.Localization import _
+from PySubtrans.Helpers.SubtitleHelpers import MergeTranslations
 from PySubtrans.Helpers.Text import Linearise, SanitiseSummary
 from PySubtrans.Instructions import DEFAULT_TASK_TYPE, Instructions
+from PySubtrans.Options import Options
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.Substitutions import Substitutions
-from PySubtrans.SubtitleLine import SubtitleLine
-from PySubtrans.SubtitleProcessor import SubtitleProcessor
-from PySubtrans.SubtitleValidator import SubtitleValidator
-from PySubtrans.Translation import Translation
-from PySubtrans.TranslationClient import TranslationClient
-from PySubtrans.TranslationParser import TranslationParser
-from PySubtrans.Options import Options
 from PySubtrans.SubtitleBatch import SubtitleBatch
-
 from PySubtrans.SubtitleError import (
     NoProviderError,
     NoTranslationError,
@@ -32,10 +26,15 @@ from PySubtrans.SubtitleError import (
     TranslationError,
     TranslationImpossibleError,
 )
-from PySubtrans.Helpers import FormatErrorMessages
+from PySubtrans.SubtitleLine import SubtitleLine
+from PySubtrans.SubtitleProcessor import SubtitleProcessor
 from PySubtrans.Subtitles import Subtitles
 from PySubtrans.SubtitleScene import SubtitleScene, UnbatchScenes
+from PySubtrans.SubtitleValidator import SubtitleValidator
+from PySubtrans.Translation import Translation
+from PySubtrans.TranslationClient import TranslationClient
 from PySubtrans.TranslationEvents import TranslationEvents
+from PySubtrans.TranslationParser import TranslationParser
 from PySubtrans.TranslationPrompt import TranslationPrompt
 from PySubtrans.TranslationProvider import TranslationProvider
 from PySubtrans.TranslationRequest import StreamingCallback

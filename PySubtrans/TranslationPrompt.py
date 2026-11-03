@@ -170,11 +170,11 @@ class TranslationPrompt:
 
         if errors:
             unique_errors = set(
-                (
+                
                     f"- {str(e).strip()}"
                     for e in errors
                     if isinstance(e, TranslationError)
-                )
+                
             )
             error_list = list(unique_errors)
             error_message = "\n".join(error_list)

@@ -1,9 +1,10 @@
+import unittest
 from copy import deepcopy
 from datetime import timedelta
-import unittest
 from typing import Any
 
 import regex
+
 from PySubtrans.Helpers.Tests import (
     log_expected_result,
     log_info,
@@ -17,8 +18,8 @@ from PySubtrans.SubtitleFileHandler import SubtitleFileHandler
 from PySubtrans.SubtitleFormatRegistry import SubtitleFormatRegistry
 from PySubtrans.SubtitleLine import SubtitleLine
 from PySubtrans.SubtitleProject import SubtitleProject
-from PySubtrans.SubtitleScene import SubtitleScene
 from PySubtrans.Subtitles import Subtitles
+from PySubtrans.SubtitleScene import SubtitleScene
 from PySubtrans.Translation import Translation
 from PySubtrans.TranslationClient import TranslationClient
 from PySubtrans.TranslationPrompt import TranslationPrompt

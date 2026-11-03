@@ -4,16 +4,16 @@ import unittest
 from typing import TextIO
 from unittest.mock import MagicMock, patch
 
-from PySubtrans.SubtitleFileHandler import SubtitleFileHandler
-from PySubtrans.SubtitleFormatRegistry import SubtitleFormatRegistry
 from PySubtrans.Formats.SrtFileHandler import SrtFileHandler
-from PySubtrans.SubtitleData import SubtitleData
-from PySubtrans.SubtitleError import SubtitleParseError
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Helpers.Tests import (
     log_input_expected_error,
     skip_if_debugger_attached,
 )
+from PySubtrans.SubtitleData import SubtitleData
+from PySubtrans.SubtitleError import SubtitleParseError
+from PySubtrans.SubtitleFileHandler import SubtitleFileHandler
+from PySubtrans.SubtitleFormatRegistry import SubtitleFormatRegistry
 
 
 class DummySrtHandler(SubtitleFileHandler):

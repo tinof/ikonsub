@@ -1,17 +1,16 @@
 import unittest
+
 import regex
 
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Helpers.Text import (
-    ConvertEscapedNewlines,
-    EnsureFullWidthPunctuation,
-    break_sequences,
-    standard_filler_words,
     BreakDialogOnOneLine,
     BreakLongLine,
     CompileDialogSplitPattern,
     CompileFillerWordsPattern,
     ContainsTags,
+    ConvertEscapedNewlines,
+    EnsureFullWidthPunctuation,
     ExtractTag,
     ExtractTagList,
     IsTextContentEqual,
@@ -23,6 +22,8 @@ from PySubtrans.Helpers.Text import (
     RemoveTimingAnnotations,
     RemoveWhitespaceAndPunctuation,
     SanitiseSummary,
+    break_sequences,
+    standard_filler_words,
 )
 
 

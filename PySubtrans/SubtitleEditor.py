@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import timedelta
-from typing import Any, Callable
+from typing import Any
 
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Helpers.Time import GetTimeDelta
+from PySubtrans.SubtitleBatch import SubtitleBatch
+from PySubtrans.SubtitleBatcher import SubtitleBatcher
 from PySubtrans.SubtitleError import SubtitleError
 from PySubtrans.SubtitleLine import SubtitleLine
-from PySubtrans.SubtitleScene import SubtitleScene
-from PySubtrans.SubtitleBatch import SubtitleBatch
-from PySubtrans.Subtitles import Subtitles
 from PySubtrans.SubtitleProcessor import SubtitleProcessor
-from PySubtrans.SubtitleBatcher import SubtitleBatcher
+from PySubtrans.Subtitles import Subtitles
+from PySubtrans.SubtitleScene import SubtitleScene
 
 
 class SubtitleEditor:

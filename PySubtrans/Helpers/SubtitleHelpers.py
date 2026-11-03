@@ -1,6 +1,7 @@
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any
+
 import regex
 
 from PySubtrans.SubtitleLine import SubtitleLine

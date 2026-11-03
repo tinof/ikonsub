@@ -1,12 +1,12 @@
 from datetime import timedelta
 from typing import Any
 
-from PySubtrans.Substitutions import Substitutions
-from PySubtrans.TranslationPrompt import TranslationPrompt
-from PySubtrans.SubtitleError import SubtitleError
 from PySubtrans.Helpers.SubtitleHelpers import AddOrUpdateLine, MergeSubtitles
+from PySubtrans.Substitutions import Substitutions
+from PySubtrans.SubtitleError import SubtitleError
 from PySubtrans.SubtitleLine import SubtitleLine
 from PySubtrans.Translation import Translation
+from PySubtrans.TranslationPrompt import TranslationPrompt
 
 
 class SubtitleBatch:

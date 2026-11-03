@@ -1,17 +1,18 @@
 import unittest
-import regex
 from datetime import timedelta
 
-from PySubtrans.SubtitleLine import SubtitleLine
-from PySubtrans.Helpers.Text import split_sequences, standard_filler_words
-from PySubtrans.Helpers.TestCases import LoggedTestCase
-from PySubtrans.Helpers.Tests import log_info
+import regex
+
 from PySubtrans.Helpers.SubtitleHelpers import (
-    MergeSubtitles,
-    MergeTranslations,
     FindSplitPoint,
     GetProportionalDuration,
+    MergeSubtitles,
+    MergeTranslations,
 )
+from PySubtrans.Helpers.TestCases import LoggedTestCase
+from PySubtrans.Helpers.Tests import log_info
+from PySubtrans.Helpers.Text import split_sequences, standard_filler_words
+from PySubtrans.SubtitleLine import SubtitleLine
 from PySubtrans.SubtitleProcessor import SubtitleProcessor
 
 

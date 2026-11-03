@@ -20,12 +20,12 @@ from PySubtrans import (
     init_translator,
     preprocess_subtitles,
 )
+from PySubtrans.Helpers.Localization import _
 from PySubtrans.MKV import (
     filter_subtitles,
     postprocess_timecodes,
     preprocess_timecodes,
 )
-from PySubtrans.Helpers.Localization import _
 from PySubtrans.MKV.Config import (
     MODE_TO_DEFAULT_MODEL,
     MODE_TO_RATE_LIMIT,

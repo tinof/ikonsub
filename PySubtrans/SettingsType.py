@@ -1,14 +1,15 @@
 from __future__ import annotations
+
 from collections.abc import Mapping
 from datetime import timedelta
-from typing import Any, TypeAlias
+from typing import Any
 
 import regex
 
 from PySubtrans.Helpers.Time import GetTimeDelta
 
-BasicType: TypeAlias = str | int | float | bool | list[str] | None
-SettingType: TypeAlias = (
+type BasicType = str | int | float | bool | list[str] | None
+type SettingType = (
     BasicType | dict[str, "SettingType"] | dict[str, "SettingsType"]
 )
 

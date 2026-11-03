@@ -1,22 +1,22 @@
 from __future__ import annotations
 
-from copy import deepcopy
-import os
 import logging
+import os
 import threading
+from copy import deepcopy
 from typing import Any
+
+from PySubtrans.Helpers import GetInputPath, GetOutputPath
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Options import Options
-
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleBatch import SubtitleBatch
+from PySubtrans.SubtitleData import SubtitleData
 from PySubtrans.SubtitleError import SubtitleError, SubtitleParseError
-from PySubtrans.Helpers import GetInputPath, GetOutputPath
 from PySubtrans.SubtitleFileHandler import SubtitleFileHandler, default_encoding
 from PySubtrans.SubtitleFormatRegistry import SubtitleFormatRegistry
-from PySubtrans.SubtitleScene import SubtitleScene, UnbatchScenes
 from PySubtrans.SubtitleLine import SubtitleLine
-from PySubtrans.SubtitleData import SubtitleData
+from PySubtrans.SubtitleScene import SubtitleScene, UnbatchScenes
 
 
 class Subtitles:

@@ -1,17 +1,16 @@
 from collections import Counter
 from collections.abc import Sequence
 from datetime import timedelta
-from typing import Any, TypeAlias
+from typing import Any
 
 from PySubtrans.Options import SettingsType
-from PySubtrans.Subtitles import Subtitles
-from PySubtrans.SubtitleScene import SubtitleScene
 from PySubtrans.SubtitleBatch import SubtitleBatch
 from PySubtrans.SubtitleBatcher import SubtitleBatcher
 from PySubtrans.SubtitleLine import SubtitleLine
+from PySubtrans.Subtitles import Subtitles
+from PySubtrans.SubtitleScene import SubtitleScene
 
-
-LineData: TypeAlias = (
+type LineData = (
     tuple[timedelta | str, timedelta | str, str]
     | tuple[timedelta | str, timedelta | str, str, dict[str, Any]]
 )
@@ -62,7 +61,7 @@ class SubtitleBuilder:
         )
         self._batcher: SubtitleBatcher = SubtitleBatcher(batch_settings)
 
-    def AddScene(self, summary: str | None = None) -> "SubtitleBuilder":
+    def AddScene(self, summary: str | None = None) -> SubtitleBuilder:
         """
         Add a new scene. Lines added after this will be automatically organized into batches.
 
@@ -90,7 +89,7 @@ class SubtitleBuilder:
 
         return self
 
-    def AddLine(self, line: SubtitleLine) -> "SubtitleBuilder":
+    def AddLine(self, line: SubtitleLine) -> SubtitleBuilder:
         """
         Add a SubtitleLine to the current scene.
 
@@ -117,7 +116,7 @@ class SubtitleBuilder:
         end: timedelta | str,
         text: str,
         metadata: dict[str, Any] | None = None,
-    ) -> "SubtitleBuilder":
+    ) -> SubtitleBuilder:
         """
         Build a SubtitleLine from parameters and add it to the current scene.
 
@@ -146,7 +145,7 @@ class SubtitleBuilder:
 
     def AddLines(
         self, lines: Sequence[SubtitleLine] | Sequence[LineData]
-    ) -> "SubtitleBuilder":
+    ) -> SubtitleBuilder:
         """
         Add multiple subtitle lines to the current scene.
 

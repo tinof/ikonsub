@@ -3,7 +3,11 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from PySubtrans.Helpers.TestCases import LoggedTestCase
-from PySubtrans.Providers.Clients.GeminiClient import GeminiClient, GeminiUsageLedger, USAGE_LEDGER
+from PySubtrans.Providers.Clients.GeminiClient import (
+    USAGE_LEDGER,
+    GeminiClient,
+    GeminiUsageLedger,
+)
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleError import TranslationResponseError
 

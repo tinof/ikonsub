@@ -1,6 +1,7 @@
 import unittest
-from PySubtrans.Substitutions import Substitutions
+
 from PySubtrans.Helpers.TestCases import LoggedTestCase
+from PySubtrans.Substitutions import Substitutions
 
 
 class TestSubstitutions(LoggedTestCase):

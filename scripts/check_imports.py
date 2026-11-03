@@ -1,5 +1,5 @@
-import sys
 import importlib.util
+import sys
 
 
 def check_required_imports(modules: list[str], pip_extras: str | None = None) -> None:
