@@ -92,16 +92,17 @@ class AnthropicClientRetryTests(LoggedTestCase):
         self.assertLoggedEqual("attempts", 2, sdk.messages.create.call_count)
 
     def test_mid_stream_connection_drop_is_retried(self) -> None:
-        """A dropped connection while streaming (raw httpx2 error, not APIError) is retried."""
+        """A dropped stream (raw httpx2 error, not APIError) is retried from a clean slate."""
 
         def dropped_text_stream():
-            yield "1. Hei"
+            yield "#1\nHei\n\n"
+            yield "#2\nPa"
             raise httpx2.RemoteProtocolError("peer closed connection")
 
         dropped = MagicMock()
         dropped.text_stream = dropped_text_stream()
         complete = MagicMock()
-        complete.text_stream = iter(["1. Hei"])
+        complete.text_stream = iter(["#1\nHei\n\n", "#2\nMoi\n\n"])
         complete.get_final_message.return_value = _message()
 
         streams = []
@@ -115,14 +116,26 @@ class AnthropicClientRetryTests(LoggedTestCase):
         sdk = MagicMock()
         sdk.messages.stream.side_effect = streams
         client.client = sdk
-        request = TranslationRequest(self._make_request().prompt, lambda _update: None)
+        updates: list[str] = []
+        request = TranslationRequest(
+            self._make_request().prompt, lambda update: updates.append(update.text)
+        )
         with patch("PySubtrans.Providers.Clients.AnthropicClient.time.sleep"):
             client._request_translation(request)
 
         self.assertLoggedEqual("stream attempts", 2, sdk.messages.stream.call_count)
         self.assertLoggedEqual("non-streaming calls", 0, sdk.messages.create.call_count)
         self.assertLoggedEqual(
-            "retry does not append to the dropped attempt", "1. Hei", request.accumulated_text
+            "retry does not append to the dropped attempt",
+            "#1\nHei\n\n#2\nMoi\n\n",
+            request.accumulated_text,
+        )
+        # One update from the dropped attempt, then one per section of the retry: a stale
+        # cursor would swallow the retry's first section
+        self.assertLoggedEqual(
+            "partial updates",
+            ["#1\nHei", "#1\nHei", "#1\nHei\n\n#2\nMoi"],
+            updates,
         )
 
     @skip_if_debugger_attached
