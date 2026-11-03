@@ -16,7 +16,7 @@ These instructions help AI coding agents work effectively in this repository. Fo
 Consult `docs/architecture.md` for detailed information on the project structure and architecture.
 
 ## Code Style
-- **Language version**: The project uses and requires Python 3.10+
+- **Language version**: The project uses and requires Python 3.14+
 - **Naming**: PascalCase for classes and methods, snake_case for variables
 - **Imports**: Standard lib → third-party → local, alphabetical within groups
 - **Types**: Use type hints for parameters, return values, and class variables

@@ -28,8 +28,7 @@ openai = [
     "openai"
 ]
 gemini = [
-    "google-genai",
-    "google-api-core"
+    "google-genai"
 ]
 claude = [
     "anthropic"

@@ -4,7 +4,7 @@
 
 `CLAUDE.md` is a symlink to this file — edit `AGENTS.md`; both names resolve to the same content.
 
-Project uses Python 3.11+ (developed and installed on 3.14). NEVER import or use deprecated typing members like List, Union or Iterator.
+Project requires Python 3.14+. NEVER import or use deprecated typing members like List, Union or Iterator.
 
 Secrets are stored in a .env file - NEVER read the contents of the file.
 
@@ -36,7 +36,7 @@ uv tool install "ikonsub[openai,gemini,claude] @ git+https://github.com/tinof/ik
 Or for editable/local development:
 
 ```bash
-uv tool install --editable /path/to/ikonsub --with "google-genai" --with "google-api-core" --with "openai" --with "anthropic"
+uv tool install --editable /path/to/ikonsub --with "google-genai" --with "openai" --with "anthropic"
 ```
 
 ### Optional Extras
@@ -46,9 +46,10 @@ Provider-specific dependencies are gated behind extras in `pyproject.toml`:
 | Extra | Dependencies | Required For |
 | --- | --- | --- |
 | `openai` | `openai` | OpenAI (GPT) provider |
-| `gemini` | `google-genai`, `google-api-core` | Gemini / Vertex AI provider |
+| `gemini` | `google-genai` | Gemini / Vertex AI provider |
 | `claude` | `anthropic` | Claude provider |
-| `mkv` | `subtitle_filter`, `chardet`, `filelock`, `rich` | MKV subtitle extraction |
+
+The MKV dependencies are core dependencies. The empty `mkv` extra is kept only so old `ikonsub[mkv]` install commands still work.
 
 **If a provider extra is not installed, the provider silently won't register and you'll get `Unknown translation provider` errors at runtime.**
 

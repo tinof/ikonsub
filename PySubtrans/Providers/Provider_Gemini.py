@@ -3,7 +3,7 @@ import logging
 import os
 import subprocess
 
-from PySubtrans.Options import SettingsType, env_float, env_int
+from PySubtrans.Options import env_float, env_int
 from PySubtrans.SettingsType import GuiSettingsType, SettingsType
 
 if not importlib.util.find_spec("google"):
@@ -19,7 +19,7 @@ else:
         from collections import defaultdict
 
         from google import genai
-        from google.api_core.exceptions import FailedPrecondition
+        from google.genai import errors as genai_errors
         from google.genai.types import ListModelsConfig
 
         from PySubtrans.Helpers.Localization import _
@@ -263,7 +263,7 @@ else:
                                 _("Check API key is authorized and try again"),
                             )
 
-                    except FailedPrecondition as e:
+                    except genai_errors.APIError as e:
                         options["model"] = (["Unable to access the Gemini API"], str(e))
 
                 return options

@@ -16,7 +16,7 @@ from PySubtrans.SubtitleProject import SubtitleProject
 
 def main() -> int:
     """Main entry point for gemini-subtrans command"""
-    check_required_imports(["PySubtrans", "google.genai", "google.api_core"], "gemini")
+    check_required_imports(["PySubtrans", "google.genai"], "gemini")
 
     # Provider configuration
     provider = "Gemini"
