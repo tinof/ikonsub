@@ -83,23 +83,29 @@ class SubtitleBatcher:
         if num_lines <= self.max_batch_size:
             return [lines]
 
-        # Find the longest gap starting from the min_batch_size index
-        longest_gap: timedelta = timedelta(seconds=0)
-        split_index: int = self.min_batch_size
-        last_split_index: int = num_lines - self.min_batch_size
+        # Find the longest gap, keeping each side at least a third of the maximum batch.
+        # Back-to-back cues (every gap zero) used to split at min_batch_size each time,
+        # peeling one-line batches off a long scene; equal gaps now split near the middle.
+        min_side = max(self.min_batch_size, self.max_batch_size // 3)
+        middle = num_lines // 2
+        longest_gap: timedelta = timedelta(seconds=-1)
+        split_index: int = middle
+        first_split_index: int = min(min_side, middle)
+        last_split_index: int = max(num_lines - min_side, middle + 1)
 
-        if last_split_index > split_index:
-            for i in range(split_index, last_split_index):
-                if lines[i].start is None:
-                    raise ValueError(f"Line {lines[i].number} has no start time.")
+        for i in range(first_split_index, last_split_index):
+            if lines[i].start is None:
+                raise ValueError(f"Line {lines[i].number} has no start time.")
 
-                if lines[i - 1].end is None:
-                    raise ValueError(f"Line {lines[i - 1].number} has no end time.")
+            if lines[i - 1].end is None:
+                raise ValueError(f"Line {lines[i - 1].number} has no end time.")
 
-                gap: timedelta = lines[i].start - lines[i - 1].end
-                if gap > longest_gap:
-                    longest_gap = gap
-                    split_index = i
+            gap: timedelta = lines[i].start - lines[i - 1].end
+            if gap > longest_gap or (
+                gap == longest_gap and abs(i - middle) < abs(split_index - middle)
+            ):
+                longest_gap = gap
+                split_index = i
 
         # Split the batch into two
         left = lines[:split_index]
