@@ -4,21 +4,21 @@ import tempfile
 import unittest
 from typing import TextIO
 
-from PySubtrans.Formats.SSAFileHandler import SSAFileHandler
 from PySubtrans.Formats.SrtFileHandler import SrtFileHandler
+from PySubtrans.Formats.SSAFileHandler import SSAFileHandler
 from PySubtrans.Helpers.Color import Color
 from PySubtrans.Helpers.TestCases import LoggedTestCase
+from PySubtrans.Helpers.Tests import (
+    skip_if_debugger_attached,
+)
 from PySubtrans.Options import Options
 from PySubtrans.SubtitleBatcher import SubtitleBatcher
 from PySubtrans.SubtitleData import SubtitleData
 from PySubtrans.SubtitleFileHandler import SubtitleFileHandler
 from PySubtrans.SubtitleFormatRegistry import SubtitleFormatRegistry
 from PySubtrans.SubtitleProject import SubtitleProject
-from PySubtrans.SubtitleSerialisation import SubtitleEncoder, SubtitleDecoder
 from PySubtrans.Subtitles import Subtitles
-from PySubtrans.Helpers.Tests import (
-    skip_if_debugger_attached,
-)
+from PySubtrans.SubtitleSerialisation import SubtitleDecoder, SubtitleEncoder
 
 
 class DummyHandler(SubtitleFileHandler):
@@ -28,16 +28,16 @@ class DummyHandler(SubtitleFileHandler):
 
     SUPPORTED_EXTENSIONS: dict[str, int] = {".dummy": 1}
 
-    def parse_file(self, file_obj: TextIO) -> SubtitleData:  # pyright: ignore[reportUnusedParameter]
+    def parse_file(self, file_obj: TextIO) -> SubtitleData:
         return SubtitleData(lines=[], metadata={})
 
-    def parse_string(self, content: str) -> SubtitleData:  # pyright: ignore[reportUnusedParameter]
+    def parse_string(self, content: str) -> SubtitleData:
         return SubtitleData(lines=[], metadata={})
 
-    def compose(self, data: SubtitleData) -> str:  # pyright: ignore[reportUnusedParameter]
+    def compose(self, data: SubtitleData) -> str:
         return ""
 
-    def load_file(self, path: str) -> SubtitleData:  # pyright: ignore[reportUnusedParameter]
+    def load_file(self, path: str) -> SubtitleData:
         return SubtitleData(lines=[], metadata={})
 
 

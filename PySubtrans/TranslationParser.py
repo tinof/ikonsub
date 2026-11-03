@@ -1,10 +1,9 @@
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any
+
 import regex
 
-from PySubtrans.Instructions import DEFAULT_TASK_TYPE
-from PySubtrans.Options import Options
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Helpers.SubtitleHelpers import MergeTranslations
 from PySubtrans.Helpers.Text import (
@@ -13,12 +12,14 @@ from PySubtrans.Helpers.Text import (
     RemovePromptMarkers,
     RemoveTimingAnnotations,
 )
-from PySubtrans.SubtitleLine import SubtitleLine
+from PySubtrans.Instructions import DEFAULT_TASK_TYPE
+from PySubtrans.Options import Options
 from PySubtrans.SubtitleError import (
     NoTranslationError,
     TranslationError,
     UntranslatedLinesError,
 )
+from PySubtrans.SubtitleLine import SubtitleLine
 from PySubtrans.SubtitleValidator import SubtitleValidator
 from PySubtrans.Translation import Translation
 
@@ -105,7 +106,7 @@ class TranslationParser:
                 "No translated text provided", translation=translation
             )
 
-        matches: list[dict[str, str]] = []
+        matches: list[dict[str, str | None]] = []
 
         for template in self.regex_patterns:
             matches = self.FindMatches(f"{self.text}\n\n", template)
@@ -140,7 +141,7 @@ class TranslationParser:
 
         return self.translated
 
-    def FindMatches(self, text, template) -> list[dict[str, str]]:
+    def FindMatches(self, text, template) -> list[dict[str, str | None]]:
         """
         re.findall has some very unhelpful behaviour, so we use finditer instead.
 
@@ -200,11 +201,17 @@ class TranslationParser:
                     # The tag is never subtitle text, whether or not the merge can be applied.
                     # A dialog dash written before the tag is kept unless the text repeats it.
                     merged_text = merge_match.group("text")
-                    if merge_match.group("dash") and not merged_text.startswith(("-", "–", "—")):
+                    if merge_match.group("dash") and not merged_text.startswith(
+                        ("-", "–", "—")
+                    ):
                         merged_text = merge_match.group("dash") + merged_text
                     translation.text = merged_text
 
-                    if start_id == item.number and end_id in original_map and end_id > start_id:
+                    if (
+                        start_id == item.number
+                        and end_id in original_map
+                        and end_id > start_id
+                    ):
                         merge_applied = True
                         # Calculate new end time
                         end_line = original_map[end_id]
@@ -226,7 +233,9 @@ class TranslationParser:
 
                 # A tag anywhere else (a second dialog line, inside italics) cannot apply a merge
                 if translation.text and "[MERGE" in translation.text:
-                    translation.text = merge_tag_pattern.sub("", translation.text).strip()
+                    translation.text = merge_tag_pattern.sub(
+                        "", translation.text
+                    ).strip()
 
                 translation.number = item.number
                 translation.start = item.start or timedelta(seconds=0)

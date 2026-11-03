@@ -4,13 +4,13 @@ import os
 import pysubs2
 
 from PySubtrans.Helpers.Localization import _
+from PySubtrans.SubtitleData import SubtitleData
+from PySubtrans.SubtitleError import SubtitleParseError
 from PySubtrans.SubtitleFileHandler import (
     SubtitleFileHandler,
     default_encoding,
     fallback_encoding,
 )
-from PySubtrans.SubtitleData import SubtitleData
-from PySubtrans.SubtitleError import SubtitleParseError
 
 
 class SubtitleFormatRegistry:
@@ -133,7 +133,7 @@ class SubtitleFormatRegistry:
         """
         Deduce subtitle format from file extension
         """
-        base, extension = os.path.splitext(filename)  # type: ignore[ignore-unused]
+        base, extension = os.path.splitext(filename)
         return extension.lower() if extension else None
 
     @classmethod
@@ -161,7 +161,7 @@ class SubtitleFormatRegistry:
         except Exception as e:
             raise SubtitleParseError(
                 _("Failed to detect subtitle format: {}").format(str(e)), e
-            )
+            ) from e
 
     @classmethod
     def detect_format_and_load_file(cls, path: str) -> SubtitleData:
@@ -177,7 +177,7 @@ class SubtitleFormatRegistry:
         except Exception as e:
             raise SubtitleParseError(
                 _("Failed to detect subtitle format: {}").format(str(e)), e
-            )
+            ) from e
 
         if not subs.format:
             raise SubtitleParseError(

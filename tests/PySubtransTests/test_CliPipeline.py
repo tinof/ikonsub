@@ -47,7 +47,9 @@ def CaptureExsubsSettings(
     captured: dict[str, Any] = {}
     with (
         patch.dict(os.environ, {**BASE_ENV, **(env or {})}, clear=True),
-        patch.object(exsubs, "init_options", side_effect=_capture_init_options(captured)),
+        patch.object(
+            exsubs, "init_options", side_effect=_capture_init_options(captured)
+        ),
     ):
         try:
             exsubs.translate_subtitles(
@@ -71,14 +73,20 @@ def CaptureTransubsSettings(
     captured: dict[str, Any] = {}
     with (
         patch.dict(os.environ, {**BASE_ENV, **(env or {})}, clear=True),
-        patch.object(transubs, "init_options", side_effect=_capture_init_options(captured)),
+        patch.object(
+            transubs, "init_options", side_effect=_capture_init_options(captured)
+        ),
         patch.object(transubs, "preprocess_timecodes"),
         patch.object(transubs, "filter_subtitles"),
         patch.object(transubs, "postprocess_timecodes"),
     ):
         try:
             transubs.translate_srt_file(
-                Path("episode.srt"), None, provider_flag, show_progress=False, show_metrics=False
+                Path("episode.srt"),
+                None,
+                provider_flag,
+                show_progress=False,
+                show_metrics=False,
             )
         except _SettingsCaptured:
             return captured
@@ -137,13 +145,17 @@ class TestExsubsBatchSizePrecedence(LoggedTestCase):
 
     def test_parallel_default_beats_model_default(self):
         settings = CaptureExsubsSettings(
-            TranslationMode.GEMINI, {**NO_VERTEX, **SMALL_BATCHES}, parallel_batches=True
+            TranslationMode.GEMINI,
+            {**NO_VERTEX, **SMALL_BATCHES},
+            parallel_batches=True,
         )
         # flash model: min 100 from the tuned defaults, max from the parallel default
         self.assertLoggedEqual("max/min batch size", (150, 100), _batch_sizes(settings))
 
     def test_sequential_model_default(self):
-        settings = CaptureExsubsSettings(TranslationMode.GEMINI, {**NO_VERTEX, **SMALL_BATCHES})
+        settings = CaptureExsubsSettings(
+            TranslationMode.GEMINI, {**NO_VERTEX, **SMALL_BATCHES}
+        )
         self.assertLoggedEqual("max/min batch size", (220, 100), _batch_sizes(settings))
 
     def test_env_beats_parallel_default(self):
@@ -153,13 +165,17 @@ class TestExsubsBatchSizePrecedence(LoggedTestCase):
         self.assertLoggedEqual("max batch size", 300, settings["max_batch_size"])
 
     def test_env_min_batch_size_beats_mode_default(self):
-        settings = CaptureExsubsSettings(TranslationMode.GEMINI, {"MIN_BATCH_SIZE": "20"})
+        settings = CaptureExsubsSettings(
+            TranslationMode.GEMINI, {"MIN_BATCH_SIZE": "20"}
+        )
         self.assertLoggedEqual("min batch size", 20, settings["min_batch_size"])
 
     def test_explicit_max_below_default_min_clamps_min(self):
         # SubtitleBatcher rejects min > max, so a small --max-batch-size lowers the default min
         settings = CaptureExsubsSettings(
-            TranslationMode.GEMINI, {**NO_VERTEX, **SMALL_BATCHES}, max_batch_size_arg=40
+            TranslationMode.GEMINI,
+            {**NO_VERTEX, **SMALL_BATCHES},
+            max_batch_size_arg=40,
         )
         self.assertLoggedEqual("max/min batch size", (40, 40), _batch_sizes(settings))
 
@@ -176,12 +192,18 @@ class TestFinnishPipelineSettings(LoggedTestCase):
     """The settings contract from AGENTS.md, as passed to init_options by both scripts."""
 
     def _assert_contract(self, settings: dict[str, Any]) -> None:
-        self.assertLoggedTrue("postprocess_translation", settings["postprocess_translation"])
+        self.assertLoggedTrue(
+            "postprocess_translation", settings["postprocess_translation"]
+        )
         self.assertLoggedEqual(
             "merge_continuation_duration", 1.5, settings["merge_continuation_duration"]
         )
-        self.assertLoggedEqual("merge_continuation_gap", 0.3, settings["merge_continuation_gap"])
-        self.assertLoggedEqual("max_translation_cps", 25.0, settings["max_translation_cps"])
+        self.assertLoggedEqual(
+            "merge_continuation_gap", 0.3, settings["merge_continuation_gap"]
+        )
+        self.assertLoggedEqual(
+            "max_translation_cps", 25.0, settings["max_translation_cps"]
+        )
         self.assertLoggedTrue("include_line_timings", settings["include_line_timings"])
         self.assertLoggedEqual("target_cps", 15.0, settings["target_cps"])
         self.assertLoggedEqual("max_line_duration", 0.0, settings["max_line_duration"])
@@ -217,7 +239,9 @@ class TestFinnishPipelineSettings(LoggedTestCase):
 class TestOutputPaths(LoggedTestCase):
     def test_build_translated_output_path_replaces_language_suffix(self):
         for module in (exsubs, transubs):
-            result = module._build_translated_output_path(Path("/m/Show.S01E02.en.srt"), "FI")
+            result = module._build_translated_output_path(
+                Path("/m/Show.S01E02.en.srt"), "FI"
+            )
             self.assertLoggedEqual(
                 f"{module.__name__} output path", Path("/m/Show.S01E02.fi.srt"), result
             )
@@ -227,8 +251,12 @@ class TestOutputPaths(LoggedTestCase):
             with tempfile.TemporaryDirectory() as directory:
                 source = Path(directory) / "Show.srt"
                 desired = Path(directory) / "Show.fi.srt"
-                (Path(directory) / "Show.translated.srt").write_text("x", encoding="utf-8")
-                result = module._normalise_translated_output(source, desired, "Finnish", "fi")
+                (Path(directory) / "Show.translated.srt").write_text(
+                    "x", encoding="utf-8"
+                )
+                result = module._normalise_translated_output(
+                    source, desired, "Finnish", "fi"
+                )
                 self.assertLoggedEqual(f"{module.__name__} result", desired, result)
                 self.assertLoggedTrue("desired exists", desired.exists())
 
@@ -262,7 +290,9 @@ class FakeProject:
 
     def TranslateSubtitles(self, _translator: Any) -> None:
         if self.writes_output:
-            Path(self.subtitles.outputpath).write_text("1\n00:00:01,000 --> 00:00:02,000\nHei\n")
+            Path(self.subtitles.outputpath).write_text(
+                "1\n00:00:01,000 --> 00:00:02,000\nHei\n"
+            )
         if self.error:
             raise self.error
 
@@ -336,7 +366,15 @@ class TestPartialTranslations(LoggedTestCase):
         out_file = directory / "Show.S01E01.fi.srt"
         project = FakeProject(all_translated=False, untranslated=3)
         p1, p2, p3, p4, p5, p6 = _pipeline_patches(exsubs, project, _fake_translator())
-        with p1, p2, p3, p4, p5, p6, self.assertRaises(exsubs.IncompleteTranslationError) as ctx:
+        with (
+            p1,
+            p2,
+            p3,
+            p4,
+            p5,
+            p6,
+            self.assertRaises(exsubs.IncompleteTranslationError) as ctx,
+        ):
             exsubs.translate_subtitles(
                 directory / "Show.S01E01.srt",
                 out_file,
@@ -379,8 +417,12 @@ class TestPartialTranslations(LoggedTestCase):
         directory = Path(self.enterContext(tempfile.TemporaryDirectory()))
         out_file = directory / "Show.S01E01.fi.srt"
         out_file.write_text("1\n00:00:01,000 --> 00:00:02,000\nValmis\n")
-        project = FakeProject(error=RuntimeError("401 unauthorized"), writes_output=False)
-        p1, p2, p3, p4, p5, p6 = _pipeline_patches(transubs, project, _fake_translator())
+        project = FakeProject(
+            error=RuntimeError("401 unauthorized"), writes_output=False
+        )
+        p1, p2, p3, p4, p5, p6 = _pipeline_patches(
+            transubs, project, _fake_translator()
+        )
         with (
             p1,
             p2,
@@ -406,7 +448,9 @@ class TestPartialTranslations(LoggedTestCase):
         )
 
     def test_transubs_complete_runs_fixer_once_and_reports_it(self):
-        with patch.object(transubs, "_fix_finnish_subtitles", return_value=False) as fixer:
+        with patch.object(
+            transubs, "_fix_finnish_subtitles", return_value=False
+        ) as fixer:
             result = self._run_transubs(FakeProject(), _fake_translator())
         self.assertLoggedEqual("fixer calls", 1, fixer.call_count)
         self.assertLoggedFalse("fixer failure is reported", result)
@@ -430,9 +474,13 @@ class TestPartialTranslations(LoggedTestCase):
             patch.object(exsubs, "_fix_finnish_subtitles") as fixer,
             self.assertRaises(exsubs.IncompleteTranslationError),
         ):
-            exsubs.process_video_file(video, MKVConfig(), TranslationMode.GEMINI, False, False)
+            exsubs.process_video_file(
+                video, MKVConfig(), TranslationMode.GEMINI, False, False
+            )
         self.assertLoggedEqual("fixer calls", 0, fixer.call_count)
-        self.assertLoggedTrue("extracted source kept", video.with_suffix(".srt").exists())
+        self.assertLoggedTrue(
+            "extracted source kept", video.with_suffix(".srt").exists()
+        )
 
 
 class TestExsubsExitCodes(LoggedTestCase):
@@ -466,12 +514,16 @@ class TestExsubsExitCodes(LoggedTestCase):
 
     def test_directory_exception_returns_non_zero(self):
         self._make_videos("Show.S01E01.mkv")
-        code, _process = self._process_directory([exsubs.IncompleteTranslationError("x")])
+        code, _process = self._process_directory(
+            [exsubs.IncompleteTranslationError("x")]
+        )
         self.assertLoggedEqual("exit code", 1, code)
 
     def test_directory_success_returns_zero_and_skips_done(self):
         directory = self._make_videos("Show.S01E01.mkv", "Show.S01E02.mkv")
-        (directory / "Show.S01E01.fi.srt").write_text("1\n00:00:01,000 --> 00:00:02,000\nHei\n")
+        (directory / "Show.S01E01.fi.srt").write_text(
+            "1\n00:00:01,000 --> 00:00:02,000\nHei\n"
+        )
         code, process = self._process_directory([True])
         self.assertLoggedEqual("exit code", 0, code)
         self.assertLoggedEqual("files processed", 1, process.call_count)
@@ -490,14 +542,20 @@ class TestExsubsExitCodes(LoggedTestCase):
 
     def test_main_single_file_failure_returns_non_zero(self):
         self.assertLoggedEqual(
-            "failed file", 1, self._run_main(["x.mkv"], process_video_file=MagicMock(return_value=False))
+            "failed file",
+            1,
+            self._run_main(["x.mkv"], process_video_file=MagicMock(return_value=False)),
         )
         self.assertLoggedEqual(
-            "done file", 0, self._run_main(["x.mkv"], process_video_file=MagicMock(return_value=True))
+            "done file",
+            0,
+            self._run_main(["x.mkv"], process_video_file=MagicMock(return_value=True)),
         )
         incomplete = MagicMock(side_effect=exsubs.IncompleteTranslationError("x"))
         self.assertLoggedEqual(
-            "incomplete file", 1, self._run_main(["x.mkv"], process_video_file=incomplete)
+            "incomplete file",
+            1,
+            self._run_main(["x.mkv"], process_video_file=incomplete),
         )
 
     def test_main_directory_failure_returns_non_zero(self):
@@ -527,7 +585,12 @@ class TestExsubsExitCodes(LoggedTestCase):
 
 
 class TestTransubsExitCodes(LoggedTestCase):
-    def _run_main(self, argv: list[str], which: str | None = "/usr/bin/fix-finnish-subs", **patches: Any) -> int:
+    def _run_main(
+        self,
+        argv: list[str],
+        which: str | None = "/usr/bin/fix-finnish-subs",
+        **patches: Any,
+    ) -> int:
         with (
             patch.dict(os.environ, BASE_ENV, clear=True),
             patch.object(transubs.sys, "argv", ["transubs", *argv]),
@@ -560,23 +623,30 @@ class TestTransubsExitCodes(LoggedTestCase):
     def test_single_file_fixer_failure_returns_non_zero(self):
         with tempfile.NamedTemporaryFile(suffix=".srt") as source:
             translate = MagicMock(return_value=False)
-            code = self._run_main([source.name, "--no-progress"], translate_srt_file=translate)
+            code = self._run_main(
+                [source.name, "--no-progress"], translate_srt_file=translate
+            )
         self.assertLoggedEqual("exit code", 1, code)
         self.assertLoggedFalse(
-            "--no-progress reaches the file", translate.call_args.kwargs["show_progress"]
+            "--no-progress reaches the file",
+            translate.call_args.kwargs["show_progress"],
         )
 
     def test_directory_skips_done_and_partial_files(self):
         directory = Path(self.enterContext(tempfile.TemporaryDirectory()))
         for name in ("Show.S01E01.srt", "Show.S01E02.srt", "Show.S01E03.srt"):
             (directory / name).write_text("x")
-        (directory / "Show.S01E01.fi.srt").write_text("1\n00:00:01,000 --> 00:00:02,000\nHei\n")
+        (directory / "Show.S01E01.fi.srt").write_text(
+            "1\n00:00:01,000 --> 00:00:02,000\nHei\n"
+        )
         (directory / "Show.S01E02.fi.srt").write_text("")
         (directory / "Show.S01E03.fi.srt.partial").write_text("x")
         self.enterContext(_chdir(directory))
         with (
             patch.dict(os.environ, BASE_ENV, clear=True),
-            patch.object(transubs, "translate_srt_file", side_effect=[True, False]) as translate,
+            patch.object(
+                transubs, "translate_srt_file", side_effect=[True, False]
+            ) as translate,
         ):
             code = transubs.process_directory(None, "gemini", show_progress=False)
         translated = [call.args[0].name for call in translate.call_args_list]
@@ -645,10 +715,14 @@ class TestFfprobeTimeout(LoggedTestCase):
             with patch.object(
                 MKVExtractor.subprocess,
                 "run",
-                side_effect=subprocess.TimeoutExpired("ffprobe", MKVExtractor.FFPROBE_TIMEOUT_SECONDS),
+                side_effect=subprocess.TimeoutExpired(
+                    "ffprobe", MKVExtractor.FFPROBE_TIMEOUT_SECONDS
+                ),
             ) as run:
                 tracks = MKVExtractor.get_mkv_subtitle_tracks(Path(video.name))
         self.assertLoggedEqual("tracks", [], tracks)
         self.assertLoggedEqual(
-            "timeout passed", MKVExtractor.FFPROBE_TIMEOUT_SECONDS, run.call_args.kwargs["timeout"]
+            "timeout passed",
+            MKVExtractor.FFPROBE_TIMEOUT_SECONDS,
+            run.call_args.kwargs["timeout"],
         )

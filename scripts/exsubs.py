@@ -1,35 +1,20 @@
 import argparse
 import logging
 import os
-from pathlib import Path
-import statistics
 import shutil
+import statistics
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+from pathlib import Path
 
+import regex
 from dotenv import load_dotenv
 from filelock import FileLock
-import regex
 from rich.console import Console
 from rich.logging import RichHandler
-
-from PySubtrans.MKV import (
-    MKVConfig,
-    TranslationMode,
-    VideoFile,
-    get_mkv_subtitle_tracks,
-    select_track_interactively,
-    select_best_track_with_fallback,
-    extract_track_with_progress,
-    preprocess_timecodes,
-    postprocess_timecodes,
-    filter_subtitles,
-    run_diagnostics,
-)
-from PySubtrans.MKV.Config import MODE_TO_DEFAULT_MODEL, MODE_TO_ENV, MODE_TO_RATE_LIMIT
 
 from PySubtrans import (
     batch_subtitles,
@@ -38,6 +23,20 @@ from PySubtrans import (
     preprocess_subtitles,
 )
 from PySubtrans.Helpers.Localization import _
+from PySubtrans.MKV import (
+    MKVConfig,
+    TranslationMode,
+    VideoFile,
+    extract_track_with_progress,
+    filter_subtitles,
+    get_mkv_subtitle_tracks,
+    postprocess_timecodes,
+    preprocess_timecodes,
+    run_diagnostics,
+    select_best_track_with_fallback,
+    select_track_interactively,
+)
+from PySubtrans.MKV.Config import MODE_TO_DEFAULT_MODEL, MODE_TO_ENV, MODE_TO_RATE_LIMIT
 from PySubtrans.SubtitleProject import SubtitleProject
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
 
@@ -175,7 +174,12 @@ def _sisusub_ai_review_enabled() -> bool:
     The pass makes one Gemini call per flagged cue: about 12 minutes and $1.50 an episode in the
     2026-10-23 pipeline review (sisusub docs/pipeline-review-2026-10-23.md). Same rule as transubs.
     """
-    return (os.getenv("SISUSUB_AI_REVIEW") or "").strip().lower() in {"1", "true", "yes", "on"}
+    return (os.getenv("SISUSUB_AI_REVIEW") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def _output_signature(path: Path) -> tuple[int, int] | None:
@@ -192,7 +196,9 @@ def _set_aside_partial_output(translated_file: Path) -> Path | None:
     if not translated_file.exists():
         return None
 
-    partial_file = translated_file.with_name(translated_file.name + PARTIAL_OUTPUT_SUFFIX)
+    partial_file = translated_file.with_name(
+        translated_file.name + PARTIAL_OUTPUT_SUFFIX
+    )
     try:
         translated_file.replace(partial_file)
     except OSError as e:
@@ -204,14 +210,20 @@ def _set_aside_partial_output(translated_file: Path) -> Path | None:
         try:
             translated_file.unlink()
         except OSError:
-            logger.error(_("Partial translation left at {file}").format(file=translated_file))
+            logger.error(
+                _("Partial translation left at {file}").format(file=translated_file)
+            )
         return None
 
-    logger.warning(_("Partial translation kept as {file}").format(file=partial_file.name))
+    logger.warning(
+        _("Partial translation kept as {file}").format(file=partial_file.name)
+    )
     return partial_file
 
 
-def _check_translation_complete(project: SubtitleProject, translator: SubtitleTranslator) -> None:
+def _check_translation_complete(
+    project: SubtitleProject, translator: SubtitleTranslator
+) -> None:
     """Raise IncompleteTranslationError unless every line has a translation."""
     if translator.aborted:
         raise IncompleteTranslationError(_("Translation was aborted"))
@@ -222,14 +234,18 @@ def _check_translation_complete(project: SubtitleProject, translator: SubtitleTr
 
     total = subtitles.linecount if subtitles else 0
     missing = (
-        sum(len(batch.untranslated) for scene in subtitles.scenes for batch in scene.batches)
+        sum(
+            len(batch.untranslated)
+            for scene in subtitles.scenes
+            for batch in scene.batches
+        )
         if subtitles and subtitles.scenes
         else total
     )
     raise IncompleteTranslationError(
-        _("Translation incomplete: {missing} of {total} lines untranslated, {errors} errors").format(
-            missing=missing, total=total, errors=len(translator.errors)
-        )
+        _(
+            "Translation incomplete: {missing} of {total} lines untranslated, {errors} errors"
+        ).format(missing=missing, total=total, errors=len(translator.errors))
     )
 
 
@@ -278,9 +294,9 @@ def _fix_finnish_subtitles(translated_file: Path) -> bool:
         logger.info(f"Fixed subtitles with fix-finnish-subs: {translated_file.name}")
     else:
         logger.error(
-            _("fix-finnish-subs returned non-zero exit status {status} for {file}").format(
-                status=result.returncode, file=translated_file
-            )
+            _(
+                "fix-finnish-subs returned non-zero exit status {status} for {file}"
+            ).format(status=result.returncode, file=translated_file)
         )
 
     if report_file.exists():
@@ -584,7 +600,11 @@ def verify_dependencies(lang_code: str | None = None):
     """Verify required command line tools are available before any API call"""
     for cmd in ("ffmpeg", "ffprobe"):
         if not shutil.which(cmd):
-            logger.error(_("{command} not found. Please install ffmpeg package.").format(command=cmd))
+            logger.error(
+                _("{command} not found. Please install ffmpeg package.").format(
+                    command=cmd
+                )
+            )
             sys.exit(1)
 
     if lang_code == "fi" and not shutil.which(FINNISH_FIXER_COMMAND):
@@ -1123,7 +1143,9 @@ def translate_subtitles(
     progress = TranslationProgress() if show_progress else None
     start_time = time.perf_counter()
     planned_output = Path(
-        project.subtitles.outputpath if project.subtitles and project.subtitles.outputpath else out_file
+        project.subtitles.outputpath
+        if project.subtitles and project.subtitles.outputpath
+        else out_file
     )
     output_before = _output_signature(planned_output)
     try:
@@ -1139,7 +1161,10 @@ def translate_subtitles(
         # A file this run did not write (an earlier, finished translation) stays where it is.
         saved_path = project.subtitles.outputpath if project.subtitles else None
         partial_path = Path(saved_path) if saved_path else out_file
-        if partial_path != planned_output or _output_signature(partial_path) != output_before:
+        if (
+            partial_path != planned_output
+            or _output_signature(partial_path) != output_before
+        ):
             _set_aside_partial_output(partial_path)
         raise
     finally:

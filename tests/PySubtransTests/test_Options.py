@@ -2,20 +2,19 @@ import json
 import os
 import tempfile
 import unittest
+from collections.abc import Mapping, MutableMapping
 from datetime import timedelta
 from typing import TypeVar
-from collections.abc import Mapping
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
-from collections.abc import MutableMapping
-from PySubtrans.Options import Options, default_settings, standard_filler_words
-from PySubtrans.Instructions import Instructions
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Helpers.Tests import (
     log_input_expected_error,
     skip_if_debugger_attached,
 )
-from PySubtrans.SettingsType import SettingsType, SettingType, SettingsError
+from PySubtrans.Instructions import Instructions
+from PySubtrans.Options import Options, default_settings, standard_filler_words
+from PySubtrans.SettingsType import SettingsError, SettingsType, SettingType
 
 
 class TestOptions(LoggedTestCase):
@@ -1162,7 +1161,7 @@ class TestSettingsHelpers(LoggedTestCase):
 T = TypeVar("T")
 
 
-def get_optional_setting(
+def get_optional_setting[T](
     settings: SettingsType | Mapping[str, SettingType], key: str, setting_type: type[T]
 ) -> T | None:
     """
@@ -1196,7 +1195,7 @@ def get_optional_setting(
             )
 
 
-def validate_setting_type(
+def validate_setting_type[T](
     settings: SettingsType | Mapping[str, SettingType],
     key: str,
     expected_type: type[T],

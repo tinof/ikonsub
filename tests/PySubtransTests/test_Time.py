@@ -1,5 +1,6 @@
 import unittest
 from datetime import timedelta
+
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Helpers.Time import GetTimeDelta, TimedeltaToText
 
@@ -58,7 +59,7 @@ class TestTimeHelpers(LoggedTestCase):
     def test_GetTimeDelta(self):
         for value, expected in self.get_timedelta_cases:
             with self.subTest(value=value):
-                error_expected = expected == ValueError
+                error_expected = expected is ValueError
                 result = GetTimeDelta(value, raise_exception=not error_expected)
                 if error_expected:
                     self.assertLoggedIsInstance(

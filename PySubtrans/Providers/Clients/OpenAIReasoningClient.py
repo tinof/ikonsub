@@ -1,3 +1,5 @@
+from typing import Any, Literal, cast
+
 from openai import (
     APIConnectionError,
     APITimeoutError,
@@ -12,16 +14,15 @@ from openai import (
 from openai.types import responses as responses_types
 from openai.types.responses import (
     EasyInputMessageParam,
-    ResponseInputParam,
-    ResponseTextDeltaEvent,
     ResponseCompletedEvent,
     ResponseFailedEvent,
     ResponseIncompleteEvent,
+    ResponseInputParam,
+    ResponseTextDeltaEvent,
 )
-from openai.types.shared_params.reasoning import Reasoning
 from openai.types.shared.reasoning_effort import ReasoningEffort
+from openai.types.shared_params.reasoning import Reasoning
 
-from typing import Any, Literal, cast
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Providers.Clients.OpenAIClient import OpenAIClient
 from PySubtrans.SettingsType import SettingsType
@@ -153,7 +154,7 @@ class OpenAIReasoningClient(OpenAIClient):
                 reasoning=Reasoning(effort=self.reasoning_effort),
             )
 
-        except (RateLimitError, APITimeoutError, APIConnectionError):
+        except RateLimitError, APITimeoutError, APIConnectionError:
             raise
         except OpenAIError as error:
             self._raise_for_openai_error(error)
@@ -210,7 +211,7 @@ class OpenAIReasoningClient(OpenAIClient):
 
         except RateLimitError:
             raise
-        except (APITimeoutError, APIConnectionError):
+        except APITimeoutError, APIConnectionError:
             raise
         except OpenAIError as error:
             stream_error = error

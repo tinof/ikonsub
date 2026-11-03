@@ -1,12 +1,12 @@
 import logging
 import os
 
+from PySubtrans.Helpers.Resources import GetResourcePath, config_dir
 from PySubtrans.Instructions import (
-    Instructions,
     DEFAULT_TASK_TYPE,
+    Instructions,
     default_retry_instructions,
 )
-from PySubtrans.Helpers.Resources import GetResourcePath, config_dir
 
 linesep = "\n"
 
@@ -44,7 +44,7 @@ def LoadInstructionsFile(filepath: str) -> Instructions:
 
     instructions = Instructions({})
 
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         lines = [line.strip() for line in f.readlines()]
 
     if not lines:

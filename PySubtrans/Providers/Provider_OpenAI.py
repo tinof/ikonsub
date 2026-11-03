@@ -13,7 +13,7 @@ if not importlib.util.find_spec("openai"):
     )
 else:
     try:
-        import openai  # type: ignore
+        import openai
 
         from PySubtrans.Helpers.Localization import _
         from PySubtrans.Providers.Clients.ChatGPTClient import ChatGPTClient

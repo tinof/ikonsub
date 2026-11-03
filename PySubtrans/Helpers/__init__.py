@@ -1,8 +1,8 @@
 import os
-
 from typing import Any
 
 import regex
+
 from PySubtrans.SubtitleError import SubtitleError
 
 

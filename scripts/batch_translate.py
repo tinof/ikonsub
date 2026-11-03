@@ -41,22 +41,23 @@ See Options.py or the documentation at https://github.com/tinof/ikonsub/ for mor
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
 import logging
 import pathlib
 import sys
+from contextlib import contextmanager
 
 from PySubtrans import (
+    Options,
+    SettingsType,
+    SubtitleError,
+    SubtitleFormatRegistry,
+    SubtitleTranslator,
+    TranslationProvider,
     init_options,
     init_subtitles,
-    init_translator,
     init_translation_provider,
+    init_translator,
 )
-from PySubtrans import Options, SettingsType, SubtitleError
-from PySubtrans import SubtitleTranslator
-from PySubtrans import TranslationProvider
-from PySubtrans import SubtitleFormatRegistry
-
 from PySubtrans.Helpers import GetOutputPath
 from PySubtrans.SettingsType import redact_sensitive_values
 

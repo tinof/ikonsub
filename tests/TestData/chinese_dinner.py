@@ -1,6 +1,5 @@
 from PySubtrans.SettingsType import SettingsType
 
-
 _movie = "Chinese Dinner (2001)"
 _description = "Hoshino is the owner of a Chinese restaurant. One evening he’s sitting down in a private room to enjoy an elaborate dinner. He is in the mood for celebrating when a surprise visitor arrives. The longest meal of Hoshino’s life has just begun."
 _names = [

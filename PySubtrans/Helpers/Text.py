@@ -1,7 +1,8 @@
-from typing import Any
 import unicodedata
-import regex
 from collections import Counter
+from typing import Any
+
+import regex
 
 common_punctuation = r"[.,!?;:…¡¿]"
 sentence_end_punctuation = r"[.!?…？！。﹑]"
@@ -353,7 +354,7 @@ def LimitTextLength(text: str, max_length: int) -> str:
     matches = [(m.start(), m.group()) for m in regex.finditer(pattern, text)]
 
     # Find the closest match to the max length, if any
-    for position, match in reversed(matches):  # type: ignore
+    for position, _match in reversed(matches):
         if position <= max_length:
             return text[: position + 1]
 

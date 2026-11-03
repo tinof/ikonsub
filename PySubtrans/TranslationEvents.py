@@ -1,6 +1,7 @@
 import logging
-from blinker import Signal
 from typing import Protocol
+
+from blinker import Signal
 
 
 class LoggerProtocol(Protocol):

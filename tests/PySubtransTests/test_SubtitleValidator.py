@@ -1,17 +1,17 @@
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Options import Options
 from PySubtrans.SubtitleBatch import SubtitleBatch
-from PySubtrans.SubtitleLine import SubtitleLine
-from PySubtrans.SubtitleValidator import SubtitleValidator
 from PySubtrans.SubtitleError import (
-    UnmatchedLinesError,
     EmptyLinesError,
+    LeakedAnnotationError,
     LineTooLongError,
     ReadingSpeedError,
     TooManyNewlinesError,
+    UnmatchedLinesError,
     UntranslatedLinesError,
-    LeakedAnnotationError,
 )
+from PySubtrans.SubtitleLine import SubtitleLine
+from PySubtrans.SubtitleValidator import SubtitleValidator
 
 
 class TestSubtitleValidator(LoggedTestCase):
@@ -196,6 +196,7 @@ class TestSubtitleValidator(LoggedTestCase):
 
         errors = validator.ValidateTranslations([line_too_fast])
         self.assertLoggedEqual("error_count", 0, len(errors))
+
 
 class TestLeakedAnnotationValidation(LoggedTestCase):
     def _validate(self, text: str) -> list[Exception]:

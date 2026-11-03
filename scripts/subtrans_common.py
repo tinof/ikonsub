@@ -1,13 +1,12 @@
-import os
 import logging
-
+import os
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 
+from PySubtrans import batch_subtitles, init_options, preprocess_subtitles
 from PySubtrans.Helpers import GetOutputPath
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Helpers.Parse import ParseNames
-from PySubtrans import batch_subtitles, preprocess_subtitles, init_options
 from PySubtrans.Options import Options, config_dir
 from PySubtrans.Substitutions import Substitutions
 from PySubtrans.SubtitleFormatRegistry import SubtitleFormatRegistry
@@ -32,15 +31,8 @@ def InitLogger(logfilename: str, debug: bool = False) -> LoggerOptions:
         logging_level = getattr(logging, level_name, logging.INFO)
 
     # Create console logger
-    try:
-        logging.basicConfig(
-            format="%(levelname)s: %(message)s", encoding="utf-8", level=logging_level
-        )
-        logging.info("Initialising log")
-
-    except Exception:
-        logging.basicConfig(format="%(levelname)s: %(message)s", level=logging_level)
-        logging.info("Unable to write to utf-8 log, falling back to default encoding")
+    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging_level)
+    logging.info("Initialising log")
 
     if debug:
         logging.debug("Debug logging enabled")

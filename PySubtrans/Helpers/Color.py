@@ -20,7 +20,7 @@ class Color:
         return f"Color(r={self.r}, g={self.g}, b={self.b}, a={self.a})"
 
     @classmethod
-    def from_hex(cls, hex_str: str) -> "Color":
+    def from_hex(cls, hex_str: str) -> Color:
         """Create Color from #RRGGBB or #RRGGBBAA format"""
         hex_str = hex_str.lstrip("#")
         if len(hex_str) == 6:
@@ -44,6 +44,6 @@ class Color:
         return {"r": self.r, "g": self.g, "b": self.b, "a": self.a}
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Color":
+    def from_dict(cls, d: dict) -> Color:
         """Create from dict"""
         return cls(d["r"], d["g"], d["b"], d.get("a", 0))

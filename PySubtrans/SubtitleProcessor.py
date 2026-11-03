@@ -1,16 +1,13 @@
 import logging
-from typing import Any
-import regex
 from datetime import timedelta
+from typing import Any
+
+import regex
 
 from PySubtrans.Helpers.SubtitleHelpers import FindSplitPoint, GetProportionalDuration
 from PySubtrans.Helpers.Text import (
-    dialog_marker,
-    split_sequences,
-    break_sequences,
-    sentence_end_punctuation,
-    BreakLongLine,
     BreakDialogOnOneLine,
+    BreakLongLine,
     CompileDialogSplitPattern,
     CompileFillerWordsPattern,
     ConvertWhitespaceBlocksToNewlines,
@@ -19,6 +16,10 @@ from PySubtrans.Helpers.Text import (
     NormaliseDialogTags,
     RemoveFillerWords,
     StripMarkup,
+    break_sequences,
+    dialog_marker,
+    sentence_end_punctuation,
+    split_sequences,
 )
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleLine import SubtitleLine
@@ -151,7 +152,9 @@ class SubtitleProcessor:
                 line_number += len(split_lines)
 
                 if len(split_lines) > 1:
-                    new_line_text = "".join([str(split_line) for split_line in split_lines])
+                    new_line_text = "".join(
+                        [str(split_line) for split_line in split_lines]
+                    )
                     logging.debug(
                         f"Split line {line.number} into {len(split_lines)} parts:\n{str(line)}-->\n{new_line_text}"
                     )
@@ -414,8 +417,12 @@ class SubtitleProcessor:
         current_line: SubtitleLine = lines[0]
 
         for line in lines[1:]:
-            if self._is_continuation(current_line, line, max_merged_duration, max_merged_length):
-                current_line.text = _join_continuation(current_line.text, line.text)
+            if self._is_continuation(
+                current_line, line, max_merged_duration, max_merged_length
+            ):
+                current_line.text = _join_continuation(
+                    current_line.text or "", line.text or ""
+                )
                 current_line.end = line.end
             else:
                 merged_lines.append(current_line)
@@ -443,11 +450,15 @@ class SubtitleProcessor:
         if _ends_sentence(current_line.text_normalized):
             return False
 
-        if self.dialog_marker in current_line.text or self.dialog_marker in line.text:
+        if self.dialog_marker in (current_line.text or "") or self.dialog_marker in (
+            line.text or ""
+        ):
             return False
 
         # An italic cue is usually another voice (off-screen, phone, TV)
-        if _is_italic_cue(current_line.text_normalized) != _is_italic_cue(line.text_normalized):
+        if _is_italic_cue(current_line.text_normalized) != _is_italic_cue(
+            line.text_normalized
+        ):
             return False
 
         if (
@@ -466,7 +477,9 @@ class SubtitleProcessor:
             return False
 
         # Count what the viewer sees, so markup does not use up the two-line budget
-        merged_text = _join_continuation(current_line.text_normalized, line.text_normalized)
+        merged_text = _join_continuation(
+            current_line.text_normalized, line.text_normalized
+        )
         if len(StripMarkup(merged_text)) > max_merged_length:
             return False
 
@@ -492,7 +505,10 @@ def _ends_sentence(text: str) -> bool:
     if visible.endswith("]"):
         return True
     visible = visible.rstrip(_closing_punctuation).rstrip()
-    return bool(visible) and regex.search(f"{sentence_end_punctuation}$", visible) is not None
+    return (
+        bool(visible)
+        and regex.search(f"{sentence_end_punctuation}$", visible) is not None
+    )
 
 
 def _is_italic_cue(text: str) -> bool:

@@ -11,8 +11,8 @@ from PySubtrans.Helpers import FormatMessages
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Options import SettingsType
 from PySubtrans.SubtitleError import TranslationError, TranslationImpossibleError
-from PySubtrans.TranslationClient import TranslationClient
 from PySubtrans.Translation import Translation
+from PySubtrans.TranslationClient import TranslationClient
 from PySubtrans.TranslationPrompt import TranslationPrompt
 from PySubtrans.TranslationRequest import TranslationRequest
 
@@ -246,7 +246,9 @@ class AnthropicClient(TranslationClient):
                     self._emit_warning(
                         _(
                             "Anthropic connection error: {error}, retrying in {sleep_time} seconds..."
-                        ).format(error=str(e) or type(e).__name__, sleep_time=sleep_time)
+                        ).format(
+                            error=str(e) or type(e).__name__, sleep_time=sleep_time
+                        )
                     )
                     time.sleep(sleep_time)
                     continue

@@ -19,8 +19,8 @@ from PySubtrans.Providers.Clients.OpenAIReasoningClient import OpenAIReasoningCl
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleError import (
     TranslationError,
-    TranslationResponseError,
     TranslationImpossibleError,
+    TranslationResponseError,
 )
 from PySubtrans.TranslationPrompt import TranslationPrompt
 from PySubtrans.TranslationRequest import TranslationRequest
@@ -41,7 +41,9 @@ def _make_response(
                 type="message",
                 role="assistant",
                 status=status,
-                content=[ResponseOutputText.model_construct(type="output_text", text=text)],
+                content=[
+                    ResponseOutputText.model_construct(type="output_text", text=text)
+                ],
             )
         )
     return responses_types.Response.model_construct(
@@ -54,7 +56,9 @@ def _make_response(
         if incomplete_reason
         else None,
         output=output,
-        usage=ResponseUsage.model_construct(input_tokens=10, output_tokens=5, total_tokens=15),
+        usage=ResponseUsage.model_construct(
+            input_tokens=10, output_tokens=5, total_tokens=15
+        ),
     )
 
 
@@ -95,7 +99,7 @@ class OpenAIReasoningClientTests(LoggedTestCase):
     def test_convert_to_input_params_rejects_non_list(self) -> None:
         """Reject content that is not expressed as a list."""
         with self.assertRaises(TranslationImpossibleError) as context:
-            self.client._convert_to_input_params("invalid")  # type: ignore[arg-type]
+            self.client._convert_to_input_params("invalid")
         log_input_expected_error(
             "invalid", TranslationImpossibleError, context.exception
         )
@@ -151,7 +155,7 @@ class OpenAIReasoningClientTests(LoggedTestCase):
         """Reject content provided as a list of strings instead of message dicts."""
         invalid_messages = ["Hello", "World"]
         with self.assertRaises(TranslationImpossibleError) as context:
-            self.client._convert_to_input_params(invalid_messages)  # type: ignore[arg-type]
+            self.client._convert_to_input_params(invalid_messages)
         log_input_expected_error(
             invalid_messages, TranslationImpossibleError, context.exception
         )
@@ -271,7 +275,9 @@ class OpenAIReasoningFinishReasonTests(LoggedTestCase):
         result = self._send(_make_response())
         assert result is not None
         self.assertLoggedEqual("text", "Bonjour.", result.get("text"))
-        self.assertLoggedEqual("finish_reason", "completed", result.get("finish_reason"))
+        self.assertLoggedEqual(
+            "finish_reason", "completed", result.get("finish_reason")
+        )
 
     def test_max_output_tokens_maps_to_length(self) -> None:
         """status=incomplete with reason max_output_tokens is reported as a token limit."""
@@ -293,30 +299,39 @@ class OpenAIReasoningFinishReasonTests(LoggedTestCase):
     @skip_if_debugger_attached
     def test_truncated_response_raises_token_limit_error(self) -> None:
         """RequestTranslation turns a truncated response into a token-limit TranslationError."""
-        response = _make_response("incomplete", "Bonj", incomplete_reason="max_output_tokens")
+        response = _make_response(
+            "incomplete", "Bonj", incomplete_reason="max_output_tokens"
+        )
         with patch.object(
             OpenAIReasoningClient, "_get_client_response", return_value=response
         ):
             with self.assertRaises(TranslationError) as context:
                 self.client._request_translation(_make_request())
-        translation = context.exception.translation  # type: ignore[attr-defined]
+        translation = context.exception.translation
         self.assertLoggedTrue(
-            "reached token limit", translation is not None and translation.reached_token_limit
+            "reached token limit",
+            translation is not None and translation.reached_token_limit,
         )
 
     @skip_if_debugger_attached
     def test_content_filter_raises(self) -> None:
         """status=incomplete with reason content_filter is an error, not a translation."""
         with self.assertRaises(TranslationResponseError):
-            self._send(_make_response("incomplete", "Bon", incomplete_reason="content_filter"))
+            self._send(
+                _make_response("incomplete", "Bon", incomplete_reason="content_filter")
+            )
 
     def test_reasoning_content_does_not_leak_into_text(self) -> None:
         """reasoning_text content stays out of the translation; the summary is the reasoning."""
         reasoning_item = ResponseReasoningItem.model_construct(
             id="rs_test",
             type="reasoning",
-            content=[Content.model_construct(type="reasoning_text", text="Thinking hard")],
-            summary=[Summary.model_construct(type="summary_text", text="Short summary")],
+            content=[
+                Content.model_construct(type="reasoning_text", text="Thinking hard")
+            ],
+            summary=[
+                Summary.model_construct(type="summary_text", text="Short summary")
+            ],
         )
         text, reasoning = self.client._extract_text_content(
             _make_response(reasoning_item=reasoning_item)
@@ -326,12 +341,16 @@ class OpenAIReasoningFinishReasonTests(LoggedTestCase):
 
     def test_streaming_incomplete_event_reports_length(self) -> None:
         """A response.incomplete stream event is not accepted as a complete translation."""
-        response = _make_response("incomplete", "Bonj", incomplete_reason="max_output_tokens")
+        response = _make_response(
+            "incomplete", "Bonj", incomplete_reason="max_output_tokens"
+        )
         event = ResponseIncompleteEvent.model_construct(
             response=response, type="response.incomplete", sequence_number=1
         )
         self.client.client.responses.create.return_value = iter([event])  # type: ignore[union-attr]
 
-        result = self.client._send_messages(_make_request(streaming=True), temperature=None)
+        result = self.client._send_messages(
+            _make_request(streaming=True), temperature=None
+        )
         assert result is not None
         self.assertLoggedEqual("finish_reason", "length", result.get("finish_reason"))

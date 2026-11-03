@@ -1,4 +1,5 @@
 import logging
+
 from PySubtrans.Helpers.Text import ExtractTag, ExtractTagList
 from PySubtrans.Substitutions import Substitutions
 

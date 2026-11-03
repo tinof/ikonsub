@@ -1,19 +1,20 @@
-import pysubs2
-import pysubs2.time
-import regex
 from datetime import timedelta
 from typing import TextIO
 
+import pysubs2
+import pysubs2.time
+import regex
+
 from PySubtrans.Helpers.Color import Color
+from PySubtrans.Helpers.Localization import _
+from PySubtrans.SubtitleData import SubtitleData
+from PySubtrans.SubtitleError import SubtitleParseError
 from PySubtrans.SubtitleFileHandler import (
     SubtitleFileHandler,
     default_encoding,
     fallback_encoding,
 )
 from PySubtrans.SubtitleLine import SubtitleLine
-from PySubtrans.SubtitleData import SubtitleData
-from PySubtrans.SubtitleError import SubtitleParseError
-from PySubtrans.Helpers.Localization import _
 
 # Precompiled regex patterns for performance
 _START_TAGS_PATTERN = regex.compile(r"^(\{[^}]*\})+")
@@ -67,18 +68,16 @@ class SSAFileHandler(SubtitleFileHandler):
             )
             return self._parse_subs(subs)
         except UnicodeDecodeError:
-            subs: pysubs2.SSAFile = pysubs2.SSAFile.load(
-                path, encoding=fallback_encoding, format_=format_hint, newline=""
+            subs = pysubs2.SSAFile.load(
+                path, encoding=fallback_encoding, format_=format_hint
             )
             return self._parse_subs(subs)
+        except SubtitleParseError:
+            raise
         except Exception as e:
-            raise (
-                e
-                if isinstance(e, SubtitleParseError)
-                else SubtitleParseError(
-                    _("Failed to parse subtitles: {}").format(str(e)), e
-                )
-            )
+            raise SubtitleParseError(
+                _("Failed to parse subtitles: {}").format(str(e)), e
+            ) from e
 
     def parse_file(self, file_obj: TextIO) -> SubtitleData:
         """
@@ -91,7 +90,9 @@ class SSAFileHandler(SubtitleFileHandler):
         except UnicodeDecodeError:
             raise  # Re-raise UnicodeDecodeError for fallback handling
         except Exception as e:
-            raise SubtitleParseError(_("Failed to parse file: {}").format(str(e)), e)
+            raise SubtitleParseError(
+                _("Failed to parse file: {}").format(str(e)), e
+            ) from e
 
     def parse_string(self, content: str) -> SubtitleData:
         """
@@ -102,7 +103,9 @@ class SSAFileHandler(SubtitleFileHandler):
             return self._parse_subs(subs)
 
         except Exception as e:
-            raise SubtitleParseError(_("Failed to parse content: {}").format(str(e)), e)
+            raise SubtitleParseError(
+                _("Failed to parse content: {}").format(str(e)), e
+            ) from e
 
     def compose(self, data: SubtitleData) -> str:
         """
@@ -153,7 +156,7 @@ class SSAFileHandler(SubtitleFileHandler):
         except Exception as e:
             raise SubtitleParseError(
                 _("Failed to parse subtitles: {}").format(str(e)), e
-            )
+            ) from e
 
     def _pysubs2_to_subtitle_line(
         self, pysubs2_line: pysubs2.SSAEvent, index: int

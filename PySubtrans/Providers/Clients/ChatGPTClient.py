@@ -1,6 +1,6 @@
 from typing import Any
 
-from openai.types.chat import ChatCompletion  # type: ignore
+from openai.types.chat import ChatCompletion
 
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Options import SettingsType

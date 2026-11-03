@@ -1,6 +1,7 @@
-from typing import Any
-import regex
 import logging
+from typing import Any
+
+import regex
 
 
 def ParseNames(name_list: str | list | None | Any) -> list[str]:

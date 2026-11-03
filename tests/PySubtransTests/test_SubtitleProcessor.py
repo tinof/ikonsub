@@ -50,7 +50,9 @@ class TestMergeContinuationLines(LoggedTestCase):
 
     def test_does_not_merge_after_sentence_end(self):
         lines = [
-            _line(1, "00:00:00,000", "00:00:02,000", "China is a partner, not a threat."),
+            _line(
+                1, "00:00:00,000", "00:00:02,000", "China is a partner, not a threat."
+            ),
             _line(2, "00:00:02,000", "00:00:03,100", "15 million?"),
         ]
         result = self._processor().PreprocessSubtitles(lines)
@@ -66,7 +68,9 @@ class TestMergeContinuationLines(LoggedTestCase):
 
     def test_does_not_merge_long_following_line(self):
         lines = [
-            _line(1, "00:00:00,000", "00:00:01,900", "As I said, I'm here to negotiate"),
+            _line(
+                1, "00:00:00,000", "00:00:01,900", "As I said, I'm here to negotiate"
+            ),
             _line(
                 2,
                 "00:00:01,900",
@@ -117,7 +121,7 @@ class TestMergeContinuationLines(LoggedTestCase):
             ("<i>No, call your cousin.</i>", "<i>I'll do it</i>"),
             ('"We are done here."', "I'll do it"),
             ("{\\an8}<i>Did you hear that?</i>", "<i>I'll do it</i>"),
-            ("<font color=\"#ffff00\">That's enough!</font>", "I'll do it"),
+            ('<font color="#ffff00">That\'s enough!</font>', "I'll do it"),
         ):
             lines = [
                 _line(1, "00:00:00,000", "00:00:02,000", text),
@@ -154,7 +158,12 @@ class TestMergeContinuationLines(LoggedTestCase):
 
     def test_merged_text_has_no_inner_line_breaks(self):
         lines = [
-            _line(1, "00:00:00,000", "00:00:02,000", "you would recommend\nyour father-in-law's"),
+            _line(
+                1,
+                "00:00:00,000",
+                "00:00:02,000",
+                "you would recommend\nyour father-in-law's",
+            ),
             _line(2, "00:00:02,000", "00:00:03,000", "fund\nin Shanghai?"),
         ]
         result = self._processor().PreprocessSubtitles(lines)
@@ -174,7 +183,9 @@ class TestMergeContinuationLines(LoggedTestCase):
         ]
         result = self._processor().PreprocessSubtitles(lines)
         self.assertLoggedEqual("line count", 1, len(result))
-        self.assertLoggedEqual("merged text", f"<i>{first} {second}</i>", result[0].text)
+        self.assertLoggedEqual(
+            "merged text", f"<i>{first} {second}</i>", result[0].text
+        )
 
     def test_length_cap_rejects_long_visible_text(self):
         lines = [
@@ -194,9 +205,13 @@ class TestMergeContinuationLines(LoggedTestCase):
 
     def test_unmerged_cues_keep_their_line_breaks(self):
         lines = [
-            _line(1, "00:00:00,000", "00:00:02,000", "China is a partner,\nnot a threat."),
+            _line(
+                1, "00:00:00,000", "00:00:02,000", "China is a partner,\nnot a threat."
+            ),
             _line(2, "00:00:02,000", "00:00:03,000", "15 million?"),
         ]
         result = self._processor().PreprocessSubtitles(lines)
         self.assertLoggedEqual("line count", 2, len(result))
-        self.assertLoggedEqual("first text", "China is a partner,\nnot a threat.", result[0].text)
+        self.assertLoggedEqual(
+            "first text", "China is a partner,\nnot a threat.", result[0].text
+        )

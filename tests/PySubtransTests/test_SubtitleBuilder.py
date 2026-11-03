@@ -1,10 +1,10 @@
 import unittest
 from datetime import timedelta
 
+from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.SubtitleBuilder import SubtitleBuilder
 from PySubtrans.SubtitleLine import SubtitleLine
 from PySubtrans.Subtitles import Subtitles
-from PySubtrans.Helpers.TestCases import LoggedTestCase
 
 
 class TestSubtitleBuilder(LoggedTestCase):

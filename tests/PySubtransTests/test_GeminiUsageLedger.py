@@ -1,14 +1,23 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import cast
+
+from google.genai.types import GenerateContentResponse
 
 from PySubtrans.Helpers.TestCases import LoggedTestCase
-from PySubtrans.Providers.Clients.GeminiClient import GeminiClient, GeminiUsageLedger, USAGE_LEDGER
+from PySubtrans.Providers.Clients.GeminiClient import (
+    USAGE_LEDGER,
+    GeminiClient,
+    GeminiUsageLedger,
+)
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleError import TranslationResponseError
 
 
-def _usage(prompt: int, output: int, thoughts: int | None = None, cached: int | None = None):
+def _usage(
+    prompt: int, output: int, thoughts: int | None = None, cached: int | None = None
+):
     return SimpleNamespace(
         prompt_token_count=prompt,
         candidates_token_count=output,
@@ -41,17 +50,29 @@ class GeminiUsageLedgerTests(LoggedTestCase):
             },
             rows[("gemini-4-argon", "global")],
         )
-        self.assertLoggedEqual("us requests", 1, rows[("gemini-4-argon", "us")]["requests"])
+        self.assertLoggedEqual(
+            "us requests", 1, rows[("gemini-4-argon", "us")]["requests"]
+        )
 
     def test_a_rejected_response_is_still_counted(self) -> None:
         USAGE_LEDGER.reset()
         client = GeminiClient(
-            SettingsType({"instructions": "x", "model": "gemini-3.8-flash", "vertex_location": "global"})
+            SettingsType(
+                {
+                    "instructions": "x",
+                    "model": "gemini-3.8-flash",
+                    "vertex_location": "global",
+                }
+            )
         )
-        gcr = SimpleNamespace(prompt_feedback=None, candidates=[], usage_metadata=_usage(9, 0, 4))
+        gcr = SimpleNamespace(
+            prompt_feedback=None, candidates=[], usage_metadata=_usage(9, 0, 4)
+        )
 
         with self.assertRaises(TranslationResponseError):
-            client._process_gemini_response(gcr, "gemini-3.5-flash-lite", "us")
+            client._process_gemini_response(
+                cast(GenerateContentResponse, gcr), "gemini-3.5-flash-lite", "us"
+            )
 
         rows = USAGE_LEDGER.snapshot()
         USAGE_LEDGER.reset()
@@ -68,10 +89,16 @@ class GeminiUsageLedgerTests(LoggedTestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "usage.json"
             ledger.persist_to(path)
-            self.assertLoggedEqual("empty at start", [], json.loads(path.read_text())["gemini"])
+            self.assertLoggedEqual(
+                "empty at start", [], json.loads(path.read_text())["gemini"]
+            )
 
             ledger.record("gemini-4-argon", "global", _usage(10, 2, 1))
             rows = json.loads(path.read_text())["gemini"]
             self.assertLoggedEqual("written on record", 10, rows[0]["prompt_tokens"])
-            self.assertLoggedEqual("no partial file left", ["usage.json"], sorted(p.name for p in Path(tmp).iterdir()))
+            self.assertLoggedEqual(
+                "no partial file left",
+                ["usage.json"],
+                sorted(p.name for p in Path(tmp).iterdir()),
+            )
             ledger.persist_to(None)

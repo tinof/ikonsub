@@ -1,8 +1,9 @@
 from datetime import timedelta
+
 from PySubtrans.Options import SettingsType
 from PySubtrans.SubtitleBatch import SubtitleBatch
-from PySubtrans.SubtitleScene import SubtitleScene
 from PySubtrans.SubtitleLine import SubtitleLine
+from PySubtrans.SubtitleScene import SubtitleScene
 
 
 class SubtitleBatcher:

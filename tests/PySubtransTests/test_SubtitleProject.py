@@ -7,8 +7,9 @@ from PySubtrans.Helpers.Tests import skip_if_debugger_attached
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleBatcher import SubtitleBatcher
 from PySubtrans.SubtitleProject import SubtitleProject
-from PySubtrans.SubtitleScene import SubtitleScene
 from PySubtrans.Subtitles import Subtitles
+from PySubtrans.SubtitleScene import SubtitleScene
+
 from ..TestData.chinese_dinner import chinese_dinner_data
 
 

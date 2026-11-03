@@ -1,19 +1,21 @@
 from __future__ import annotations
+
+import logging
 from copy import deepcopy
 from datetime import timedelta
-import logging
 from os import linesep
 from typing import Any
+
 import regex
 
 from PySubtrans.Helpers.Localization import _
-from PySubtrans.SubtitleError import SubtitleError
 from PySubtrans.Helpers.Time import (
     GetTimeDelta,
     GetTimeDeltaSafe,
     TimedeltaToSrtTimestamp,
     TimedeltaToText,
 )
+from PySubtrans.SubtitleError import SubtitleError
 
 # Global regex pattern for SRT parsing (compiled once for performance)
 SRT_PATTERN = regex.compile(
@@ -95,7 +97,7 @@ class SubtitleLine:
     def __repr__(self) -> str:
         return f"[Line {self.number}] {TimedeltaToText(self.start)}, {repr(self.text)}"
 
-    def __eq__(self, other: "Any|SubtitleLine") -> bool:
+    def __eq__(self, other: Any | SubtitleLine) -> bool:
         if not isinstance(other, SubtitleLine):
             return False
         return (
@@ -245,7 +247,7 @@ class SubtitleLine:
             raise SubtitleError(
                 _("Invalid subtitle line index: {}").format(match.group("index")),
                 error=e,
-            )
+            ) from e
 
         self._start = GetTimeDeltaSafe(match.group("start"))
         self._end = GetTimeDeltaSafe(match.group("end"))

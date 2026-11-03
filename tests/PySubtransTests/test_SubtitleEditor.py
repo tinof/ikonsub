@@ -12,6 +12,7 @@ from PySubtrans.SubtitleBatcher import SubtitleBatcher
 from PySubtrans.SubtitleEditor import SubtitleEditor
 from PySubtrans.SubtitleLine import SubtitleLine
 from PySubtrans.Subtitles import Subtitles
+
 from ..TestData.chinese_dinner import chinese_dinner_data
 
 
@@ -339,7 +340,9 @@ class SubtitleEditorTests(SubtitleTestCase):
                             len(batch.translated),
                         )
 
-                        for orig, trans in zip(batch.originals, batch.translated):
+                        for orig, trans in zip(
+                            batch.originals, batch.translated, strict=True
+                        ):
                             self.assertLoggedEqual(
                                 f"line {orig.number} number matches",
                                 orig.number,
@@ -465,7 +468,7 @@ class SubtitleEditorTests(SubtitleTestCase):
             for deletion in deletions:
                 self.assertLoggedEqual("deletion is tuple", tuple, type(deletion))
 
-                scene_num, batch_num, deleted_originals, deleted_translated = deletion  # type: ignore
+                scene_num, batch_num, deleted_originals, deleted_translated = deletion
                 self.assertLoggedGreater(
                     f"deleted originals from batch ({scene_num},{batch_num})",
                     len(deleted_originals),

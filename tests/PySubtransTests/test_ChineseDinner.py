@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from PySubtrans.Helpers.TestCases import PrepareSubtitles, SubtitleTestCase
+from PySubtrans.Formats.SrtFileHandler import SrtFileHandler
 from PySubtrans.Helpers.ContextHelpers import GetBatchContext
+from PySubtrans.Helpers.TestCases import PrepareSubtitles, SubtitleTestCase
 from PySubtrans.Helpers.Tests import (
     log_info,
     log_test_name,
@@ -12,11 +13,11 @@ from PySubtrans.Helpers.Tests import (
 from PySubtrans.SubtitleBatch import SubtitleBatch
 from PySubtrans.SubtitleBatcher import SubtitleBatcher
 from PySubtrans.SubtitleEditor import SubtitleEditor
-from PySubtrans.Subtitles import Subtitles
-from PySubtrans.Formats.SrtFileHandler import SrtFileHandler
 from PySubtrans.SubtitleLine import SubtitleLine
 from PySubtrans.SubtitleProject import SubtitleProject
+from PySubtrans.Subtitles import Subtitles
 from PySubtrans.SubtitleScene import SubtitleScene
+
 from ..TestData.chinese_dinner import chinese_dinner_data
 
 

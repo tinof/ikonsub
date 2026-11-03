@@ -11,10 +11,10 @@ if not importlib.util.find_spec("anthropic"):
     )
 else:
     try:
-        import anthropic
         import os
-
         from copy import deepcopy
+
+        import anthropic
 
         from PySubtrans.Helpers.Localization import _
         from PySubtrans.Providers.Clients.AnthropicClient import (

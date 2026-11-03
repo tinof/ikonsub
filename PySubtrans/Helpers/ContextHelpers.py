@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from PySubtrans.Helpers.Parse import ParseNames
 from PySubtrans.SubtitleError import SubtitleError
@@ -50,11 +50,14 @@ def GetBatchContext(
             context["names"] = ParseNames(subtitles.settings.get("names", []))
 
         if subtitles.settings.get_bool("large_context_mode", False):
+            max_history_tokens = subtitles.settings.get_int(
+                "max_context_history_tokens", 10000
+            )
             history_lines = GetDetailedHistory(
                 subtitles,
                 scene_number,
                 batch_number,
-                subtitles.settings.get_int("max_context_history_tokens", 10000),
+                max_history_tokens if max_history_tokens is not None else 10000,
             )
         else:
             history_lines = GetHistory(subtitles, scene_number, batch_number, max_lines)
@@ -160,8 +163,6 @@ def GetSourceBasedContext(
     Get context for a batch using SOURCE TEXT only (not translated output).
     This enables parallel batch translation by pre-computing all context upfront.
     """
-    from PySubtrans.Helpers.Parse import ParseNames
-
     with subtitles.lock:
         scene = subtitles.GetScene(scene_number)
         if not scene:

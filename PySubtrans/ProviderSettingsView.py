@@ -3,12 +3,13 @@ Provider settings view for type-safe mutable access to provider configurations.
 """
 
 from __future__ import annotations
+
+import logging
 from collections.abc import MutableMapping
 from typing import Any
-import logging
 
-from PySubtrans.SettingsType import SettingType, SettingsType
 from PySubtrans.Helpers.Localization import _
+from PySubtrans.SettingsType import SettingsType, SettingType
 
 
 class ProviderSettingsView(MutableMapping[str, SettingsType]):

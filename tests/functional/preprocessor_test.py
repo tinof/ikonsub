@@ -1,8 +1,9 @@
 import os
-from PySubtrans.SettingsType import SettingsType
-from PySubtrans.Subtitles import Subtitles
-from PySubtrans.SubtitleProcessor import SubtitleProcessor
+
 from PySubtrans.Helpers.Tests import RunTestOnAllSubtitleFiles, separator
+from PySubtrans.SettingsType import SettingsType
+from PySubtrans.SubtitleProcessor import SubtitleProcessor
+from PySubtrans.Subtitles import Subtitles
 
 
 def preprocess_test(subtitles: Subtitles, logger, options: SettingsType):
@@ -15,7 +16,7 @@ def preprocess_test(subtitles: Subtitles, logger, options: SettingsType):
         test_lines = preprocessor.PreprocessSubtitles(subtitles.originals)
 
     except Exception as e:
-        raise Exception(f"Error in PreprocessSubtitles: {e}")
+        raise Exception(f"Error in PreprocessSubtitles: {e}") from e
 
     # Check if the number of lines has changed
     original_length = len(subtitles.originals)
@@ -28,9 +29,7 @@ def preprocess_test(subtitles: Subtitles, logger, options: SettingsType):
         )
     )
     logger.info(
-        "| {:<20} | {:<20} | {:<20} |".format(
-            original_length, new_length, new_length - original_length
-        )
+        f"| {original_length:<20} | {new_length:<20} | {new_length - original_length:<20} |"
     )
     logger.info(separator)
     logger.info("")

@@ -1,9 +1,8 @@
 import threading
-
 from copy import deepcopy
 from datetime import timedelta
 
-from PySubtrans.Helpers.TestCases import SubtitleTestCase, DummyTranslationClient
+from PySubtrans.Helpers.TestCases import DummyTranslationClient, SubtitleTestCase
 from PySubtrans.Helpers.Tests import log_info, skip_if_debugger_attached
 from PySubtrans.SettingsType import SettingsType, SettingType
 from PySubtrans.SubtitleBatch import SubtitleBatch
@@ -87,15 +86,16 @@ class MockStreamingProvider(TranslationProvider):
         data: dict[str, SettingType],
         streaming_responses: dict[str, list[str]] | None = None,
     ):
+        responses: dict[str, SettingType] = dict(streaming_responses or {})
         settings = SettingsType(
             {
                 "model": "mock-streaming",
                 "data": data,
-                "streaming_responses": streaming_responses or {},
+                "streaming_responses": responses,
                 "supports_streaming": True,
                 "stream_responses": True,
             }
-        )  # type: ignore
+        )
         super().__init__("Mock Streaming Provider", settings)
 
     def GetTranslationClient(self, settings: SettingsType) -> TranslationClient:

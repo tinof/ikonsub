@@ -1,6 +1,6 @@
+import os
 from abc import ABC, abstractmethod
 from typing import TextIO
-import os
 
 from PySubtrans.SubtitleData import SubtitleData
 

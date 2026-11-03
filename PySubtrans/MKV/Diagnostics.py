@@ -1,7 +1,8 @@
-import regex as re
 import subprocess
 import time
 from pathlib import Path
+
+import regex as re
 
 
 def run_diagnostics(console):
@@ -98,7 +99,7 @@ def run_diagnostics(console):
     console.print("\n[bold]Memory information:[/bold]")
     try:
         if Path("/proc/meminfo").exists():
-            with open("/proc/meminfo", "r") as f:
+            with open("/proc/meminfo") as f:
                 meminfo = f.read()
 
             # Extract key values

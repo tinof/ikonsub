@@ -1,12 +1,11 @@
-import os
-import logging
-import importlib.util
-import sys
 import argparse
+import importlib.util
+import logging
+import os
+import sys
+import unittest
 from datetime import datetime
 from types import ModuleType
-
-import unittest
 
 base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, base_path)

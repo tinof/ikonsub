@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -67,12 +68,16 @@ def _to_ms(hours: str, minutes: str, seconds: str, millis: str) -> int:
 
 def parse_subtitles(path: Path) -> list[Cue]:
     """Parse an SRT/VTT file into cues, stripping markup from the text"""
-    content = path.read_text(encoding="utf-8-sig", errors="replace").replace("\r\n", "\n")
+    content = path.read_text(encoding="utf-8-sig", errors="replace").replace(
+        "\r\n", "\n"
+    )
 
     cues: list[Cue] = []
     for block in regex.split(r"\n\s*\n", content.strip()):
         block_lines = block.split("\n")
-        timecode_index = next((i for i, line in enumerate(block_lines) if "-->" in line), None)
+        timecode_index = next(
+            (i for i, line in enumerate(block_lines) if "-->" in line), None
+        )
         if timecode_index is None:
             continue
 
@@ -99,7 +104,7 @@ def parse_subtitles(path: Path) -> list[Cue]:
     return cues
 
 
-def _percentile(values: list[float], fraction: float) -> float:
+def _percentile(values: Sequence[float], fraction: float) -> float:
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -164,11 +169,19 @@ def report(cues: list[Cue], source: list[Cue] | None, path: Path) -> None:
     print("\nGaps and overlaps")
     if gaps:
         print(f"  min gap {min(gaps)} ms")
-        print(_count(f"gaps < {MIN_GAP_MS} ms", sum(1 for g in gaps if g < MIN_GAP_MS), len(gaps)))
+        print(
+            _count(
+                f"gaps < {MIN_GAP_MS} ms",
+                sum(1 for g in gaps if g < MIN_GAP_MS),
+                len(gaps),
+            )
+        )
         print(_count("overlaps", sum(1 for g in gaps if g < 0), len(gaps)))
 
     print("\nDialogue")
-    any_dash = sum(1 for cue in cues if any(DASH_PATTERN.match(line) for line in cue.lines))
+    any_dash = sum(
+        1 for cue in cues if any(DASH_PATTERN.match(line) for line in cue.lines)
+    )
     two_speaker = sum(
         1
         for cue in cues
@@ -183,12 +196,16 @@ def report(cues: list[Cue], source: list[Cue] | None, path: Path) -> None:
         print("\nAgainst source")
         print(f"  source cues: {len(source)}   delta: {delta:+d} ({percentage:+.1f}%)")
         if abs(percentage) > 3.0:
-            print("  note: a large delta means cues are being split or merged downstream")
+            print(
+                "  note: a large delta means cues are being split or merged downstream"
+            )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("subtitles", type=Path, nargs="+", help="subtitle files to measure")
+    parser.add_argument(
+        "subtitles", type=Path, nargs="+", help="subtitle files to measure"
+    )
     parser.add_argument(
         "--source",
         type=Path,

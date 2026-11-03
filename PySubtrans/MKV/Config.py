@@ -1,5 +1,5 @@
-import os
 import importlib.resources as resources
+import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path

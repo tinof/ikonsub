@@ -1,17 +1,16 @@
-import os
 import logging
-
-from scripts.check_imports import check_required_imports
-from scripts.subtrans_common import (
-    InitLogger,
-    CreateArgParser,
-    CreateOptions,
-    CreateProject,
-)
+import os
 
 from PySubtrans import init_translator
 from PySubtrans.Options import Options
 from PySubtrans.SubtitleProject import SubtitleProject
+from scripts.check_imports import check_required_imports
+from scripts.subtrans_common import (
+    CreateArgParser,
+    CreateOptions,
+    CreateProject,
+    InitLogger,
+)
 
 
 def main() -> int:

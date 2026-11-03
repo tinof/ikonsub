@@ -48,7 +48,9 @@ class GeminiClientRetryTests(LoggedTestCase):
             return result
 
         with (
-            patch.object(GeminiClient, "_get_gemini_response", side_effect=fake_response),
+            patch.object(
+                GeminiClient, "_get_gemini_response", side_effect=fake_response
+            ),
             patch("PySubtrans.Providers.Clients.GeminiClient.time.sleep") as mock_sleep,
         ):
             result = client._send_messages(self._make_request(), temperature=0.0)
@@ -117,7 +119,9 @@ class GeminiClientRetryTests(LoggedTestCase):
             return {"text": "translated"}
 
         with (
-            patch.object(GeminiClient, "_get_gemini_response", side_effect=fake_response),
+            patch.object(
+                GeminiClient, "_get_gemini_response", side_effect=fake_response
+            ),
             patch("PySubtrans.Providers.Clients.GeminiClient.time.sleep"),
         ):
             result = client._send_messages(self._make_request(), temperature=0.0)
@@ -173,11 +177,17 @@ class GeminiClientRetryTests(LoggedTestCase):
 
         genai_client = client._create_client()
 
-        self.assertLoggedEqual("timeout_ms", 120000, genai_client._api_client._http_options.timeout)
+        self.assertLoggedEqual(
+            "timeout_ms", 120000, genai_client._api_client._http_options.timeout
+        )
 
-    def test_fallback_from_another_generation_uses_model_default_temperature(self) -> None:
+    def test_fallback_from_another_generation_uses_model_default_temperature(
+        self,
+    ) -> None:
         """A 3.x fallback from a 2.x primary drops the primary's temperature; same-generation keeps it."""
-        client = self._make_client(fallbacks="gemini-4-argon,gemini-2.5-flash", attempts_per_target=1)
+        client = self._make_client(
+            fallbacks="gemini-4-argon,gemini-2.5-flash", attempts_per_target=1
+        )
         temperatures: list[float | None] = []
 
         def fake_response(request, temperature, model=None, location=None):
@@ -187,7 +197,9 @@ class GeminiClientRetryTests(LoggedTestCase):
             return {"text": "translated"}
 
         with (
-            patch.object(GeminiClient, "_get_gemini_response", side_effect=fake_response),
+            patch.object(
+                GeminiClient, "_get_gemini_response", side_effect=fake_response
+            ),
             patch("PySubtrans.Providers.Clients.GeminiClient.time.sleep"),
         ):
             client._send_messages(self._make_request(), temperature=1.0)

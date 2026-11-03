@@ -1,6 +1,6 @@
 import os
 
-import appdirs  # type: ignore
+import appdirs
 
 old_config_dir: str = appdirs.user_config_dir(
     "GPTSubtrans", "MachineWrapped", roaming=True

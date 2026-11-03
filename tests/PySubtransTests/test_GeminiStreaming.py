@@ -62,7 +62,9 @@ class GeminiStreamingFinishReasonTests(LoggedTestCase):
     def test_finish_only_chunk_max_tokens_is_detected(self) -> None:
         """MAX_TOKENS on a final chunk without parts marks the response as truncated."""
         with self.assertRaises(TranslationResponseError):
-            self._stream([_text_chunk("#1\nHei"), _finish_chunk(FinishReason.MAX_TOKENS)])
+            self._stream(
+                [_text_chunk("#1\nHei"), _finish_chunk(FinishReason.MAX_TOKENS)]
+            )
 
     @skip_if_debugger_attached
     def test_finish_only_chunk_safety_is_detected(self) -> None:
@@ -72,6 +74,8 @@ class GeminiStreamingFinishReasonTests(LoggedTestCase):
 
     def test_finish_only_chunk_stop_is_complete(self) -> None:
         """STOP on a final chunk without parts completes the accumulated text."""
-        result = self._stream([_text_chunk("#1\nHei"), _finish_chunk(FinishReason.STOP)])
+        result = self._stream(
+            [_text_chunk("#1\nHei"), _finish_chunk(FinishReason.STOP)]
+        )
         assert result is not None
         self.assertLoggedEqual("finish_reason", "complete", result.get("finish_reason"))
