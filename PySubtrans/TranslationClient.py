@@ -1,8 +1,9 @@
 import logging
+import threading
 import time
 
 from PySubtrans.Instructions import DEFAULT_TASK_TYPE
-from PySubtrans.Options import Options, SettingsType
+from PySubtrans.Options import Options
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleError import TranslationError
 from PySubtrans.SubtitleLine import SubtitleLine
@@ -32,6 +33,12 @@ class TranslationClient:
         )
         self.aborted: bool = False
         self.events: TranslationEvents | None = None
+
+        # Request pacing is shared by every thread that uses this client, so
+        # parallel workers stay within rate_limit requests per minute together
+        self._rate_limit_lock = threading.RLock()
+        self._next_request_time: float | None = None
+        self._abort_event = threading.Event()
 
         if not self.instructions:
             raise TranslationError("No instructions provided for the translator")
@@ -121,7 +128,10 @@ class TranslationClient:
         """
         Generate the messages to request a translation
         """
-        start_time = time.monotonic()
+        if self.aborted:
+            return None
+
+        self._wait_for_rate_limit()
 
         if self.aborted:
             return None
@@ -138,19 +148,6 @@ class TranslationClient:
         if translation.text:
             logging.debug(f"Response:\n{translation.text}")
 
-        # If a rate limit is replied ensure a minimum duration for each request
-        rate_limit = self.rate_limit
-        if rate_limit and rate_limit > 0.0:
-            minimum_duration = 60.0 / rate_limit
-
-            elapsed_time = time.monotonic() - start_time
-            if elapsed_time < minimum_duration:
-                sleep_time = minimum_duration - elapsed_time
-                logging.debug(
-                    f"Sleeping for {sleep_time:.2f} seconds to respect rate limit"
-                )
-                time.sleep(sleep_time)
-
         return translation
 
     def GetParser(self, task_type: str = DEFAULT_TASK_TYPE) -> TranslationParser:
@@ -161,8 +158,8 @@ class TranslationClient:
 
     def AbortTranslation(self) -> None:
         self.aborted = True
+        self._abort_event.set()
         self._abort()
-        pass
 
     def SetEvents(self, events: TranslationEvents) -> None:
         """
@@ -200,4 +197,25 @@ class TranslationClient:
     def _abort(self) -> None:
         # Try to terminate ongoing requests
         self.aborted = True
-        pass
+
+    def _wait_for_rate_limit(self) -> None:
+        """
+        Space request starts at least 60 / rate_limit seconds apart across all threads.
+
+        Each caller reserves the next free start time under the lock, then sleeps
+        outside it, so an abort wakes every waiting thread at once.
+        """
+        rate_limit = self.rate_limit
+        if not rate_limit or rate_limit <= 0.0:
+            return
+
+        interval = 60.0 / rate_limit
+        with self._rate_limit_lock:
+            now = time.monotonic()
+            start_time = max(now, self._next_request_time or now)
+            self._next_request_time = start_time + interval
+
+        sleep_time = start_time - now
+        if sleep_time > 0.0:
+            logging.debug(f"Sleeping for {sleep_time:.2f} seconds to respect rate limit")
+            self._abort_event.wait(sleep_time)

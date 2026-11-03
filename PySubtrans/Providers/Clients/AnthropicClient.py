@@ -1,8 +1,10 @@
 import logging
+import threading
 import time
 from typing import Any
 
 import anthropic
+import httpx2
 import regex
 
 from PySubtrans.Helpers import FormatMessages
@@ -15,6 +17,30 @@ from PySubtrans.TranslationPrompt import TranslationPrompt
 from PySubtrans.TranslationRequest import TranslationRequest
 
 linesep = "\n"
+
+# One default for the provider and the client. Adaptive thinking spends output tokens,
+# so a small limit truncates large batches.
+DEFAULT_MAX_TOKENS = 16000
+
+# Transient failures that a retry with backoff can recover from. The SDK retries these
+# itself before the response starts, but not when they arrive mid-stream.
+RETRYABLE_ERRORS = (
+    anthropic.APIConnectionError,  # includes APITimeoutError
+    anthropic.RateLimitError,
+    anthropic.InternalServerError,
+    anthropic.OverloadedError,
+    anthropic.ServiceUnavailableError,
+    anthropic.DeadlineExceededError,
+)
+
+# Error types in the body of a mid-stream "error" event, which the SDK raises as a
+# plain APIStatusError carrying the stream's 200 status
+RETRYABLE_ERROR_TYPES = {
+    "api_error",
+    "overloaded_error",
+    "rate_limit_error",
+    "timeout_error",
+}
 
 # Claude 4.5 and older take a fixed thinking budget and reject adaptive thinking.
 # Claude 4.6 and newer take adaptive thinking; 4.7 and newer reject budget_tokens.
@@ -30,6 +56,8 @@ class AnthropicClient(TranslationClient):
 
     def __init__(self, settings: SettingsType):
         super().__init__(settings)
+        self.client: anthropic.Anthropic | None = None
+        self._client_lock = threading.Lock()
 
         self._emit_info(
             _("Translating with Anthropic {model}").format(
@@ -47,7 +75,7 @@ class AnthropicClient(TranslationClient):
 
     @property
     def max_tokens(self) -> int:
-        return self.settings.get_int("max_tokens") or 0
+        return self.settings.get_int("max_tokens") or DEFAULT_MAX_TOKENS
 
     @property
     def allow_thinking(self) -> bool:
@@ -72,19 +100,7 @@ class AnthropicClient(TranslationClient):
         """
         Request a translation based on the provided prompt
         """
-        try:
-            self.client = anthropic.Anthropic(api_key=self.api_key)
-
-            # Try to add proxy settings if specified
-            proxy = self.settings.get_str("proxy")
-            if proxy:
-                http_client = anthropic.DefaultHttpxClient(proxy=proxy)
-                self.client = self.client.with_options(http_client=http_client)
-
-        except Exception as e:
-            raise TranslationImpossibleError(
-                _("Failed to initialize Anthropic client"), error=e
-            )
+        self._get_client()
 
         prompt: TranslationPrompt = request.prompt
         logging.debug(f"Messages:\n{FormatMessages(prompt.messages)}")
@@ -125,9 +141,6 @@ class AnthropicClient(TranslationClient):
         """
         Make a request to the LLM to provide a translation
         """
-        if not self.client:
-            raise TranslationImpossibleError(_("Client is not initialized"))
-
         api_response = self._get_client_response(request, temperature)
 
         if self.aborted or not api_response:
@@ -142,8 +155,8 @@ class AnthropicClient(TranslationClient):
             result["finish_reason"] = api_response.stop_reason
 
         if api_response.usage:
-            result["prompt_tokens"] = getattr(api_response.usage, "input_tokens")
-            result["output_tokens"] = getattr(api_response.usage, "output_tokens")
+            result["prompt_tokens"] = api_response.usage.input_tokens
+            result["output_tokens"] = api_response.usage.output_tokens
 
         for piece in api_response.content:
             if piece.type == "thinking":
@@ -166,6 +179,8 @@ class AnthropicClient(TranslationClient):
         if self.model is None:
             raise TranslationError(_("No model specified"))
 
+        client = self._get_client()
+
         for retry in range(self.max_retries + 1):
             if self.aborted:
                 return None
@@ -176,7 +191,8 @@ class AnthropicClient(TranslationClient):
                     raise TranslationError(_("System prompt is required"))
 
                 if request.is_streaming and self.enable_streaming:
-                    with self.client.messages.stream(
+                    request.ResetStreamingProgress()
+                    with client.messages.stream(
                         model=self.model,
                         thinking=self.thinking,  # type: ignore
                         messages=prompt.content,  # type: ignore
@@ -190,7 +206,7 @@ class AnthropicClient(TranslationClient):
 
                         return stream.get_final_message()
                 else:
-                    return self.client.messages.create(
+                    return client.messages.create(
                         model=self.model,
                         thinking=self.thinking,  # type: ignore
                         messages=prompt.content,  # type: ignore
@@ -198,8 +214,16 @@ class AnthropicClient(TranslationClient):
                         max_tokens=self.max_tokens,
                     )
 
-            except (anthropic.APITimeoutError, anthropic.RateLimitError) as e:
-                if retry < self.max_retries and not self.aborted:
+            except anthropic.APIError as e:
+                if self.aborted:
+                    return None
+
+                if not self._is_retryable(e):
+                    raise TranslationImpossibleError(
+                        self._get_error_message(e), error=e
+                    ) from e
+
+                if retry < self.max_retries:
                     sleep_time = self.backoff_time * 2.0**retry
                     self._emit_warning(
                         _(
@@ -211,17 +235,73 @@ class AnthropicClient(TranslationClient):
                     time.sleep(sleep_time)
                     continue
 
-            except anthropic.APIError as e:
-                raise TranslationImpossibleError(self._get_error_message(e), error=e)
+            except httpx2.TransportError as e:
+                # A connection that drops mid-stream reaches us as a raw transport error,
+                # not an anthropic.APIError, so the SDK's own retries never see it
+                if self.aborted:
+                    return None
+
+                if retry < self.max_retries:
+                    sleep_time = self.backoff_time * 2.0**retry
+                    self._emit_warning(
+                        _(
+                            "Anthropic connection error: {error}, retrying in {sleep_time} seconds..."
+                        ).format(error=str(e) or type(e).__name__, sleep_time=sleep_time)
+                    )
+                    time.sleep(sleep_time)
+                    continue
 
             except Exception as e:
-                raise TranslationError(_("Error communicating with provider"), error=e)
+                raise TranslationError(
+                    _("Error communicating with provider"), error=e
+                ) from e
 
         raise TranslationImpossibleError(
             _("Failed to communicate with provider after {max_retries} retries").format(
                 max_retries=self.max_retries
             )
         )
+
+    def _abort(self) -> None:
+        # Closing the client ends any request in flight
+        with self._client_lock:
+            if self.client:
+                self.client.close()
+        return super()._abort()
+
+    def _get_client(self) -> anthropic.Anthropic:
+        """
+        Create the client once and reuse it for every batch (it is thread-safe)
+        """
+        with self._client_lock:
+            if self.client is None:
+                try:
+                    proxy = self.settings.get_str("proxy")
+                    http_client = (
+                        anthropic.DefaultHttpxClient(proxy=proxy) if proxy else None
+                    )
+                    self.client = anthropic.Anthropic(
+                        api_key=self.api_key, http_client=http_client
+                    )
+                except Exception as e:
+                    raise TranslationImpossibleError(
+                        _("Failed to initialize Anthropic client"), error=e
+                    ) from e
+            return self.client
+
+    def _is_retryable(self, e: anthropic.APIError) -> bool:
+        """
+        True for connection, rate limit, overload and server errors
+        """
+        if isinstance(e, RETRYABLE_ERRORS):
+            return True
+
+        if isinstance(e, anthropic.APIStatusError) and isinstance(e.body, dict):
+            error = e.body.get("error")
+            if isinstance(error, dict):
+                return error.get("type") in RETRYABLE_ERROR_TYPES
+
+        return False
 
     def _get_error_message(self, e: anthropic.APIError) -> str:
         """

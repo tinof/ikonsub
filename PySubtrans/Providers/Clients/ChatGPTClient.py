@@ -60,17 +60,15 @@ class ChatGPTClient(OpenAIClient):
                 response=result,
             )
 
-        if not getattr(result, "choices"):
+        if not result.choices:
             raise TranslationResponseError(
                 _("No choices returned in the response"), response=result
             )
 
-        response["response_time"] = getattr(result, "response_ms", 0)
-
         if result.usage:
-            response["prompt_tokens"] = getattr(result.usage, "prompt_tokens")
-            response["output_tokens"] = getattr(result.usage, "completion_tokens")
-            response["total_tokens"] = getattr(result.usage, "total_tokens")
+            response["prompt_tokens"] = result.usage.prompt_tokens
+            response["output_tokens"] = result.usage.completion_tokens
+            response["total_tokens"] = result.usage.total_tokens
 
         if result.choices:
             choice = result.choices[0]

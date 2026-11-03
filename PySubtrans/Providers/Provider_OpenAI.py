@@ -2,7 +2,7 @@ import importlib.util
 import logging
 import os
 
-from PySubtrans.Options import SettingsType, env_float
+from PySubtrans.Options import env_float
 from PySubtrans.SettingsType import GuiSettingsType, SettingsType
 
 if not importlib.util.find_spec("openai"):
@@ -83,6 +83,7 @@ else:
                                 "stream_responses",
                                 os.getenv("OPENAI_STREAM_RESPONSES", "False") == "True",
                             ),
+                            "proxy": settings.get_str("proxy"),
                         }
                     ),
                 )

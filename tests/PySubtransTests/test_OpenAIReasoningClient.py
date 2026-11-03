@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from unittest.mock import MagicMock, patch
+
 from openai.types import responses as responses_types
 from openai.types.responses import (
+    ResponseIncompleteEvent,
     ResponseOutputMessage,
     ResponseOutputText,
     ResponseReasoningItem,
 )
+from openai.types.responses.response import IncompleteDetails
+from openai.types.responses.response_reasoning_item import Content, Summary
 from openai.types.responses.response_usage import ResponseUsage
 
 from PySubtrans.Helpers.TestCases import LoggedTestCase
@@ -13,9 +18,51 @@ from PySubtrans.Helpers.Tests import log_input_expected_error, skip_if_debugger_
 from PySubtrans.Providers.Clients.OpenAIReasoningClient import OpenAIReasoningClient
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleError import (
+    TranslationError,
     TranslationResponseError,
     TranslationImpossibleError,
 )
+from PySubtrans.TranslationPrompt import TranslationPrompt
+from PySubtrans.TranslationRequest import TranslationRequest
+
+
+def _make_response(
+    status: str = "completed",
+    text: str | None = "Bonjour.",
+    incomplete_reason: str | None = None,
+    reasoning_item: ResponseReasoningItem | None = None,
+) -> responses_types.Response:
+    """Build a Responses API result with an optional reasoning item and message text."""
+    output: list = [reasoning_item] if reasoning_item else []
+    if text is not None:
+        output.append(
+            ResponseOutputMessage.model_construct(
+                id="msg_test",
+                type="message",
+                role="assistant",
+                status=status,
+                content=[ResponseOutputText.model_construct(type="output_text", text=text)],
+            )
+        )
+    return responses_types.Response.model_construct(
+        id="resp_test",
+        created_at=1700000000.0,
+        model="gpt-5-mini-test",
+        object="response",
+        status=status,
+        incomplete_details=IncompleteDetails.model_construct(reason=incomplete_reason)
+        if incomplete_reason
+        else None,
+        output=output,
+        usage=ResponseUsage.model_construct(input_tokens=10, output_tokens=5, total_tokens=15),
+    )
+
+
+def _make_request(streaming: bool = False) -> TranslationRequest:
+    prompt = TranslationPrompt("Translate this", True)
+    prompt.content = [{"role": "user", "content": "1. Hello"}]
+    prompt.system_prompt = "Translate."
+    return TranslationRequest(prompt, (lambda translation: None) if streaming else None)
 
 
 class OpenAIReasoningClientTests(LoggedTestCase):
@@ -194,3 +241,97 @@ class OpenAIReasoningClientTests(LoggedTestCase):
         )
         with self.assertRaises(TranslationResponseError):
             self.client._extract_text_content(response)
+
+
+class OpenAIReasoningFinishReasonTests(LoggedTestCase):
+    """Validate truncation, content filter and reasoning handling for the Responses API."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        settings = SettingsType(
+            {
+                "api_key": "sk-test",
+                "instructions": "Verify finish reasons.",
+                "model": "gpt-5-mini",
+                "max_retries": 1,
+                "backoff_time": 0.0,
+            }
+        )
+        self.client = OpenAIReasoningClient(settings)
+        self.client.client = MagicMock()
+
+    def _send(self, response: responses_types.Response) -> dict | None:
+        with patch.object(
+            OpenAIReasoningClient, "_get_client_response", return_value=response
+        ):
+            return self.client._send_messages(_make_request(), temperature=None)
+
+    def test_completed_response_is_not_truncated(self) -> None:
+        """A completed response keeps its text and is not flagged as a token limit."""
+        result = self._send(_make_response())
+        assert result is not None
+        self.assertLoggedEqual("text", "Bonjour.", result.get("text"))
+        self.assertLoggedEqual("finish_reason", "completed", result.get("finish_reason"))
+
+    def test_max_output_tokens_maps_to_length(self) -> None:
+        """status=incomplete with reason max_output_tokens is reported as a token limit."""
+        result = self._send(
+            _make_response("incomplete", "Bonj", incomplete_reason="max_output_tokens")
+        )
+        assert result is not None
+        self.assertLoggedEqual("finish_reason", "length", result.get("finish_reason"))
+
+    def test_truncated_without_text_reports_length(self) -> None:
+        """A truncated response with no text yet reports the token limit, not a missing text."""
+        result = self._send(
+            _make_response("incomplete", None, incomplete_reason="max_output_tokens")
+        )
+        assert result is not None
+        self.assertLoggedEqual("finish_reason", "length", result.get("finish_reason"))
+        self.assertLoggedEqual("text", "", result.get("text"))
+
+    @skip_if_debugger_attached
+    def test_truncated_response_raises_token_limit_error(self) -> None:
+        """RequestTranslation turns a truncated response into a token-limit TranslationError."""
+        response = _make_response("incomplete", "Bonj", incomplete_reason="max_output_tokens")
+        with patch.object(
+            OpenAIReasoningClient, "_get_client_response", return_value=response
+        ):
+            with self.assertRaises(TranslationError) as context:
+                self.client._request_translation(_make_request())
+        translation = context.exception.translation  # type: ignore[attr-defined]
+        self.assertLoggedTrue(
+            "reached token limit", translation is not None and translation.reached_token_limit
+        )
+
+    @skip_if_debugger_attached
+    def test_content_filter_raises(self) -> None:
+        """status=incomplete with reason content_filter is an error, not a translation."""
+        with self.assertRaises(TranslationResponseError):
+            self._send(_make_response("incomplete", "Bon", incomplete_reason="content_filter"))
+
+    def test_reasoning_content_does_not_leak_into_text(self) -> None:
+        """reasoning_text content stays out of the translation; the summary is the reasoning."""
+        reasoning_item = ResponseReasoningItem.model_construct(
+            id="rs_test",
+            type="reasoning",
+            content=[Content.model_construct(type="reasoning_text", text="Thinking hard")],
+            summary=[Summary.model_construct(type="summary_text", text="Short summary")],
+        )
+        text, reasoning = self.client._extract_text_content(
+            _make_response(reasoning_item=reasoning_item)
+        )
+        self.assertLoggedEqual("text", "Bonjour.", text)
+        self.assertLoggedEqual("reasoning", "Short summary", reasoning)
+
+    def test_streaming_incomplete_event_reports_length(self) -> None:
+        """A response.incomplete stream event is not accepted as a complete translation."""
+        response = _make_response("incomplete", "Bonj", incomplete_reason="max_output_tokens")
+        event = ResponseIncompleteEvent.model_construct(
+            response=response, type="response.incomplete", sequence_number=1
+        )
+        self.client.client.responses.create.return_value = iter([event])  # type: ignore[union-attr]
+
+        result = self.client._send_messages(_make_request(streaming=True), temperature=None)
+        assert result is not None
+        self.assertLoggedEqual("finish_reason", "length", result.get("finish_reason"))

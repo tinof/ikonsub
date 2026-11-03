@@ -29,6 +29,11 @@ class TranslationRequest:
         """Check if this is a streaming request"""
         return self.streaming_callback is not None
 
+    def ResetStreamingProgress(self) -> None:
+        """Forget streamed text, so a retried response does not append to a failed attempt"""
+        self.accumulated_text = ""
+        self.last_processed_pos = 0
+
     def ProcessStreamingDelta(self, delta_text: str) -> None:
         """Process a streaming delta and emit partial updates for complete sections"""
         if delta_text:

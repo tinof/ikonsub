@@ -1,3 +1,5 @@
+import threading
+import time
 from copy import deepcopy
 from unittest.mock import patch
 
@@ -12,7 +14,7 @@ from PySubtrans.SubtitleBatch import SubtitleBatch
 from PySubtrans.SubtitleBatcher import SubtitleBatcher
 from PySubtrans.SubtitleEditor import SubtitleEditor
 from PySubtrans.Subtitles import Subtitles
-from PySubtrans.SubtitleError import TranslationImpossibleError
+from PySubtrans.SubtitleError import TranslationError, TranslationImpossibleError
 from PySubtrans.SubtitleScene import SubtitleScene
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
 from PySubtrans.TranslationEvents import TranslationEvents
@@ -94,6 +96,45 @@ class SubtitleTranslatorTests(SubtitleTestCase):
 
         # Batches cancelled by the failure are not reported as errors of their own
         self.assertTrue(all(isinstance(e, TranslationImpossibleError) for e in translator.errors))
+
+    def test_parallel_stop_on_error_cancels_queued_batches(self):
+        """With stop_on_error, a failed batch cancels the batches still in the queue."""
+        data = chinese_dinner_data
+        originals: Subtitles = PrepareSubtitles(data, "original")
+        options = deepcopy(self.options)
+        options.update(
+            {
+                "parallel_batches": True,
+                "max_parallel_workers": 2,
+                "max_batch_size": 20,
+                "stop_on_error": True,
+            }
+        )
+        with SubtitleEditor(originals) as editor:
+            editor.AutoBatch(SubtitleBatcher(options))
+
+        total_batches = sum(len(scene.batches) for scene in originals.scenes)
+        self.assertGreater(total_batches, 4)
+
+        translator = SubtitleTranslator(options, translation_provider=DummyProvider(data=data))
+        calls: list[int] = []
+        calls_lock = threading.Lock()
+
+        def failing_request(*args, **kwargs):
+            with calls_lock:
+                calls.append(len(calls))
+                first = len(calls) == 1
+            if not first:
+                time.sleep(0.2)  # later batches are still running when the first fails
+            raise TranslationError("provider error")
+
+        with patch.object(translator.client, "RequestTranslation", side_effect=failing_request):
+            translator.TranslateSubtitles(originals)
+
+        # The two running batches finish, and at most one more starts before the cancel
+        self.assertLoggedTrue(
+            "queued batches cancelled", len(calls) <= 3, input_value=(len(calls), total_batches)
+        )
 
     def validate_batch(
         self, batch: SubtitleBatch, original: Subtitles, reference: Subtitles
