@@ -133,7 +133,7 @@ class SubtitleFormatRegistry:
         """
         Deduce subtitle format from file extension
         """
-        base, extension = os.path.splitext(filename)  # type: ignore[ignore-unused]
+        base, extension = os.path.splitext(filename)
         return extension.lower() if extension else None
 
     @classmethod

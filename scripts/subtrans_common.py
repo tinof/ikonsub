@@ -31,15 +31,8 @@ def InitLogger(logfilename: str, debug: bool = False) -> LoggerOptions:
         logging_level = getattr(logging, level_name, logging.INFO)
 
     # Create console logger
-    try:
-        logging.basicConfig(
-            format="%(levelname)s: %(message)s", encoding="utf-8", level=logging_level
-        )
-        logging.info("Initialising log")
-
-    except Exception:
-        logging.basicConfig(format="%(levelname)s: %(message)s", level=logging_level)
-        logging.info("Unable to write to utf-8 log, falling back to default encoding")
+    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging_level)
+    logging.info("Initialising log")
 
     if debug:
         logging.debug("Debug logging enabled")

@@ -2,7 +2,7 @@ import logging
 from collections.abc import Iterator
 from typing import TextIO
 
-import srt  # type: ignore
+import srt
 
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.SubtitleData import SubtitleData

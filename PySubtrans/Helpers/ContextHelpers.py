@@ -50,11 +50,14 @@ def GetBatchContext(
             context["names"] = ParseNames(subtitles.settings.get("names", []))
 
         if subtitles.settings.get_bool("large_context_mode", False):
+            max_history_tokens = subtitles.settings.get_int(
+                "max_context_history_tokens", 10000
+            )
             history_lines = GetDetailedHistory(
                 subtitles,
                 scene_number,
                 batch_number,
-                subtitles.settings.get_int("max_context_history_tokens", 10000),
+                max_history_tokens if max_history_tokens is not None else 10000,
             )
         else:
             history_lines = GetHistory(subtitles, scene_number, batch_number, max_lines)

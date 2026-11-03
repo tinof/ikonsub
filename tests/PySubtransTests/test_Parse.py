@@ -201,7 +201,7 @@ class TestTranslationLinePatterns(LoggedTestCase):
 class TestTranslationParserSanitisation(LoggedTestCase):
     """Timing annotations echoed into the body must never reach the translation"""
 
-    def _parse(self, response: str) -> dict[int, str]:
+    def _parse(self, response: str) -> dict[int, str | None]:
         parser = TranslationParser(DEFAULT_TASK_TYPE, Options())
         parser.ProcessTranslation(Translation({"text": response}), validate=False)
         return {sub.number: sub.text for sub in parser.translations.values()}
@@ -254,7 +254,7 @@ class TestTranslationParserSanitisation(LoggedTestCase):
 class TestMergeTagMatching(LoggedTestCase):
     """A [MERGE a+b] tag either extends the line's timing or is dropped, never shipped as text"""
 
-    def _match(self, response: str) -> dict[int, tuple[str, float]]:
+    def _match(self, response: str) -> dict[int, tuple[str | None, float]]:
         originals = [
             SubtitleLine.Construct(
                 number,

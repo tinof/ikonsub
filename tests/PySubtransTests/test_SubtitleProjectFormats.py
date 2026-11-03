@@ -28,16 +28,16 @@ class DummyHandler(SubtitleFileHandler):
 
     SUPPORTED_EXTENSIONS: dict[str, int] = {".dummy": 1}
 
-    def parse_file(self, file_obj: TextIO) -> SubtitleData:  # pyright: ignore[reportUnusedParameter]
+    def parse_file(self, file_obj: TextIO) -> SubtitleData:
         return SubtitleData(lines=[], metadata={})
 
-    def parse_string(self, content: str) -> SubtitleData:  # pyright: ignore[reportUnusedParameter]
+    def parse_string(self, content: str) -> SubtitleData:
         return SubtitleData(lines=[], metadata={})
 
-    def compose(self, data: SubtitleData) -> str:  # pyright: ignore[reportUnusedParameter]
+    def compose(self, data: SubtitleData) -> str:
         return ""
 
-    def load_file(self, path: str) -> SubtitleData:  # pyright: ignore[reportUnusedParameter]
+    def load_file(self, path: str) -> SubtitleData:
         return SubtitleData(lines=[], metadata={})
 
 

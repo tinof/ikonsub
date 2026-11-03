@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -103,7 +104,7 @@ def parse_subtitles(path: Path) -> list[Cue]:
     return cues
 
 
-def _percentile(values: list[float], fraction: float) -> float:
+def _percentile(values: Sequence[float], fraction: float) -> float:
     if not values:
         return 0.0
     ordered = sorted(values)

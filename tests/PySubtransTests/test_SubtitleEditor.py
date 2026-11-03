@@ -468,7 +468,7 @@ class SubtitleEditorTests(SubtitleTestCase):
             for deletion in deletions:
                 self.assertLoggedEqual("deletion is tuple", tuple, type(deletion))
 
-                scene_num, batch_num, deleted_originals, deleted_translated = deletion  # type: ignore
+                scene_num, batch_num, deleted_originals, deleted_translated = deletion
                 self.assertLoggedGreater(
                     f"deleted originals from batch ({scene_num},{batch_num})",
                     len(deleted_originals),

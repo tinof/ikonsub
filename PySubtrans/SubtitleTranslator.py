@@ -235,6 +235,8 @@ class SubtitleTranslator:
 
         # Pre-compute all context from source text
         max_history_tokens = self.settings.get_int("max_context_history_tokens", 10000)
+        if max_history_tokens is None:
+            max_history_tokens = 10000
         all_contexts = PrecomputeAllBatchContexts(subtitles, max_history_tokens)
 
         # Collect all batches to translate

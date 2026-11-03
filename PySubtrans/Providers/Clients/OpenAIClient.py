@@ -3,7 +3,7 @@ import time
 from json import JSONDecodeError
 from typing import Any
 
-import openai  # type: ignore
+import openai
 
 from PySubtrans.Helpers import FormatMessages
 from PySubtrans.Helpers.Localization import _

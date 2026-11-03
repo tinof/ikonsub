@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import cast
+
+from google.genai.types import GenerateContentResponse
 
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Providers.Clients.GeminiClient import (
@@ -67,7 +70,9 @@ class GeminiUsageLedgerTests(LoggedTestCase):
         )
 
         with self.assertRaises(TranslationResponseError):
-            client._process_gemini_response(gcr, "gemini-3.5-flash-lite", "us")
+            client._process_gemini_response(
+                cast(GenerateContentResponse, gcr), "gemini-3.5-flash-lite", "us"
+            )
 
         rows = USAGE_LEDGER.snapshot()
         USAGE_LEDGER.reset()

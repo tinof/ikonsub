@@ -77,6 +77,7 @@ class LargeContextTests(SubtitleTestCase):
         """
         data = chinese_dinner_data
         originals: Subtitles = PrepareSubtitles(data, "original")
+        lines = originals.originals or []
 
         # Manually create a scene with translated lines
         scene = SubtitleScene()
@@ -84,12 +85,12 @@ class LargeContextTests(SubtitleTestCase):
         originals.scenes.append(scene)
 
         batch1 = scene.AddNewBatch()
-        batch1.originals = originals.originals[:10]
-        batch1.translated = originals.originals[:10]  # Fake translation
+        batch1.originals = lines[:10]
+        batch1.translated = lines[:10]  # Fake translation
         batch1.number = 1
 
         batch2 = scene.AddNewBatch()
-        batch2.originals = originals.originals[10:20]
+        batch2.originals = lines[10:20]
         batch2.number = 2
 
         # Enable large context mode

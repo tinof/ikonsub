@@ -420,7 +420,9 @@ class SubtitleProcessor:
             if self._is_continuation(
                 current_line, line, max_merged_duration, max_merged_length
             ):
-                current_line.text = _join_continuation(current_line.text, line.text)
+                current_line.text = _join_continuation(
+                    current_line.text or "", line.text or ""
+                )
                 current_line.end = line.end
             else:
                 merged_lines.append(current_line)
@@ -448,7 +450,9 @@ class SubtitleProcessor:
         if _ends_sentence(current_line.text_normalized):
             return False
 
-        if self.dialog_marker in current_line.text or self.dialog_marker in line.text:
+        if self.dialog_marker in (current_line.text or "") or self.dialog_marker in (
+            line.text or ""
+        ):
             return False
 
         # An italic cue is usually another voice (off-screen, phone, TV)

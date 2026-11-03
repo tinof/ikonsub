@@ -99,7 +99,7 @@ class OpenAIReasoningClientTests(LoggedTestCase):
     def test_convert_to_input_params_rejects_non_list(self) -> None:
         """Reject content that is not expressed as a list."""
         with self.assertRaises(TranslationImpossibleError) as context:
-            self.client._convert_to_input_params("invalid")  # type: ignore[arg-type]
+            self.client._convert_to_input_params("invalid")
         log_input_expected_error(
             "invalid", TranslationImpossibleError, context.exception
         )
@@ -155,7 +155,7 @@ class OpenAIReasoningClientTests(LoggedTestCase):
         """Reject content provided as a list of strings instead of message dicts."""
         invalid_messages = ["Hello", "World"]
         with self.assertRaises(TranslationImpossibleError) as context:
-            self.client._convert_to_input_params(invalid_messages)  # type: ignore[arg-type]
+            self.client._convert_to_input_params(invalid_messages)
         log_input_expected_error(
             invalid_messages, TranslationImpossibleError, context.exception
         )
@@ -307,7 +307,7 @@ class OpenAIReasoningFinishReasonTests(LoggedTestCase):
         ):
             with self.assertRaises(TranslationError) as context:
                 self.client._request_translation(_make_request())
-        translation = context.exception.translation  # type: ignore[attr-defined]
+        translation = context.exception.translation
         self.assertLoggedTrue(
             "reached token limit",
             translation is not None and translation.reached_token_limit,

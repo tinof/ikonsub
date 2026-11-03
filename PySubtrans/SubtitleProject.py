@@ -403,7 +403,7 @@ class SubtitleProject:
                 logging.info(_("Reading project data from {}").format(str(filepath)))
 
                 with open(filepath, encoding=default_encoding, newline="") as f:
-                    self.subtitles: Subtitles = json.load(f, cls=SubtitleDecoder)
+                    self.subtitles = json.load(f, cls=SubtitleDecoder)
 
                 with SubtitleEditor(self.subtitles) as editor:
                     editor.Sanitise()
@@ -449,7 +449,7 @@ class SubtitleProject:
             with open(projectfile, "w", encoding=default_encoding) as f:
                 project_json = json.dumps(
                     self.subtitles, cls=encoder_class, ensure_ascii=False, indent=4
-                )  # type: ignore
+                )
                 f.write(project_json)
 
     def TranslateSubtitles(self, translator: SubtitleTranslator) -> None:

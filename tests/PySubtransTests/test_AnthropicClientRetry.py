@@ -123,7 +123,8 @@ class AnthropicClientRetryTests(LoggedTestCase):
         client.client = sdk
         updates: list[str] = []
         request = TranslationRequest(
-            self._make_request().prompt, lambda update: updates.append(update.text)
+            self._make_request().prompt,
+            lambda update: updates.append(update.text or ""),
         )
         with patch("PySubtrans.Providers.Clients.AnthropicClient.time.sleep"):
             client._request_translation(request)

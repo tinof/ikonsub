@@ -68,8 +68,8 @@ class SSAFileHandler(SubtitleFileHandler):
             )
             return self._parse_subs(subs)
         except UnicodeDecodeError:
-            subs: pysubs2.SSAFile = pysubs2.SSAFile.load(
-                path, encoding=fallback_encoding, format_=format_hint, newline=""
+            subs = pysubs2.SSAFile.load(
+                path, encoding=fallback_encoding, format_=format_hint
             )
             return self._parse_subs(subs)
         except SubtitleParseError:

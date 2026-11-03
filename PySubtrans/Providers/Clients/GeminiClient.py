@@ -2,12 +2,12 @@ import json
 import logging
 import os
 import random
-import re
 import threading
 import time
 from pathlib import Path
 from typing import Any
 
+import regex
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai.types import (
@@ -24,6 +24,7 @@ from google.genai.types import (
     Part,
     SafetySetting,
     ThinkingConfig,
+    ThinkingLevel,
 )
 
 from PySubtrans.Helpers import FormatMessages
@@ -40,7 +41,7 @@ from PySubtrans.TranslationRequest import TranslationRequest
 
 
 def _is_gemini_3_or_later(model: str | None) -> bool:
-    return bool(re.search(r"gemini-[3-9]", model or "", re.IGNORECASE))
+    return bool(regex.search(r"gemini-[3-9]", model or "", regex.IGNORECASE))
 
 
 class GeminiUsageLedger:
@@ -188,7 +189,8 @@ class GeminiClient(TranslationClient):
         # dynamic thinking.
         if thinking_level:
             self.thinking_config: ThinkingConfig | None = ThinkingConfig(
-                include_thoughts=include_thoughts, thinking_level=thinking_level
+                include_thoughts=include_thoughts,
+                thinking_level=ThinkingLevel(thinking_level.upper()),
             )
         elif enable_thinking or thinking_budget >= 0:
             self.thinking_config = ThinkingConfig(
