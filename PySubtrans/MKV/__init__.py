@@ -1,5 +1,5 @@
 """
-MKV subtitle extraction and processing for llm-subtrans
+MKV subtitle extraction and processing for ikonsub
 """
 
 from .Config import MKVConfig, TranslationMode

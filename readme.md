@@ -1,8 +1,10 @@
-# LLM-Subtrans (CLI Edition)
+# ikonsub
 
 A specialized CLI subtitle translator for Linux and macOS. 
 
-This repository is a hard fork of [machinewrapped/llm-subtrans](https://github.com/machinewrapped/llm-subtrans), stripped of all Windows/GUI bloat and heavily optimized for terminal power users, automation, and superior linguistic quality.
+The name is a nod to Ioannis Ikonomou, the European Commission translator who speaks 32 languages.
+
+ikonsub is derived from [LLM-Subtrans](https://github.com/machinewrapped/llm-subtrans) by machinewrapped and is now developed separately. It drops the Windows/GUI parts and is optimized for terminal power users, automation, and superior linguistic quality.
 
 ## Key Features & Upgrades
 
@@ -23,11 +25,11 @@ Install using [uv](https://docs.astral.sh/uv/) (recommended):
 # Install uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install llm-subtrans with common providers
-uv tool install "llm-subtrans[openai,gemini,claude] @ git+https://github.com/tinof/llm-subtrans.git"
+# Install ikonsub with common providers
+uv tool install "ikonsub[openai,gemini,claude] @ git+https://github.com/tinof/ikonsub.git"
 
 # To update
-uv tool upgrade llm-subtrans
+uv tool upgrade ikonsub
 ```
 
 ## Workflows
@@ -151,8 +153,8 @@ export EXSUBS_FIXER_VERBOSE=1             # Verbose fix-finnish-subs output (dro
 This project uses `uv` for all development tasks.
 
 ```sh
-git clone https://github.com/tinof/llm-subtrans.git
-cd llm-subtrans
+git clone https://github.com/tinof/ikonsub.git
+cd ikonsub
 uv sync --all-extras --dev
 
 # Run tests

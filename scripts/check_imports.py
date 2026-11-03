@@ -15,10 +15,10 @@ def check_required_imports(modules: list[str], pip_extras: str | None = None) ->
         print()
         if pip_extras:
             print("Installation options:")
-            print(f"  - uv tool install 'llm-subtrans[{pip_extras}]'")
+            print(f"  - uv tool install 'ikonsub[{pip_extras}]'")
             print(f"  - uv sync --extra {pip_extras}")
         else:
             print("Installation options:")
-            print("  - uv tool install llm-subtrans")
+            print("  - uv tool install ikonsub")
             print("  - uv sync --all-extras")
         sys.exit(1)

@@ -35,7 +35,7 @@ EXAMPLES:
         --provider="OpenAI" --model="gpt-5-mini" --apikey="sk-..."
 
 There are many more options available, some of which are provider-specific. 
-See Options.py or the documentation at https://github.com/machinewrapped/llm-subtrans/ for more details.
+See Options.py or the documentation at https://github.com/tinof/ikonsub/ for more details.
 """
 
 from __future__ import annotations
