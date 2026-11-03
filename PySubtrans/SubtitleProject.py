@@ -6,7 +6,7 @@ import threading
 from PySubtrans.Helpers import GetOutputPath
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Helpers.Parse import ParseNames
-from PySubtrans.Options import Options, SettingsType
+from PySubtrans.Options import Options
 from PySubtrans.Substitutions import Substitutions
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleEditor import SubtitleEditor

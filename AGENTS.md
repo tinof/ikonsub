@@ -95,7 +95,6 @@ All of the above are also available as `make` targets:
   - `TestData/`: Realistic test data fixtures.
 - `instructions/`: Translation/system instruction templates shipped with the project.
 - `tools/`: Analysis utilities — `subtitle_metrics.py` reports line lengths, CPS, and cue-count deltas, and is how translation-quality changes are validated.
-- `locales/`: gettext catalogs for user-facing (`_()`) strings.
 - `docs/`: Architecture and contributor documentation.
 - `.github/workflows/`: CI and automation workflows.
 
@@ -111,8 +110,8 @@ All of the above are also available as `make` targets:
   - Example: `def func(self, param: str) -> str | None:`
 - **Docstrings**: Triple-quoted concise descriptions for classes and methods
 - **Error handling**: Custom exceptions, specific except blocks, input validation, logging.warning/error
-  - User-facing error messages should be localizable, using `_()`
-- **Threading safety**: Use locks (RLock/QRecursiveMutex) for thread-safe operations
+  - Wrap user-facing error messages in `_()` (`PySubtrans/Helpers/Localization.py`; a passthrough today, no catalogs ship)
+- **Threading safety**: Use locks (`threading.RLock`) for thread-safe operations
 - **Regular Expressions**: Use the `regex` module rather than standard `re`
 - **Unit Tests**: Extend `LoggedTestCase` from `PySubtrans.Helpers.TestCases` and prefer `assertLogged*` methods
 

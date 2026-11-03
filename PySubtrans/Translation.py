@@ -94,38 +94,6 @@ class Translation:
         if self.synopsis:
             self.content["synopsis"] = substitutions.PerformSubstitutions(self.synopsis)
 
-    def FormatResponse(self, include_text: bool = True) -> str:
-        """
-        Format the response for display
-        """
-        if not self.content:
-            return "No translation"
-
-        content_keys = [
-            k
-            for k in self.content.keys()
-            if k not in ["text", "summary", "scene", "names", "reasoning"]
-        ]
-        metadata = [
-            f"{k}: {self.content[k]}" for k in content_keys if self.content.get(k)
-        ]
-
-        if self.scene:
-            metadata.append(f"\nScene:\n{self.scene}")
-
-        if self.summary:
-            metadata.append(f"\nSummary:\n{self.summary}")
-
-        if self.names:
-            names = "\n".join(self.names)
-            metadata.append(f"\n\nNames:\n{names}")
-
-        if metadata:
-            metadata_text = "\n".join(metadata)
-            return f"{metadata_text}\n\n{self.text}" if include_text else metadata_text
-        else:
-            return self.text if include_text and self.text else "No metadata available"
-
     def ParseTranslation(
         self, text: str
     ) -> tuple[str, dict[str, str | list[str] | None]]:

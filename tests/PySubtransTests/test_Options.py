@@ -1,3 +1,6 @@
+import json
+import os
+import tempfile
 import unittest
 from datetime import timedelta
 from typing import TypeVar
@@ -39,7 +42,6 @@ class TestOptions(LoggedTestCase):
             ("target_language", "English"),
             ("scene_threshold", 60.0),
             ("max_newlines", 2),
-            ("ui_language", "en"),
             ("filler_words", standard_filler_words),
             ("provider_settings", {}),
         ]
@@ -56,7 +58,6 @@ class TestOptions(LoggedTestCase):
             ("break_long_lines", True),
             ("normalise_dialog_tags", True),
             ("remove_filler_words", True),
-            ("autosave", True),
         ]
 
         for key, expected in bool_test_cases:
@@ -64,13 +65,12 @@ class TestOptions(LoggedTestCase):
                 result = options.get(key)
                 self.assertLoggedEqual(f"options.get('{key}')", expected, result)
 
-        # Test None values
-        none_test_cases = ["last_used_path"]
-
-        for key in none_test_cases:
+        # GUI-era keys are no longer part of the defaults
+        for key in ("theme", "ui_language", "firstrun", "last_used_path", "autosave"):
             with self.subTest(key=key):
-                result = options.get(key)
-                self.assertLoggedIsNone(f"options.get('{key}')", result)
+                self.assertLoggedFalse(
+                    f"'{key}' in default_settings", key in default_settings
+                )
 
     def test_initialization_with_dict(self):
         """Test Options initialization with a dictionary"""
@@ -300,8 +300,6 @@ class TestOptions(LoggedTestCase):
         """Test various properties of Options"""
         options = Options(
             {
-                "theme": "dark",
-                "ui_language": "es",
                 "version": "1.0.0",
                 "provider": "Test Provider",
                 "provider_settings": {
@@ -313,8 +311,6 @@ class TestOptions(LoggedTestCase):
         )
 
         # Test basic properties
-        self.assertEqual(options.theme, "dark")
-        self.assertEqual(options.ui_language, "es")
         self.assertEqual(options.version, "1.0.0")
         self.assertEqual(options.provider, "Test Provider")
         self.assertEqual(options.target_language, "French")
@@ -427,13 +423,46 @@ class TestOptions(LoggedTestCase):
         mock_version.return_value = False  # Version is not less than current
 
         options = Options()
-        # Override firstrun to False to ensure LoadSettings proceeds
-        options.set("firstrun", False)
         result = options.LoadSettings()
 
         self.assertTrue(result)
         self.assertEqual(options.get("provider"), "Loaded Provider")
         self.assertEqual(options.get("target_language"), "Italian")
+
+    def test_load_settings_with_legacy_gui_keys(self):
+        """Settings files written by older versions may still hold GUI-only keys"""
+        legacy_settings = {
+            "provider": "Loaded Provider",
+            "target_language": "Italian",
+            "theme": "dark",
+            "ui_language": "es",
+            "firstrun": False,
+            "last_used_path": "/tmp/old",
+            "autosave": False,
+            "version": str(default_settings["version"]),
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = os.path.join(temp_dir, "settings.json")
+            with open(path, "w", encoding="utf-8") as settings_file:
+                json.dump(legacy_settings, settings_file)
+
+            with patch("PySubtrans.Options.settings_path", path):
+                options = Options()
+                result = options.LoadSettings()
+
+        self.assertLoggedTrue("LoadSettings succeeds", result)
+        self.assertLoggedEqual(
+            "provider loaded", "Loaded Provider", options.get("provider")
+        )
+        self.assertLoggedEqual(
+            "target_language loaded", "Italian", options.get("target_language")
+        )
+
+        saved = options.GetSettings()
+        for key in ("theme", "ui_language", "firstrun", "last_used_path", "autosave"):
+            with self.subTest(key=key):
+                self.assertLoggedFalse(f"'{key}' dropped on save", key in saved)
 
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.makedirs")
@@ -1147,15 +1176,15 @@ def get_optional_setting(
         return None
 
     # Map types to appropriate getter functions
-    if setting_type == bool:
+    if setting_type is bool:
         return settings.get_bool(key)  # type: ignore
-    elif setting_type == int:
+    elif setting_type is int:
         return settings.get_int(key)  # type: ignore
-    elif setting_type == float:
+    elif setting_type is float:
         return settings.get_float(key)  # type: ignore
-    elif setting_type == str:
+    elif setting_type is str:
         return settings.get_str(key)  # type: ignore
-    elif setting_type == list:
+    elif setting_type is list:
         return settings.get_list(key)  # type: ignore
     else:
         # For other types, try direct conversion

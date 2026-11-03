@@ -3,7 +3,7 @@ import logging
 
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Options import env_float, env_int
-from PySubtrans.SettingsType import GuiSettingsType, SettingsType
+from PySubtrans.SettingsType import SettingsType
 
 if not importlib.util.find_spec("anthropic"):
     logging.debug(
@@ -23,20 +23,9 @@ else:
         )
         from PySubtrans.TranslationClient import TranslationClient
         from PySubtrans.TranslationProvider import TranslationProvider
-        from PySubtrans.Options import SettingsType
 
         class Provider_Claude(TranslationProvider):
             name = "Claude"
-
-            information = """
-            <p>Select the <a href="https://docs.anthropic.com/claude/docs/models-overview">AI model</a> to use as a translator.</p>
-            <p>Note that each model has a <a href="https://docs.anthropic.com/claude/docs/models-overview">maximum tokens limit</a>.</p>
-            <p>See the <a href="https://docs.anthropic.com/claude/reference/rate-limits">Anthropic documentation</a> for information on rate limits and costs</p>
-            """
-
-            information_noapikey = """
-            <p>To use Claude you need to provide an <a href="https://console.anthropic.com/settings/keys">Anthropic API Key </a>.</p>
-            """
 
             default_model = "claude-haiku-5-5"
 
@@ -68,8 +57,6 @@ else:
                         }
                     ),
                 )
-
-                self.refresh_when_changed = ["api_key", "model", "thinking"]
 
                 self.claude_models = []
 
@@ -111,75 +98,6 @@ else:
                 models = [model.display_name for model in self.claude_models]
 
                 return models
-
-            def RefreshAvailableModels(self):
-                self._available_models = self.GetAvailableModels()
-
-            def GetInformation(self):
-                return self.information if self.api_key else self.information_noapikey
-
-            def GetOptions(self, settings: SettingsType) -> GuiSettingsType:
-                options: GuiSettingsType = {
-                    "api_key": (
-                        str,
-                        _(
-                            "An Anthropic Claude API key is required to use this provider (https://console.anthropic.com/settings/keys)"
-                        ),
-                    )
-                }
-
-                if not self.api_key:
-                    return options
-
-                self.RefreshAvailableModels()
-
-                if self.available_models:
-                    options.update(
-                        {
-                            "model": (
-                                self.available_models,
-                                _("The model to use for translations"),
-                            ),
-                            "stream_responses": (
-                                bool,
-                                _(
-                                    "Stream translations in realtime as they are generated"
-                                ),
-                            ),
-                            "rate_limit": (
-                                float,
-                                _(
-                                    "The rate limit to use for translations (default 60.0)"
-                                ),
-                            ),
-                            "max_tokens": (
-                                int,
-                                _(
-                                    "The maximum number of tokens to use for translations"
-                                ),
-                            ),
-                            "thinking": (
-                                bool,
-                                _("Enable thinking mode for translations"),
-                            ),
-                        }
-                    )
-
-                if self.allow_thinking:
-                    options["max_thinking_tokens"] = (
-                        int,
-                        _(
-                            "The maximum number of tokens to use for thinking (Claude 4.5 and older)"
-                        ),
-                    )
-
-                options["proxy"] = (
-                    str,
-                    _(
-                        "Optional proxy server to use for requests (e.g. https://api.not-anthropic.com/"
-                    ),
-                )
-                return options
 
             def _get_claude_models(self):
                 if not self.api_key:

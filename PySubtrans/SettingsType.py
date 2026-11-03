@@ -11,7 +11,6 @@ BasicType: TypeAlias = str | int | float | bool | list[str] | None
 SettingType: TypeAlias = (
     BasicType | dict[str, "SettingType"] | dict[str, "SettingsType"]
 )
-GuiSettingsType: TypeAlias = dict[str, tuple[type | str | list[str], str]]
 
 
 class SettingsError(Exception):

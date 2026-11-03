@@ -4,7 +4,7 @@ import os
 import subprocess
 
 from PySubtrans.Options import env_float, env_int
-from PySubtrans.SettingsType import GuiSettingsType, SettingsType
+from PySubtrans.SettingsType import SettingsType
 
 if not importlib.util.find_spec("google"):
     from PySubtrans.Helpers.Localization import _
@@ -19,7 +19,6 @@ else:
         from collections import defaultdict
 
         from google import genai
-        from google.genai import errors as genai_errors
         from google.genai.types import ListModelsConfig
 
         from PySubtrans.Helpers.Localization import _
@@ -54,18 +53,6 @@ else:
 
         class GeminiProvider(TranslationProvider):
             name = "Gemini"
-
-            information = """
-            <p>Select the <a href="https://ai.google.dev/models/gemini">AI model</a> to use as a translator.</p>
-            <p>Please note that the Gemini API can currently only be accessed from IP addresses in <a href="https://ai.google.dev/available_regions">certain regions</a>.</p>
-            <p>You must ensure that the Generative Language API is enabled for your project and/or API key.</p>
-            """
-
-            information_noapikey = """
-            <p>Please note that the Gemini API can currently only be accessed from IP addresses in <a href="https://ai.google.dev/available_regions">certain regions</a>.</p>
-            <p>To use this provider you need to create an API Key <a href="https://aistudio.google.com/app/apikey">Google AI Studio</a>
-            or a project on <a href="https://console.cloud.google.com/">Google Cloud Platform</a> and enable Generative Language API access.</p>
-            """
 
             def __init__(self, settings: SettingsType):
                 # 0 is a valid budget (thinking off), so only None falls back to -1
@@ -130,15 +117,6 @@ else:
                     ),
                 )
 
-                self.refresh_when_changed = [
-                    "api_key",
-                    "model",
-                    "enable_thinking",
-                    "large_context_mode",
-                    "use_vertex",
-                    "vertex_project",
-                    "vertex_location",
-                ]
                 self.gemini_models = []
 
             @property
@@ -174,111 +152,11 @@ else:
                 )
                 return GeminiClient(client_settings)
 
-            def GetOptions(self, settings: SettingsType) -> GuiSettingsType:
-                options: GuiSettingsType = {
-                    "use_vertex": (
-                        bool,
-                        _(
-                            "Use Vertex AI (requires Application Default Credentials and Vertex AI enabled in the selected project)"
-                        ),
-                    )
-                }
-
-                if not self.use_vertex:
-                    options["api_key"] = (
-                        str,
-                        _(
-                            "A Google Gemini API key is required to use this provider (https://makersuite.google.com/app/apikey)"
-                        ),
-                    )
-
-                if self.use_vertex:
-                    options["vertex_project"] = (
-                        str,
-                        _("Google Cloud project ID for Vertex AI requests"),
-                    )
-                    options["vertex_location"] = (
-                        str,
-                        _("Vertex AI region (e.g. us-central1)"),
-                    )
-
-                if self.use_vertex or self.api_key:
-                    try:
-                        models = self.available_models
-                        if models:
-                            options.update(
-                                {
-                                    "model": (
-                                        models,
-                                        "AI model to use as the translator"
-                                        if models
-                                        else "Unable to retrieve models",
-                                    ),
-                                    "stream_responses": (
-                                        bool,
-                                        _(
-                                            "Stream translations in realtime as they are generated"
-                                        ),
-                                    ),
-                                    "large_context_mode": (
-                                        bool,
-                                        _(
-                                            "Use large context mode (larger batches, richer history) - Recommended for Gemini 1.5/2.5"
-                                        ),
-                                    ),
-                                    "enable_thinking": (
-                                        bool,
-                                        _(
-                                            "Enable reasoning capabilities for more complex translations (increases cost)"
-                                        ),
-                                    ),
-                                    "temperature": (
-                                        float,
-                                        _(
-                                            "Amount of random variance to add to translations. Generally speaking, none is best"
-                                        ),
-                                    ),
-                                    "rate_limit": (
-                                        float,
-                                        _("Maximum API requests per minute."),
-                                    ),
-                                }
-                            )
-
-                            if self.settings.get_bool("enable_thinking", False):
-                                options["thinking_budget"] = (
-                                    int,
-                                    _(
-                                        "Token budget for reasoning (Gemini 2.5.x). Set to -1 for dynamic budget."
-                                    ),
-                                )
-
-                            options["thinking_level"] = (
-                                str,
-                                _(
-                                    "Reasoning effort for Gemini 3.x models (minimal/low/medium/high). Leave blank for the model default."
-                                ),
-                            )
-
-                        else:
-                            options["model"] = (
-                                ["Unable to retrieve models"],
-                                _("Check API key is authorized and try again"),
-                            )
-
-                    except genai_errors.APIError as e:
-                        options["model"] = (["Unable to access the Gemini API"], str(e))
-
-                return options
-
             def GetAvailableModels(self) -> list[str]:
                 if not self.gemini_models:
                     self.gemini_models = self._get_gemini_models()
 
                 return sorted([m.display_name for m in self.gemini_models])
-
-            def GetInformation(self) -> str:
-                return self.information if self.api_key else self.information_noapikey
 
             def ValidateSettings(self) -> bool:
                 """

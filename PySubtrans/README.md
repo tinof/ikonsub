@@ -6,14 +6,13 @@ This package makes these capabilities available as a library that you can incorp
 
 ## Installation
 
-This fork supports three providers: Gemini, OpenAI and Claude. Each provider's SDK is delivered as an optional extra, so that you only install the SDKs for providers you intend to use:
+PySubtrans is not published as a separate package. It ships inside ikonsub, so install ikonsub into your project with [uv](https://docs.astral.sh/uv/) and pick the provider extras you need (Gemini, OpenAI and Claude are supported):
 
 ```bash
-pip install pysubtrans[openai]
-pip install pysubtrans[gemini]
-pip install pysubtrans[claude]
-pip install pysubtrans[openai,gemini,claude]
+uv add "ikonsub[openai,gemini,claude] @ git+https://github.com/tinof/ikonsub.git"
 ```
+
+In a checkout of the repository, `uv sync --all-extras` installs everything.
 
 ## Quick start: translate a subtitle file
 
@@ -473,7 +472,7 @@ print(f"Final state: {subtitles.scenecount} scenes, {subtitles.linecount} lines"
 
 ### Batch automation example
 
-The [ikonsub](https://github.com/tinof/ikonsub)repository also includes [`scripts/batch_translate.py`](https://github.com/tinof/ikonsub/scripts/batch_translate.py) as a ready-to-run sample. The script shows how to:
+The [ikonsub](https://github.com/tinof/ikonsub) repository also includes [`scripts/batch_translate.py`](https://github.com/tinof/ikonsub/blob/main/scripts/batch_translate.py) as a ready-to-run sample. The script shows how to:
 
 - build an `Options` instance with `init_options`, including command line overrides for provider, model and preview settings,
 - walk a source directory using `SubtitleFormatRegistry.enumerate_formats()` to filter files that PySubtrans can translate,
@@ -483,10 +482,6 @@ The [ikonsub](https://github.com/tinof/ikonsub)repository also includes [`script
 ## If you need to know more
 
 For a more complete breakdown of the module layout and responsibilities of the various components of PySubtrans refer to the ikonsub [architecture guide](https://github.com/tinof/ikonsub/blob/main/docs/architecture.md).
-
-## Release History
-
-See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
 
 ## License
 

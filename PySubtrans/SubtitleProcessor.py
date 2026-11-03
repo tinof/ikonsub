@@ -20,7 +20,6 @@ from PySubtrans.Helpers.Text import (
     RemoveFillerWords,
     StripMarkup,
 )
-from PySubtrans.Options import SettingsType
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleLine import SubtitleLine
 
@@ -152,7 +151,7 @@ class SubtitleProcessor:
                 line_number += len(split_lines)
 
                 if len(split_lines) > 1:
-                    new_line_text = "".join([str(l) for l in split_lines])
+                    new_line_text = "".join([str(split_line) for split_line in split_lines])
                     logging.debug(
                         f"Split line {line.number} into {len(split_lines)} parts:\n{str(line)}-->\n{new_line_text}"
                     )

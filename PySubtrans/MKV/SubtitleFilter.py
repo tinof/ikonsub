@@ -21,7 +21,7 @@ def detect_and_convert_encoding(sub_file: Path) -> bool:
                 raw_data = f.read()
 
             detected = chardet.detect(raw_data)
-            encoding = detected.get("encoding", "utf-8")
+            encoding = detected.get("encoding") or "utf-8"
             confidence = detected.get("confidence", 0)
 
             logger.info(f"Detected encoding: {encoding} (confidence: {confidence:.2f})")

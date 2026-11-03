@@ -2,7 +2,10 @@ import tempfile
 from pathlib import Path
 
 from PySubtrans.Helpers.TestCases import LoggedTestCase
-from PySubtrans.MKV.SubtitleFilter import remove_markup_only_cues
+from PySubtrans.MKV.SubtitleFilter import (
+    detect_and_convert_encoding,
+    remove_markup_only_cues,
+)
 
 
 class TestRemoveMarkupOnlyCues(LoggedTestCase):
@@ -48,3 +51,21 @@ class TestRemoveMarkupOnlyCues(LoggedTestCase):
 
         self.assertLoggedEqual("cues removed", 0, removed)
         self.assertLoggedEqual("file content", content, result)
+
+
+class TestDetectAndConvertEncoding(LoggedTestCase):
+    """
+    Tests for the chardet-based encoding conversion
+    """
+
+    def test_undetectable_encoding_does_not_raise_into_fallback(self):
+        # chardet reports encoding None for this input; it must not reach .lower()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "binary.srt"
+            path.write_bytes(bytes(range(256)) * 4)
+
+            with self.assertNoLogs("exsubs", level="ERROR"):
+                result = detect_and_convert_encoding(path)
+
+            self.assertLoggedTrue("conversion succeeds", result)
+            path.read_text(encoding="utf-8")

@@ -43,10 +43,6 @@ class TranslationRequest:
         if self._has_complete_line_group():
             self._emit_partial_update()
 
-    def StoreContext(self, key: str, value: Any) -> None:
-        """Store additional context data"""
-        self.context[key] = value
-
     def GetContext(self, key: str, default: Any = None) -> Any:
         """Retrieve context data"""
         return self.context.get(key, default)
