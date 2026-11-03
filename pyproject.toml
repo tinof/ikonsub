@@ -7,36 +7,34 @@ name = "ikonsub"
 dynamic = ["version"]
 description = "ikonsub: CLI subtitle translator with MKV extraction and a Finnish readability pipeline, using LLMs (Linux/macOS)"
 readme = "readme.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 license = {file = "LICENSE"}
 dependencies = [
     "python-dotenv",
     "srt",
     "pysubs2",
     "regex",
-    "babel",
     "appdirs",
     "blinker",
-    "requests",
-    "setuptools",
-    "httpx",
-    "httpx[socks]",
+    "httpx[socks]>=0.28",
     "subtitle_filter",
     "chardet",
     "filelock",
     "rich",
     "ffmpeg-progress-yield",
-    "tqdm"
 ]
 
 [project.optional-dependencies]
-openai = ["openai"]
-gemini = ["google-genai", "google-api-core"]
-claude = ["anthropic"]
-mkv = ["subtitle_filter", "chardet", "filelock", "rich"]
+openai = ["openai>=3.42"]
+gemini = ["google-genai>=2.34"]
+claude = ["anthropic>=2.4"]
+# Kept empty so existing `ikonsub[mkv]` install commands still resolve; the MKV
+# dependencies are core dependencies.
+mkv = []
 
 [dependency-groups]
 dev = [
+    "babel",
     "basedpyright>=1.31.4",
     "pytest>=8.3.4",
     "ruff>=0.12.0",
