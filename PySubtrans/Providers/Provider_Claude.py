@@ -17,7 +17,10 @@ else:
         from copy import deepcopy
 
         from PySubtrans.Helpers.Localization import _
-        from PySubtrans.Providers.Clients.AnthropicClient import AnthropicClient
+        from PySubtrans.Providers.Clients.AnthropicClient import (
+            DEFAULT_MAX_TOKENS,
+            AnthropicClient,
+        )
         from PySubtrans.TranslationClient import TranslationClient
         from PySubtrans.TranslationProvider import TranslationProvider
         from PySubtrans.Options import SettingsType
@@ -52,7 +55,7 @@ else:
                             ),
                             "thinking": settings.get_bool("thinking", False),
                             "max_tokens": settings.get_int("max_tokens")
-                            or env_int("CLAUDE_MAX_TOKENS", 4096),
+                            or env_int("CLAUDE_MAX_TOKENS", DEFAULT_MAX_TOKENS),
                             "max_thinking_tokens": settings.get_int(
                                 "max_thinking_tokens"
                             )
@@ -80,7 +83,7 @@ else:
 
             @property
             def max_tokens(self) -> int:
-                return self.settings.get_int("max_tokens") or 8192
+                return self.settings.get_int("max_tokens") or DEFAULT_MAX_TOKENS
 
             def GetTranslationClient(self, settings: SettingsType) -> TranslationClient:
                 client_settings: dict = deepcopy(self.settings)
@@ -204,7 +207,11 @@ else:
                     if m.id == name or m.display_name == name:
                         return m.id
 
-                raise ValueError(f"Model {name} not found")
+                # The listing can fail or lag behind new models: let the API decide
+                logging.debug(
+                    f"Model {name} not in the Claude model list, using it as the model id"
+                )
+                return name
 
     except ImportError:
         logging.info(

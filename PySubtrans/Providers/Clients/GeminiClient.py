@@ -175,18 +175,22 @@ class GeminiClient(TranslationClient):
         # Configure reasoning parameters
         enable_thinking = settings.get_bool("enable_thinking", False)
         thinking_budget = settings.get_int("thinking_budget", -1)
+        if thinking_budget is None:
+            thinking_budget = -1
         thinking_level = settings.get_str("thinking_level")
         include_thoughts = False  # Gemini appends thoughts to the text if this is true, breaking the parser
 
         # Gemini 3.x models use the thinking_level enum (minimal/low/medium/high);
         # Gemini 2.5.x use the integer thinking_budget. They are mutually exclusive
-        # (sending both returns HTTP 400), so thinking_level wins when set. When
-        # neither is configured the model keeps its default dynamic thinking.
+        # (sending both returns HTTP 400), so thinking_level wins when set. An
+        # explicit budget (0 turns thinking off on 2.5 Flash) is sent even without
+        # enable_thinking. When neither is configured the model keeps its default
+        # dynamic thinking.
         if thinking_level:
             self.thinking_config: ThinkingConfig | None = ThinkingConfig(
                 include_thoughts=include_thoughts, thinking_level=thinking_level
             )
-        elif enable_thinking:
+        elif enable_thinking or thinking_budget >= 0:
             self.thinking_config = ThinkingConfig(
                 include_thoughts=include_thoughts, thinking_budget=thinking_budget
             )
@@ -380,8 +384,10 @@ class GeminiClient(TranslationClient):
             config=config,
         )
 
-        last_chunk = None
-        last_candidate: Candidate | None = None
+        # The final chunk may carry only finish_reason (no parts), so track the
+        # finish reason and safety ratings from every candidate, whatever its content
+        finish_reason: FinishReason | None = None
+        safety_ratings = None
         last_usage: GenerateContentResponseUsageMetadata | None = None
         first_prompt_feedback = (
             None  # when blocked, this can be set only on the first chunk
@@ -394,8 +400,9 @@ class GeminiClient(TranslationClient):
 
             chunk_text = ""
             for candidate in chunk.candidates or []:
+                finish_reason = candidate.finish_reason or finish_reason
+                safety_ratings = candidate.safety_ratings or safety_ratings
                 if candidate.content and candidate.content.parts:
-                    last_candidate = candidate
                     for part in candidate.content.parts:
                         if part.text:
                             if part.thought:
@@ -421,9 +428,8 @@ class GeminiClient(TranslationClient):
 
         synthetic_candidate = Candidate(
             content=Content(role="model", parts=parts),
-            finish_reason=getattr(last_candidate, "finish_reason", None)
-            or getattr(last_chunk, "finish_reason", None),
-            safety_ratings=getattr(last_candidate, "safety_ratings", None),
+            finish_reason=finish_reason,
+            safety_ratings=safety_ratings,
         )
 
         response = GenerateContentResponse(

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Providers.Clients.GeminiClient import GeminiClient
+from PySubtrans.Providers.Provider_Gemini import GeminiProvider
 from PySubtrans.SettingsType import SettingsType
 
 
@@ -45,3 +48,33 @@ class GeminiThinkingConfigTests(LoggedTestCase):
         assert client.thinking_config is not None
         self.assertLoggedEqual("thinking_budget", 1024, client.thinking_config.thinking_budget)
         self.assertLoggedIsNone("thinking_level", client.thinking_config.thinking_level)
+
+    def test_zero_budget_turns_thinking_off(self) -> None:
+        """thinking_budget=0 reaches ThinkingConfig as 0, not -1 (dynamic)."""
+        client = self._make_client(enable_thinking=True, thinking_budget=0)
+        assert client.thinking_config is not None
+        self.assertLoggedEqual("thinking_budget", 0, client.thinking_config.thinking_budget)
+
+    def test_explicit_budget_sent_without_enable_thinking(self) -> None:
+        """An explicit budget is sent even when enable_thinking is not set."""
+        client = self._make_client(thinking_budget=0)
+        self.assertLoggedIsNotNone("thinking_config", client.thinking_config)
+        assert client.thinking_config is not None
+        self.assertLoggedEqual("thinking_budget", 0, client.thinking_config.thinking_budget)
+
+    def test_provider_keeps_zero_budget(self) -> None:
+        """GEMINI_THINKING_BUDGET=0 survives the provider settings instead of becoming -1."""
+        with patch.dict("os.environ", {"GEMINI_THINKING_BUDGET": "0"}):
+            provider = GeminiProvider(SettingsType({}))
+        self.assertLoggedEqual(
+            "provider thinking_budget", 0, provider.settings.get_int("thinking_budget")
+        )
+
+    def test_provider_defaults_to_dynamic_budget(self) -> None:
+        """Without any budget configured the provider keeps -1 (dynamic)."""
+        with patch.dict("os.environ", {}) as environ:
+            environ.pop("GEMINI_THINKING_BUDGET", None)
+            provider = GeminiProvider(SettingsType({}))
+        self.assertLoggedEqual(
+            "provider thinking_budget", -1, provider.settings.get_int("thinking_budget")
+        )

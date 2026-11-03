@@ -37,7 +37,7 @@ def main() -> int:
         "--proxy",
         type=str,
         default=None,
-        help="SOCKS proxy URL (e.g., socks://127.0.0.1:1089)",
+        help="Proxy URL (e.g., socks5://127.0.0.1:1089 or http://127.0.0.1:8080)",
     )
     args = parser.parse_args()
 

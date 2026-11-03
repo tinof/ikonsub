@@ -18,7 +18,6 @@ from openai.types.responses import (
     ResponseFailedEvent,
     ResponseIncompleteEvent,
 )
-from openai.types.completion_usage import CompletionTokensDetails
 from openai.types.shared_params.reasoning import Reasoning
 from openai.types.shared.reasoning_effort import ReasoningEffort
 
@@ -94,16 +93,34 @@ class OpenAIReasoningClient(OpenAIClient):
         if self.aborted or not openai_response:
             return None
 
+        finish_reason = self._normalize_finish_reason(openai_response)
+
+        if finish_reason == "failed":
+            raise TranslationResponseError(
+                _("OpenAI response failed: {error}").format(
+                    error=self._get_response_error(openai_response)
+                ),
+                response=openai_response,
+            )
+
+        if finish_reason == "content_filter":
+            raise TranslationResponseError(
+                _("OpenAI response was blocked by the content filter"),
+                response=openai_response,
+            )
+
         # Build response with usage info and content
         response = self._extract_usage_info(openai_response)
-        text, reasoning = self._extract_text_content(openai_response)
 
-        response.update(
-            {
-                "text": text,
-                "finish_reason": self._normalize_finish_reason(openai_response),
-            }
-        )
+        try:
+            text, reasoning = self._extract_text_content(openai_response)
+        except TranslationResponseError:
+            # A truncated response may have no text yet: report the token limit instead
+            if finish_reason != "length":
+                raise
+            text, reasoning = "", None
+
+        response.update({"text": text, "finish_reason": finish_reason})
 
         if reasoning:
             response["reasoning"] = reasoning
@@ -182,19 +199,11 @@ class OpenAIReasoningClient(OpenAIClient):
                     return latest_response
 
                 elif isinstance(event, (ResponseFailedEvent, ResponseIncompleteEvent)):
+                    # The response carries status "failed" or "incomplete" and the
+                    # reason, which _send_messages turns into an error or a token limit
                     latest_response = event.response or latest_response
-                    stream_error = getattr(event, "error", None)
                     if not latest_response:
                         break
-                    self._emit_warning(
-                        _(
-                            "Streaming ended with an error but OpenAI returned a response: {error}"
-                        ).format(
-                            error=str(stream_error)
-                            if stream_error
-                            else _("unknown error")
-                        )
-                    )
                     return latest_response
 
         except RateLimitError:
@@ -277,42 +286,37 @@ class OpenAIReasoningClient(OpenAIClient):
         # ResponseInputParam is a List union type, so we cast our list to match
         return cast(ResponseInputParam, input_params)
 
-    def _extract_text_content(self, openai_response: responses_types.Response):
-        """Extract text content from OpenAI Responses API structure"""
-        # Standard response structure: response.output[0].content[0].text
+    def _extract_text_content(
+        self, openai_response: responses_types.Response
+    ) -> tuple[str, str | None]:
+        """
+        Extract the answer text from message items and the reasoning summary from
+        reasoning items. Reasoning content never goes into the translation text.
+        """
         output = getattr(openai_response, "output", None)
         if output and len(output) > 0:
             text_parts: list[str] = []
             reasoning_parts: list[str] = []
 
-            for output_item in openai_response.output:
-                content = getattr(output_item, "content", None)
-                if not content:
+            for output_item in output:
+                item_type = getattr(output_item, "type", None)
+
+                if item_type == "reasoning":
+                    for summary in getattr(output_item, "summary", None) or []:
+                        summary_text = getattr(summary, "text", None)
+                        if summary_text:
+                            reasoning_parts.append(summary_text)
                     continue
 
-                for content_item in content:
+                if item_type != "message":
+                    continue
+
+                for content_item in getattr(output_item, "content", None) or []:
+                    if getattr(content_item, "type", None) != "output_text":
+                        continue
                     text_value = getattr(content_item, "text", None)
                     if text_value:
                         text_parts.append(text_value)
-
-                    reasoning_value = getattr(content_item, "reasoning", None)
-                    if not reasoning_value:
-                        continue
-
-                    if isinstance(reasoning_value, list):
-                        for reasoning_part in reasoning_value:
-                            if isinstance(reasoning_part, str):
-                                reasoning_parts.append(reasoning_part)
-                            elif hasattr(reasoning_part, "text") and getattr(
-                                reasoning_part, "text"
-                            ):
-                                reasoning_parts.append(getattr(reasoning_part, "text"))
-                            else:
-                                reasoning_parts.append(str(reasoning_part))
-                    elif isinstance(reasoning_value, str):
-                        reasoning_parts.append(reasoning_value)
-                    else:
-                        reasoning_parts.append(str(reasoning_value))
 
             if text_parts:
                 text = linesep.join(text_parts)
@@ -329,43 +333,43 @@ class OpenAIReasoningClient(OpenAIClient):
         """Extract token usage information with proper type safety"""
         usage = openai_response.usage
         if not usage:
-            return {"response_time": getattr(openai_response, "response_ms", 0)}
+            return {}
 
-        info = {
+        info: dict[str, int | None] = {
             "prompt_tokens": usage.input_tokens,
             "output_tokens": usage.output_tokens,
             "total_tokens": usage.total_tokens,
-            "response_time": getattr(openai_response, "response_ms", 0),
         }
 
         # Add reasoning-specific tokens from output details
-        if hasattr(usage, "output_tokens_details") and usage.output_tokens_details:
-            details = usage.output_tokens_details
-            if hasattr(details, "reasoning_tokens"):
-                info["reasoning_tokens"] = details.reasoning_tokens
-
-        # Handle legacy completion token details for backward compatibility
-        legacy_details = getattr(usage, "completion_tokens_details", None)
-        if isinstance(legacy_details, CompletionTokensDetails):
-            if legacy_details.reasoning_tokens is not None:
-                info["reasoning_tokens"] = legacy_details.reasoning_tokens
-            if legacy_details.accepted_prediction_tokens is not None:
-                info["accepted_prediction_tokens"] = (
-                    legacy_details.accepted_prediction_tokens
-                )
-            if legacy_details.rejected_prediction_tokens is not None:
-                info["rejected_prediction_tokens"] = (
-                    legacy_details.rejected_prediction_tokens
-                )
+        details = getattr(usage, "output_tokens_details", None)
+        if details is not None:
+            info["reasoning_tokens"] = getattr(details, "reasoning_tokens", None)
 
         return {k: v for k, v in info.items() if v is not None}
 
-    def _normalize_finish_reason(self, result):
-        """Normalize finish reason to legacy format"""
-        finish = getattr(result, "stop_reason", None) or getattr(
-            result, "finish_reason", None
-        )
-        return "length" if finish == "max_output_tokens" else finish
+    def _normalize_finish_reason(self, result: responses_types.Response) -> str | None:
+        """
+        Map the Responses API status to the finish reasons Translation understands.
+
+        The Responses API has no finish_reason: a truncated answer has status
+        "incomplete" and incomplete_details.reason "max_output_tokens".
+        """
+        status = getattr(result, "status", None)
+        if status != "incomplete":
+            return status
+
+        details = getattr(result, "incomplete_details", None)
+        reason = getattr(details, "reason", None)
+        if reason == "max_output_tokens":
+            return "length"
+        return reason or status
+
+    def _get_response_error(self, result: responses_types.Response) -> str:
+        """Describe the error attached to a failed response"""
+        error = getattr(result, "error", None)
+        message = getattr(error, "message", None)
+        return str(message or error or _("unknown error"))
 
     def _raise_for_openai_error(self, error: OpenAIError) -> None:
         """Map OpenAI exceptions to actionable translation errors."""

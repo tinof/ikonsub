@@ -5,7 +5,6 @@ from typing import Any
 
 from json import JSONDecodeError
 import openai  # type: ignore
-import httpx
 
 from PySubtrans.Helpers import FormatMessages
 from PySubtrans.Helpers.Localization import _
@@ -154,7 +153,7 @@ class OpenAIClient(TranslationClient):
                     else:
                         raise TranslationImpossibleError(
                             _("Account quota reached, please upgrade your plan")
-                        )
+                        ) from e
 
             except openai.APITimeoutError:
                 if retry < self.max_retries and not self.aborted:
@@ -219,12 +218,11 @@ class OpenAIClient(TranslationClient):
             )
 
     def _create_client(self) -> None:
-        http_client: httpx.Client | None = None
+        http_client: openai.DefaultHttpxClient | None = None
         proxy = self.settings.get_str("proxy")
         if proxy:
-            # Use httpx with SOCKS proxy support
-            proxies = {"http://": proxy, "https://": proxy}
-            http_client = httpx.Client(proxies=proxies)  # type: ignore
+            # http(s)://, socks5:// or socks5h:// (SOCKS needs httpx[socks])
+            http_client = openai.DefaultHttpxClient(proxy=proxy)
 
         elif self.settings.get_bool("use_httpx"):
             if self.api_base is None:
@@ -232,7 +230,9 @@ class OpenAIClient(TranslationClient):
                     _("API base must be set when using httpx")
                 )
 
-            http_client = httpx.Client(base_url=self.api_base, follow_redirects=True)
+            http_client = openai.DefaultHttpxClient(
+                base_url=self.api_base, follow_redirects=True
+            )
 
         self.client = openai.OpenAI(
             api_key=openai.api_key,

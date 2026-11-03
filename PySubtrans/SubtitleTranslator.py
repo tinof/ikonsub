@@ -110,7 +110,7 @@ class SubtitleTranslator:
             raise ProviderError(
                 _("Unable to create provider client: {error}").format(error=str(e)),
                 translation_provider,
-            )
+            ) from e
 
         if not self.client:
             raise ProviderError(_("Unable to create translation client"), translation_provider)
@@ -262,9 +262,17 @@ class SubtitleTranslator:
                 for scene, batch, context in batches_to_translate
             }
 
-            # Process results as they complete
+            def cancel_pending() -> None:
+                # Future.cancel, not shutdown(cancel_futures=True): a future removed from
+                # the queue never notifies as_completed, so the loop below would hang.
+                for pending in future_to_batch:
+                    pending.cancel()
+
+            # Process results as they complete. Every early exit cancels the queued
+            # batches: leaving the with-block otherwise waits for all of them to run.
             for future in as_completed(future_to_batch):
                 if self.aborted:
+                    cancel_pending()
                     break
 
                 if future.cancelled():
@@ -279,8 +287,7 @@ class SubtitleTranslator:
                     batch.errors.append(e)
                     self.errors.append(e)
                     impossible = impossible or e
-                    for pending in future_to_batch:
-                        pending.cancel()
+                    cancel_pending()
                 except TranslationError as e:
                     self._emit_warning(
                         _("Error translating scene {scene} batch {batch}: {error}").format(
@@ -290,6 +297,7 @@ class SubtitleTranslator:
                     batch.errors.append(e)
                     self.errors.append(e)
                     if self.stop_on_error:
+                        cancel_pending()
                         break
                 except Exception as e:
                     self._emit_error(
@@ -299,6 +307,7 @@ class SubtitleTranslator:
                     )
                     self.errors.append(TranslationError(str(e)))
                     if self.stop_on_error:
+                        cancel_pending()
                         break
 
         if impossible is not None:
@@ -306,7 +315,7 @@ class SubtitleTranslator:
 
         # Emit scene_translated events for all scenes that had batches translated
         translated_scenes = set()
-        for scene, batch, _ctx in batches_to_translate:
+        for scene, _batch, _ctx in batches_to_translate:
             if scene.number not in translated_scenes:
                 self.events.scene_translated.send(self, scene=scene)
                 translated_scenes.add(scene.number)

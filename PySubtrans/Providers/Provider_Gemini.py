@@ -68,6 +68,10 @@ else:
             """
 
             def __init__(self, settings: SettingsType):
+                # 0 is a valid budget (thinking off), so only None falls back to -1
+                thinking_budget = settings.get_int(
+                    "thinking_budget", env_int("GEMINI_THINKING_BUDGET", -1)
+                )
                 super().__init__(
                     self.name,
                     SettingsType(
@@ -89,10 +93,9 @@ else:
                                 os.getenv("GEMINI_LARGE_CONTEXT_MODE", "True")
                                 == "True",
                             ),
-                            "thinking_budget": settings.get_int(
-                                "thinking_budget", env_int("GEMINI_THINKING_BUDGET", -1)
-                            )
-                            or -1,
+                            "thinking_budget": -1
+                            if thinking_budget is None
+                            else thinking_budget,
                             "thinking_level": settings.get_str("thinking_level")
                             or os.getenv("GEMINI_THINKING_LEVEL"),
                             "temperature": settings.get_float(
