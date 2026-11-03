@@ -434,7 +434,10 @@ class TestTextHelpers(LoggedTestCase):
 
 class TestConvertEscapedNewlines(LoggedTestCase):
     cases = [
-        ("Sopimus estää menemästä\\nlehdistöön.", "Sopimus estää menemästä\nlehdistöön."),
+        (
+            "Sopimus estää menemästä\\nlehdistöön.",
+            "Sopimus estää menemästä\nlehdistöön.",
+        ),
         ("Yksi \\N kaksi", "Yksi\nkaksi"),
         ("Ei mitään\nmuutettavaa", "Ei mitään\nmuutettavaa"),
         (None, None),
@@ -444,7 +447,10 @@ class TestConvertEscapedNewlines(LoggedTestCase):
         for text, expected in self.cases:
             with self.subTest(text=text):
                 self.assertLoggedEqual(
-                    "unescaped", expected, ConvertEscapedNewlines(text), input_value=text
+                    "unescaped",
+                    expected,
+                    ConvertEscapedNewlines(text),
+                    input_value=text,
                 )
 
 
@@ -496,7 +502,10 @@ class TestRemovePromptMarkers(LoggedTestCase):
         ("Älä yritä. Translation> Älä", "Älä yritä. Älä"),
         ("Original>\nDon't try.\nTranslation>\nÄlä yritä.", "Älä yritä."),
         # A missing "#N" header: the next cue's source and translation leaked into this body
-        ("Älä yritä.\nOriginal>\nDon't pretend.\nTranslation>\nÄlä teeskentele.", "Älä yritä."),
+        (
+            "Älä yritä.\nOriginal>\nDon't pretend.\nTranslation>\nÄlä teeskentele.",
+            "Älä yritä.",
+        ),
         ("Original>\nDon't try.", ""),
         ("- Kuka?\n- Translation>", "- Kuka?"),
         ("Hän sanoi -> ei", "Hän sanoi -> ei"),

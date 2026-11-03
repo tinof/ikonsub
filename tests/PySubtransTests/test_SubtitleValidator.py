@@ -197,6 +197,7 @@ class TestSubtitleValidator(LoggedTestCase):
         errors = validator.ValidateTranslations([line_too_fast])
         self.assertLoggedEqual("error_count", 0, len(errors))
 
+
 class TestLeakedAnnotationValidation(LoggedTestCase):
     def _validate(self, text: str) -> list[Exception]:
         validator = SubtitleValidator(Options())

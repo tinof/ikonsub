@@ -50,7 +50,9 @@ class VttFileHandler(SubtitleFileHandler):
         except UnicodeDecodeError:
             raise  # Re-raise UnicodeDecodeError for fallback handling
         except Exception as e:
-            raise SubtitleParseError(_("Failed to parse file: {}").format(str(e)), e) from e
+            raise SubtitleParseError(
+                _("Failed to parse file: {}").format(str(e)), e
+            ) from e
 
     def parse_string(self, content: str) -> SubtitleData:
         """Parse string content and return SubtitleData with lines and metadata."""
@@ -72,7 +74,9 @@ class VttFileHandler(SubtitleFileHandler):
         except Exception as e:
             if isinstance(e, SubtitleParseError):
                 raise
-            raise SubtitleParseError(_("Failed to parse content: {}").format(str(e)), e) from e
+            raise SubtitleParseError(
+                _("Failed to parse content: {}").format(str(e)), e
+            ) from e
 
     def compose(self, data: SubtitleData) -> str:
         """Compose subtitle lines into WebVTT format string."""

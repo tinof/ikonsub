@@ -42,9 +42,7 @@ class LineTimingAnnotationTests(LoggedTestCase):
     def test_annotation_reports_duration_and_budget(self):
         batch_prompt = self._prompt(True).GenerateBatchPrompt(self.lines)
         # 2.4s at 15 cps -> 36 characters
-        self.assertLoggedIn(
-            "annotated header", "#1 [2.4s, max 36 chars]", batch_prompt
-        )
+        self.assertLoggedIn("annotated header", "#1 [2.4s, max 36 chars]", batch_prompt)
 
     def test_budget_has_a_floor_for_very_short_lines(self):
         batch_prompt = self._prompt(True).GenerateBatchPrompt(self.lines)

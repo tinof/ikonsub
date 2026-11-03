@@ -217,5 +217,7 @@ class TranslationClient:
 
         sleep_time = start_time - now
         if sleep_time > 0.0:
-            logging.debug(f"Sleeping for {sleep_time:.2f} seconds to respect rate limit")
+            logging.debug(
+                f"Sleeping for {sleep_time:.2f} seconds to respect rate limit"
+            )
             self._abort_event.wait(sleep_time)

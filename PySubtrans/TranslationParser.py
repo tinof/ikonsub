@@ -201,11 +201,17 @@ class TranslationParser:
                     # The tag is never subtitle text, whether or not the merge can be applied.
                     # A dialog dash written before the tag is kept unless the text repeats it.
                     merged_text = merge_match.group("text")
-                    if merge_match.group("dash") and not merged_text.startswith(("-", "–", "—")):
+                    if merge_match.group("dash") and not merged_text.startswith(
+                        ("-", "–", "—")
+                    ):
                         merged_text = merge_match.group("dash") + merged_text
                     translation.text = merged_text
 
-                    if start_id == item.number and end_id in original_map and end_id > start_id:
+                    if (
+                        start_id == item.number
+                        and end_id in original_map
+                        and end_id > start_id
+                    ):
                         merge_applied = True
                         # Calculate new end time
                         end_line = original_map[end_id]
@@ -227,7 +233,9 @@ class TranslationParser:
 
                 # A tag anywhere else (a second dialog line, inside italics) cannot apply a merge
                 if translation.text and "[MERGE" in translation.text:
-                    translation.text = merge_tag_pattern.sub("", translation.text).strip()
+                    translation.text = merge_tag_pattern.sub(
+                        "", translation.text
+                    ).strip()
 
                 translation.number = item.number
                 translation.start = item.start or timedelta(seconds=0)

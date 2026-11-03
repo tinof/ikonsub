@@ -62,7 +62,9 @@ FLASH_MAX_BATCH_SIZE = 220
 GEMINI_PARALLEL_MAX_BATCH_SIZE = 150
 GEMINI_PARALLEL_WORKERS = 8
 
-LANGUAGE_SUFFIX_PATTERN = regex.compile(r"^\.[a-z]{2,3}(?:-[a-z]{2,3})?$", regex.IGNORECASE)
+LANGUAGE_SUFFIX_PATTERN = regex.compile(
+    r"^\.[a-z]{2,3}(?:-[a-z]{2,3})?$", regex.IGNORECASE
+)
 
 # Gemini 3.x and later should be left at the default temperature
 GEMINI_3_MODEL_PATTERN = regex.compile(r"gemini-[3-9]", regex.IGNORECASE)
@@ -157,7 +159,9 @@ def _normalise_translated_output(
     ]
     if target_language:
         candidates.append(
-            subtitle_file.with_name(f"{stem_with_lang}.{target_language.lower()}{suffix}")
+            subtitle_file.with_name(
+                f"{stem_with_lang}.{target_language.lower()}{suffix}"
+            )
         )
     seen: set[str] = set()
     ordered: list[Path] = []
@@ -170,10 +174,14 @@ def _normalise_translated_output(
         if c.exists():
             try:
                 c.rename(desired_file)
-                logger.info(f"Renamed translated subtitles from {c.name} to {desired_file.name}")
+                logger.info(
+                    f"Renamed translated subtitles from {c.name} to {desired_file.name}"
+                )
                 return desired_file
             except Exception as exc:
-                logger.error(f"Failed to rename translated subtitles {c} -> {desired_file}: {exc}")
+                logger.error(
+                    f"Failed to rename translated subtitles {c} -> {desired_file}: {exc}"
+                )
                 return c
     return desired_file
 
@@ -184,7 +192,12 @@ def _sisusub_ai_review_enabled() -> bool:
     The AI pass made one Gemini call per flagged cue and took ~12 minutes and ~$1.50 per
     episode; see sisusub's docs/pipeline-review-2026-10-23.md. The deterministic fixes still run.
     """
-    return (os.getenv("SISUSUB_AI_REVIEW") or "").strip().lower() in {"1", "true", "yes", "on"}
+    return (os.getenv("SISUSUB_AI_REVIEW") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def _output_signature(path: Path) -> tuple[int, int] | None:
@@ -201,7 +214,9 @@ def _set_aside_partial_output(translated_file: Path) -> Path | None:
     if not translated_file.exists():
         return None
 
-    partial_file = translated_file.with_name(translated_file.name + PARTIAL_OUTPUT_SUFFIX)
+    partial_file = translated_file.with_name(
+        translated_file.name + PARTIAL_OUTPUT_SUFFIX
+    )
     try:
         translated_file.replace(partial_file)
     except OSError as e:
@@ -213,14 +228,20 @@ def _set_aside_partial_output(translated_file: Path) -> Path | None:
         try:
             translated_file.unlink()
         except OSError:
-            logger.error(_("Partial translation left at {file}").format(file=translated_file))
+            logger.error(
+                _("Partial translation left at {file}").format(file=translated_file)
+            )
         return None
 
-    logger.warning(_("Partial translation kept as {file}").format(file=partial_file.name))
+    logger.warning(
+        _("Partial translation kept as {file}").format(file=partial_file.name)
+    )
     return partial_file
 
 
-def _check_translation_complete(project: SubtitleProject, translator: SubtitleTranslator) -> None:
+def _check_translation_complete(
+    project: SubtitleProject, translator: SubtitleTranslator
+) -> None:
     """Raise IncompleteTranslationError unless every line has a translation."""
     if translator.aborted:
         raise IncompleteTranslationError(_("Translation was aborted"))
@@ -231,14 +252,18 @@ def _check_translation_complete(project: SubtitleProject, translator: SubtitleTr
 
     total = subtitles.linecount if subtitles else 0
     missing = (
-        sum(len(batch.untranslated) for scene in subtitles.scenes for batch in scene.batches)
+        sum(
+            len(batch.untranslated)
+            for scene in subtitles.scenes
+            for batch in scene.batches
+        )
         if subtitles and subtitles.scenes
         else total
     )
     raise IncompleteTranslationError(
-        _("Translation incomplete: {missing} of {total} lines untranslated, {errors} errors").format(
-            missing=missing, total=total, errors=len(translator.errors)
-        )
+        _(
+            "Translation incomplete: {missing} of {total} lines untranslated, {errors} errors"
+        ).format(missing=missing, total=total, errors=len(translator.errors))
     )
 
 
@@ -253,7 +278,9 @@ def _fix_finnish_subtitles(translated_file: Path) -> bool:
         logger.warning(f"Cannot fix subtitles; {translated_file} does not exist")
         return False
 
-    report_file = translated_file.with_stem(translated_file.stem + "_unfixed").with_suffix(".txt")
+    report_file = translated_file.with_stem(
+        translated_file.stem + "_unfixed"
+    ).with_suffix(".txt")
 
     command = [
         FINNISH_FIXER_COMMAND,
@@ -280,9 +307,9 @@ def _fix_finnish_subtitles(translated_file: Path) -> bool:
         logger.info(f"Fixed subtitles with fix-finnish-subs: {translated_file.name}")
     else:
         logger.error(
-            _("fix-finnish-subs returned non-zero exit status {status} for {file}").format(
-                status=result.returncode, file=translated_file
-            )
+            _(
+                "fix-finnish-subs returned non-zero exit status {status} for {file}"
+            ).format(status=result.returncode, file=translated_file)
         )
 
     if report_file.exists():
@@ -328,8 +355,12 @@ class TranslationMetrics:
 
         avg_lines = statistics.fmean(self._line_counts) if self._line_counts else 0.0
         max_lines = max(self._line_counts) if self._line_counts else 0
-        avg_prompt = statistics.fmean(self._prompt_tokens) if self._prompt_tokens else 0.0
-        avg_output = statistics.fmean(self._output_tokens) if self._output_tokens else 0.0
+        avg_prompt = (
+            statistics.fmean(self._prompt_tokens) if self._prompt_tokens else 0.0
+        )
+        avg_output = (
+            statistics.fmean(self._output_tokens) if self._output_tokens else 0.0
+        )
         avg_total = statistics.fmean(self._total_tokens) if self._total_tokens else 0.0
         max_total = max(self._total_tokens) if self._total_tokens else 0
 
@@ -341,14 +372,18 @@ class TranslationMetrics:
         console.print(
             f"Batches translated: {self._batch_count}/{expected_batches or self._batch_count}"
         )
-        console.print(f"Lines processed: {self._total_lines}/{expected_lines or self._total_lines}")
+        console.print(
+            f"Lines processed: {self._total_lines}/{expected_lines or self._total_lines}"
+        )
         console.print(f"Lines per batch (avg/max): {avg_lines:.1f}/{max_lines}")
         if self._total_tokens:
             console.print(
                 f"Token usage avg (prompt/output/total): {avg_prompt:.0f}/{avg_output:.0f}/{avg_total:.0f}"
             )
             console.print(f"Peak total tokens: {max_total}")
-        console.print(f"Throughput: {lines_per_min:.1f} lines/min ({elapsed_seconds:.1f}s elapsed)")
+        console.print(
+            f"Throughput: {lines_per_min:.1f} lines/min ({elapsed_seconds:.1f}s elapsed)"
+        )
         if rate_limit:
             console.print(f"Applied rate limit: {rate_limit:.0f} RPM")
 
@@ -490,7 +525,11 @@ def _vertex_project() -> str | None:
 
 
 def _vertex_location() -> str | None:
-    return os.getenv("VERTEX_LOCATION") or os.getenv("GEMINI_VERTEX_LOCATION") or "europe-west1"
+    return (
+        os.getenv("VERTEX_LOCATION")
+        or os.getenv("GEMINI_VERTEX_LOCATION")
+        or "europe-west1"
+    )
 
 
 def _env_default_mode() -> TranslationMode | None:
@@ -565,19 +604,33 @@ def translate_srt_file(
         if not large_context_mode:
             normalised = _normalise_model_name(model)
             if normalised and GEMINI_FLASH_MODEL_SUFFIX in normalised:
-                scene_threshold = float(os.getenv("SCENE_THRESHOLD") or FLASH_SCENE_THRESHOLD)
-                min_batch_size = int(os.getenv("MIN_BATCH_SIZE") or FLASH_MIN_BATCH_SIZE)
-                max_batch_size = int(os.getenv("MAX_BATCH_SIZE") or FLASH_MAX_BATCH_SIZE)
+                scene_threshold = float(
+                    os.getenv("SCENE_THRESHOLD") or FLASH_SCENE_THRESHOLD
+                )
+                min_batch_size = int(
+                    os.getenv("MIN_BATCH_SIZE") or FLASH_MIN_BATCH_SIZE
+                )
+                max_batch_size = int(
+                    os.getenv("MAX_BATCH_SIZE") or FLASH_MAX_BATCH_SIZE
+                )
             else:
-                scene_threshold = float(os.getenv("SCENE_THRESHOLD") or GEMINI_SCENE_THRESHOLD)
-                min_batch_size = int(os.getenv("MIN_BATCH_SIZE") or GEMINI_MIN_BATCH_SIZE)
-                max_batch_size = int(os.getenv("MAX_BATCH_SIZE") or GEMINI_MAX_BATCH_SIZE)
+                scene_threshold = float(
+                    os.getenv("SCENE_THRESHOLD") or GEMINI_SCENE_THRESHOLD
+                )
+                min_batch_size = int(
+                    os.getenv("MIN_BATCH_SIZE") or GEMINI_MIN_BATCH_SIZE
+                )
+                max_batch_size = int(
+                    os.getenv("MAX_BATCH_SIZE") or GEMINI_MAX_BATCH_SIZE
+                )
         else:
             # If large context mode is on, let SubtitleBatcher handle defaults (or use env overrides)
             if not os.getenv("SCENE_THRESHOLD"):
                 scene_threshold = 300.0
             if not os.getenv("MAX_BATCH_SIZE"):
-                max_batch_size = GEMINI_PARALLEL_MAX_BATCH_SIZE if _parallel_batches(mode) else 600
+                max_batch_size = (
+                    GEMINI_PARALLEL_MAX_BATCH_SIZE if _parallel_batches(mode) else 600
+                )
             if not os.getenv("MIN_BATCH_SIZE"):
                 min_batch_size = 1
 
@@ -598,7 +651,9 @@ def translate_srt_file(
         max_batch_size = int(os.getenv("MAX_BATCH_SIZE") or 100)
         max_context_summaries = int(os.getenv("MAX_CONTEXT_SUMMARIES") or 6)
         try:
-            base_rate = os.getenv("OPENAI_RATE_LIMIT") or MODE_TO_RATE_LIMIT.get(mode, "")
+            base_rate = os.getenv("OPENAI_RATE_LIMIT") or MODE_TO_RATE_LIMIT.get(
+                mode, ""
+            )
             rate_limit = float(base_rate) if base_rate else None
         except ValueError:
             rate_limit = None
@@ -684,7 +739,9 @@ def translate_srt_file(
         # Batches sent concurrently, each with source-text context instead of the
         # translated summaries of earlier batches (SubtitleTranslator._translate_parallel).
         "parallel_batches": _parallel_batches(mode),
-        "max_parallel_workers": int(os.getenv("MAX_PARALLEL_WORKERS") or GEMINI_PARALLEL_WORKERS),
+        "max_parallel_workers": int(
+            os.getenv("MAX_PARALLEL_WORKERS") or GEMINI_PARALLEL_WORKERS
+        ),
     }
     if rate_limit:
         settings["rate_limit"] = rate_limit
@@ -721,7 +778,9 @@ def translate_srt_file(
         inst_file = root_dir / "instructions" / "instructions (proofread).txt"
         if inst_file.exists():
             settings["instruction_file"] = str(inst_file)
-            console.print(f"  [green]Proofreading mode enabled[/green] (using {inst_file.name})")
+            console.print(
+                f"  [green]Proofreading mode enabled[/green] (using {inst_file.name})"
+            )
         else:
             logger.warning(f"Proofread instructions not found at {inst_file}")
 
@@ -770,11 +829,17 @@ def translate_srt_file(
     total_lines = project.subtitles.linecount if project.subtitles else 0
 
     translator = init_translator(options)
-    metrics = TranslationMetrics() if (show_metrics and mode == TranslationMode.GEMINI) else None
+    metrics = (
+        TranslationMetrics()
+        if (show_metrics and mode == TranslationMode.GEMINI)
+        else None
+    )
     progress = TranslationProgress() if show_progress else None
     start = time.perf_counter()
     planned_output = Path(
-        project.subtitles.outputpath if project.subtitles and project.subtitles.outputpath else desired_path
+        project.subtitles.outputpath
+        if project.subtitles and project.subtitles.outputpath
+        else desired_path
     )
     output_before = _output_signature(planned_output)
     try:
@@ -790,7 +855,10 @@ def translate_srt_file(
         # A file this run did not write (an earlier, finished translation) stays where it is.
         saved_path = project.subtitles.outputpath if project.subtitles else None
         partial_path = Path(saved_path) if saved_path else desired_path
-        if partial_path != planned_output or _output_signature(partial_path) != output_before:
+        if (
+            partial_path != planned_output
+            or _output_signature(partial_path) != output_before
+        ):
             _set_aside_partial_output(partial_path)
         raise
     finally:
@@ -798,9 +866,13 @@ def translate_srt_file(
             progress.detach(translator, final=True)
         if metrics:
             metrics.detach(translator)
-            metrics.render(time.perf_counter() - start, total_lines, total_batches, rate_limit)
+            metrics.render(
+                time.perf_counter() - start, total_lines, total_batches, rate_limit
+            )
     # Normalise the file name, then run fix-finnish-subs once
-    normalised = _normalise_translated_output(sub_file, desired_path, target_language, lang_code)
+    normalised = _normalise_translated_output(
+        sub_file, desired_path, target_language, lang_code
+    )
     if not normalised.exists():
         logger.error(f"Translation produced no output file: {normalised}")
         return False
@@ -841,7 +913,9 @@ def process_directory(
     pending: list[Path] = []
     for sub in source_subs:
         if _is_already_translated(sub, lang_code):
-            console.print(f"[yellow]⏭ Skipping[/yellow] {sub.name} — translation exists")
+            console.print(
+                f"[yellow]⏭ Skipping[/yellow] {sub.name} — translation exists"
+            )
         else:
             pending.append(sub)
 
@@ -883,7 +957,9 @@ def process_directory(
             console.print(f"[green]✓ Completed[/green] {sub.name}\n")
         else:
             stats["failed"] += 1
-            console.print(f"[red]✗ Failed[/red] {sub.name}: fix-finnish-subs did not finish\n")
+            console.print(
+                f"[red]✗ Failed[/red] {sub.name}: fix-finnish-subs did not finish\n"
+            )
 
     # Summary
     console.print("\n[bold cyan]Summary[/bold cyan]")
@@ -909,10 +985,14 @@ def main() -> int:
     )
     # provider choice similar to exsubs
     mode_group = parser.add_mutually_exclusive_group()
-    mode_group.add_argument("--gemini", action="store_true", help="Use Gemini model (default)")
+    mode_group.add_argument(
+        "--gemini", action="store_true", help="Use Gemini model (default)"
+    )
     mode_group.add_argument("--gpt", action="store_true", help="Use ChatGPT model")
     mode_group.add_argument("--claude", action="store_true", help="Use Claude model")
-    parser.add_argument("-l", "--language", help="Target language (default from config)")
+    parser.add_argument(
+        "-l", "--language", help="Target language (default from config)"
+    )
     parser.add_argument(
         "--proofread",
         action="store_true",

@@ -25,7 +25,9 @@ class AnthropicThinkingConfigTests(LoggedTestCase):
         """With thinking off the parameter is omitted for every model."""
         for model in ("claude-haiku-5-5", "claude-sonnet-4-5"):
             result = self._thinking(model, thinking=False)
-            self.assertLoggedTrue(f"{model} omits thinking", result is anthropic.NOT_GIVEN)
+            self.assertLoggedTrue(
+                f"{model} omits thinking", result is anthropic.NOT_GIVEN
+            )
 
     def test_current_models_use_adaptive_thinking(self) -> None:
         """Claude 4.6 and newer get adaptive thinking, never budget_tokens."""

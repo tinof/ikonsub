@@ -39,7 +39,9 @@ class TranslationClientRateLimitTests(LoggedTestCase):
         self.assertLoggedEqual("started", 3, len(starts))
         gaps = [later - earlier for earlier, later in pairwise(starts)]
         self.assertLoggedTrue(
-            "gaps respect the interval", all(gap >= 0.09 for gap in gaps), input_value=gaps
+            "gaps respect the interval",
+            all(gap >= 0.09 for gap in gaps),
+            input_value=gaps,
         )
 
     def test_no_rate_limit_does_not_wait(self) -> None:

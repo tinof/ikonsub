@@ -9,15 +9,28 @@ from PySubtrans.SubtitleLine import SubtitleLine
 def _back_to_back(count: int) -> list[SubtitleLine]:
     """Cues that start when the previous one ends, as in many documentary captions."""
     return [
-        SubtitleLine.Construct(i + 1, timedelta(seconds=2 * i), timedelta(seconds=2 * i + 2), f"Line {i + 1}")
+        SubtitleLine.Construct(
+            i + 1,
+            timedelta(seconds=2 * i),
+            timedelta(seconds=2 * i + 2),
+            f"Line {i + 1}",
+        )
         for i in range(count)
     ]
 
 
 class SubtitleBatcherSplitTests(unittest.TestCase):
-    def _sizes(self, lines: list[SubtitleLine], max_batch_size: int, min_batch_size: int = 1) -> list[int]:
+    def _sizes(
+        self, lines: list[SubtitleLine], max_batch_size: int, min_batch_size: int = 1
+    ) -> list[int]:
         batcher = SubtitleBatcher(
-            Options({"min_batch_size": min_batch_size, "max_batch_size": max_batch_size, "scene_threshold": 300.0})
+            Options(
+                {
+                    "min_batch_size": min_batch_size,
+                    "max_batch_size": max_batch_size,
+                    "scene_threshold": 300.0,
+                }
+            )
         )
         return [len(batch) for batch in batcher._split_lines(lines)]
 

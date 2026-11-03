@@ -24,7 +24,9 @@ def _status_error(
     error_class: type[anthropic.APIStatusError], status: int, error_type: str
 ) -> anthropic.APIStatusError:
     body = {"type": "error", "error": {"type": error_type, "message": error_type}}
-    return error_class(error_type, response=httpx2.Response(status, request=REQUEST), body=body)
+    return error_class(
+        error_type, response=httpx2.Response(status, request=REQUEST), body=body
+    )
 
 
 def _message(text: str = "translated") -> MagicMock:
@@ -87,7 +89,10 @@ class AnthropicClientRetryTests(LoggedTestCase):
         client = self._make_client()
         sdk = self._send(
             client,
-            [_status_error(anthropic.APIStatusError, 200, "overloaded_error"), _message()],
+            [
+                _status_error(anthropic.APIStatusError, 200, "overloaded_error"),
+                _message(),
+            ],
         )
         self.assertLoggedEqual("attempts", 2, sdk.messages.create.call_count)
 
@@ -151,7 +156,9 @@ class AnthropicClientRetryTests(LoggedTestCase):
     def test_client_is_created_once(self) -> None:
         """The SDK client is built on first use and reused for later batches."""
         client = self._make_client()
-        with patch("PySubtrans.Providers.Clients.AnthropicClient.anthropic.Anthropic") as factory:
+        with patch(
+            "PySubtrans.Providers.Clients.AnthropicClient.anthropic.Anthropic"
+        ) as factory:
             factory.return_value.messages.create.side_effect = [_message(), _message()]
             client._request_translation(self._make_request())
             client._request_translation(self._make_request())
@@ -168,14 +175,20 @@ class AnthropicClientRetryTests(LoggedTestCase):
     def test_default_max_tokens(self) -> None:
         """Client and provider share one max_tokens default."""
         client = self._make_client()
-        self.assertLoggedEqual("client max_tokens", DEFAULT_MAX_TOKENS, client.max_tokens)
+        self.assertLoggedEqual(
+            "client max_tokens", DEFAULT_MAX_TOKENS, client.max_tokens
+        )
         with patch.dict("os.environ", {}, clear=False) as environ:
             environ.pop("CLAUDE_MAX_TOKENS", None)
             provider = Provider_Claude(SettingsType({"api_key": "sk-ant-test"}))
         self.assertLoggedEqual(
-            "provider max_tokens", DEFAULT_MAX_TOKENS, provider.settings.get_int("max_tokens")
+            "provider max_tokens",
+            DEFAULT_MAX_TOKENS,
+            provider.settings.get_int("max_tokens"),
         )
-        self.assertLoggedEqual("provider property", DEFAULT_MAX_TOKENS, provider.max_tokens)
+        self.assertLoggedEqual(
+            "provider property", DEFAULT_MAX_TOKENS, provider.max_tokens
+        )
 
 
 class ClaudeModelLookupTests(LoggedTestCase):

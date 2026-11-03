@@ -79,7 +79,9 @@ Third subtitle line with <i>formatting</i>
             "Parsed line count", len(self.expected_lines), len(lines)
         )
 
-        for i, (expected, actual) in enumerate(zip(self.expected_lines, lines, strict=True)):
+        for i, (expected, actual) in enumerate(
+            zip(self.expected_lines, lines, strict=True)
+        ):
             with self.subTest(line_number=i + 1):
                 self.assertEqual(actual.number, expected.number)
                 self.assertEqual(actual.start, expected.start)

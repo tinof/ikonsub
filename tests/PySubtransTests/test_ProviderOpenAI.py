@@ -26,14 +26,20 @@ class TestOpenAiProviderClientSelection(LoggedTestCase):
             "Instruct models are no longer supported",
             message,
         )
-        self.assertLoggedIn("instruct error names the model", "gpt-3.5-turbo-instruct", message)
+        self.assertLoggedIn(
+            "instruct error names the model", "gpt-3.5-turbo-instruct", message
+        )
 
     def test_reasoning_model_uses_reasoning_client(self):
-        client = self._provider("gpt-5-mini").GetTranslationClient(SettingsType({"instructions": "Translate."}))
+        client = self._provider("gpt-5-mini").GetTranslationClient(
+            SettingsType({"instructions": "Translate."})
+        )
         self.assertLoggedIsInstance("reasoning client", client, OpenAIReasoningClient)
 
     def test_chat_model_uses_chat_client(self):
-        client = self._provider("gpt-4o-mini").GetTranslationClient(SettingsType({"instructions": "Translate."}))
+        client = self._provider("gpt-4o-mini").GetTranslationClient(
+            SettingsType({"instructions": "Translate."})
+        )
         self.assertLoggedIsInstance("chat client", client, ChatGPTClient)
 
 

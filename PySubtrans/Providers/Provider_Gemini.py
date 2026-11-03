@@ -104,14 +104,16 @@ else:
                             # Seconds one request may wait for the response (streamed: between
                             # chunks). A stalled request is retried instead of hanging the run.
                             "request_timeout": settings.get_float(
-                                "request_timeout", env_float("GEMINI_REQUEST_TIMEOUT", 180.0)
+                                "request_timeout",
+                                env_float("GEMINI_REQUEST_TIMEOUT", 180.0),
                             ),
                             # "model@location" targets tried in order once the current one has
                             # failed attempts_per_target times, e.g. "gemini-4-argon@us".
                             "fallbacks": settings.get_str("fallbacks")
                             or os.getenv("GEMINI_FALLBACKS", ""),
                             "attempts_per_target": settings.get_int(
-                                "attempts_per_target", env_int("GEMINI_ATTEMPTS_PER_TARGET", 2)
+                                "attempts_per_target",
+                                env_int("GEMINI_ATTEMPTS_PER_TARGET", 2),
                             ),
                         }
                     ),

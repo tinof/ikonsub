@@ -31,7 +31,11 @@ def get_mkv_subtitle_tracks(video_file: Path) -> list[dict]:
         ]
 
         result = subprocess.run(
-            cmd, capture_output=True, text=True, check=True, timeout=FFPROBE_TIMEOUT_SECONDS
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=FFPROBE_TIMEOUT_SECONDS,
         )
 
         try:
@@ -76,7 +80,9 @@ def get_mkv_subtitle_tracks(video_file: Path) -> list[dict]:
         logger.error(f"ffprobe command failed: {e}")
         return []
     except subprocess.TimeoutExpired:
-        logger.error(f"ffprobe timed out after {FFPROBE_TIMEOUT_SECONDS}s reading {video_file}")
+        logger.error(
+            f"ffprobe timed out after {FFPROBE_TIMEOUT_SECONDS}s reading {video_file}"
+        )
         return []
     except Exception as e:
         logger.error(f"Failed to get subtitle tracks: {e}")
@@ -241,7 +247,11 @@ def _get_video_duration(video_file: Path) -> float | None:
             str(video_file),
         ]
         result = subprocess.run(
-            cmd, capture_output=True, text=True, check=True, timeout=FFPROBE_TIMEOUT_SECONDS
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=FFPROBE_TIMEOUT_SECONDS,
         )
         info = json.loads(result.stdout)
         duration_str = info.get("format", {}).get("duration")

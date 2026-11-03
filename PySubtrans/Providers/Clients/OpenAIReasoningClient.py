@@ -154,7 +154,7 @@ class OpenAIReasoningClient(OpenAIClient):
                 reasoning=Reasoning(effort=self.reasoning_effort),
             )
 
-        except (RateLimitError, APITimeoutError, APIConnectionError):
+        except RateLimitError, APITimeoutError, APIConnectionError:
             raise
         except OpenAIError as error:
             self._raise_for_openai_error(error)
@@ -211,7 +211,7 @@ class OpenAIReasoningClient(OpenAIClient):
 
         except RateLimitError:
             raise
-        except (APITimeoutError, APIConnectionError):
+        except APITimeoutError, APIConnectionError:
             raise
         except OpenAIError as error:
             stream_error = error

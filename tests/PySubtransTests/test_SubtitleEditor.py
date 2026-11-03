@@ -340,7 +340,9 @@ class SubtitleEditorTests(SubtitleTestCase):
                             len(batch.translated),
                         )
 
-                        for orig, trans in zip(batch.originals, batch.translated, strict=True):
+                        for orig, trans in zip(
+                            batch.originals, batch.translated, strict=True
+                        ):
                             self.assertLoggedEqual(
                                 f"line {orig.number} number matches",
                                 orig.number,

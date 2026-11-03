@@ -9,9 +9,7 @@ import regex
 from PySubtrans.Helpers.Time import GetTimeDelta
 
 type BasicType = str | int | float | bool | list[str] | None
-type SettingType = (
-    BasicType | dict[str, "SettingType"] | dict[str, "SettingsType"]
-)
+type SettingType = BasicType | dict[str, "SettingType"] | dict[str, "SettingsType"]
 
 
 class SettingsError(Exception):

@@ -246,7 +246,9 @@ class AnthropicClient(TranslationClient):
                     self._emit_warning(
                         _(
                             "Anthropic connection error: {error}, retrying in {sleep_time} seconds..."
-                        ).format(error=str(e) or type(e).__name__, sleep_time=sleep_time)
+                        ).format(
+                            error=str(e) or type(e).__name__, sleep_time=sleep_time
+                        )
                     )
                     time.sleep(sleep_time)
                     continue

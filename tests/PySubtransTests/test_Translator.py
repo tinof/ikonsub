@@ -60,19 +60,13 @@ class SubtitleTranslatorTests(SubtitleTestCase):
 
             translator = SubtitleTranslator(self.options, translation_provider=provider)
             translator.events.batch_translated.connect(
-                lambda sender,
-                batch,
-                original=originals,
-                reference=reference: self.validate_batch(
-                    batch, original=original, reference=reference
+                lambda sender, batch, original=originals, reference=reference: (
+                    self.validate_batch(batch, original=original, reference=reference)
                 ),
             )
             translator.events.scene_translated.connect(
-                lambda sender,
-                scene,
-                original=originals,
-                reference=reference: self.validate_scene(
-                    scene, original=original, reference=reference
+                lambda sender, scene, original=originals, reference=reference: (
+                    self.validate_scene(scene, original=original, reference=reference)
                 ),
             )
 
@@ -83,19 +77,27 @@ class SubtitleTranslatorTests(SubtitleTestCase):
         data = chinese_dinner_data
         originals: Subtitles = PrepareSubtitles(data, "original")
         options = deepcopy(self.options)
-        options.update({"parallel_batches": True, "max_parallel_workers": 2, "max_batch_size": 20})
+        options.update(
+            {"parallel_batches": True, "max_parallel_workers": 2, "max_batch_size": 20}
+        )
         with SubtitleEditor(originals) as editor:
             editor.AutoBatch(SubtitleBatcher(options))
 
-        translator = SubtitleTranslator(options, translation_provider=DummyProvider(data=data))
-        refused = TranslationImpossibleError("Gemini request failed: 403 PERMISSION_DENIED")
+        translator = SubtitleTranslator(
+            options, translation_provider=DummyProvider(data=data)
+        )
+        refused = TranslationImpossibleError(
+            "Gemini request failed: 403 PERMISSION_DENIED"
+        )
 
         with patch.object(translator.client, "RequestTranslation", side_effect=refused):
             with self.assertRaises(TranslationImpossibleError):
                 translator.TranslateSubtitles(originals)
 
         # Batches cancelled by the failure are not reported as errors of their own
-        self.assertTrue(all(isinstance(e, TranslationImpossibleError) for e in translator.errors))
+        self.assertTrue(
+            all(isinstance(e, TranslationImpossibleError) for e in translator.errors)
+        )
 
     def test_parallel_stop_on_error_cancels_queued_batches(self):
         """With stop_on_error, a failed batch cancels the batches still in the queue."""
@@ -116,7 +118,9 @@ class SubtitleTranslatorTests(SubtitleTestCase):
         total_batches = sum(len(scene.batches) for scene in originals.scenes)
         self.assertGreater(total_batches, 4)
 
-        translator = SubtitleTranslator(options, translation_provider=DummyProvider(data=data))
+        translator = SubtitleTranslator(
+            options, translation_provider=DummyProvider(data=data)
+        )
         calls: list[int] = []
         calls_lock = threading.Lock()
 
@@ -128,12 +132,16 @@ class SubtitleTranslatorTests(SubtitleTestCase):
                 time.sleep(0.2)  # later batches are still running when the first fails
             raise TranslationError("provider error")
 
-        with patch.object(translator.client, "RequestTranslation", side_effect=failing_request):
+        with patch.object(
+            translator.client, "RequestTranslation", side_effect=failing_request
+        ):
             translator.TranslateSubtitles(originals)
 
         # The two running batches finish, and at most one more starts before the cancel
         self.assertLoggedTrue(
-            "queued batches cancelled", len(calls) <= 3, input_value=(len(calls), total_batches)
+            "queued batches cancelled",
+            len(calls) <= 3,
+            input_value=(len(calls), total_batches),
         )
 
     def validate_batch(

@@ -28,7 +28,9 @@ class OpenAIClientProxyTests(LoggedTestCase):
             SettingsType({"api_key": "sk-test", "proxy": "socks5://127.0.0.1:1089"})
         )
         self.assertLoggedEqual(
-            "provider proxy", "socks5://127.0.0.1:1089", provider.settings.get_str("proxy")
+            "provider proxy",
+            "socks5://127.0.0.1:1089",
+            provider.settings.get_str("proxy"),
         )
 
     def test_socks_proxy_client_is_created(self) -> None:
@@ -56,5 +58,7 @@ class OpenAIClientProxyTests(LoggedTestCase):
         client = self._make_client(use_httpx=True, api_base="http://localhost:1234/v1")
         client._create_client()
         assert client.client is not None
-        self.assertLoggedEqual("base url", "http://localhost:1234/v1/", str(client.client.base_url))
+        self.assertLoggedEqual(
+            "base url", "http://localhost:1234/v1/", str(client.client.base_url)
+        )
         client.client.close()

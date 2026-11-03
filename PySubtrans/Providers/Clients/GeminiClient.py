@@ -234,13 +234,18 @@ class GeminiClient(TranslationClient):
         The configured model and location, then each "model@location" fallback in order.
         A fallback without "@" keeps the configured location; one without a model keeps the model.
         """
-        targets: list[tuple[str, str | None]] = [(self.model or "", self.vertex_location)]
+        targets: list[tuple[str, str | None]] = [
+            (self.model or "", self.vertex_location)
+        ]
         for item in (self.settings.get_str("fallbacks") or "").split(","):
             item = item.strip()
             if not item:
                 continue
             model, _sep, location = item.partition("@")
-            target = (model.strip() or targets[0][0], location.strip() or self.vertex_location)
+            target = (
+                model.strip() or targets[0][0],
+                location.strip() or self.vertex_location,
+            )
             if target not in targets:
                 targets.append(target)
         return targets
@@ -297,7 +302,9 @@ class GeminiClient(TranslationClient):
                 else None
             )
             try:
-                return self._get_gemini_response(request, target_temperature, model, location)
+                return self._get_gemini_response(
+                    request, target_temperature, model, location
+                )
 
             except TranslationImpossibleError:
                 raise

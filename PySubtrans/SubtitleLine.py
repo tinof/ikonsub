@@ -97,7 +97,7 @@ class SubtitleLine:
     def __repr__(self) -> str:
         return f"[Line {self.number}] {TimedeltaToText(self.start)}, {repr(self.text)}"
 
-    def __eq__(self, other: Any|SubtitleLine) -> bool:
+    def __eq__(self, other: Any | SubtitleLine) -> bool:
         if not isinstance(other, SubtitleLine):
             return False
         return (

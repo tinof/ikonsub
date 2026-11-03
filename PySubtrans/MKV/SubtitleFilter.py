@@ -112,7 +112,7 @@ def _manual_encoding_conversion(sub_file: Path) -> bool:
             logger.info(f"Converted subtitle from {encoding} to UTF-8")
             return True
 
-        except (UnicodeDecodeError, UnicodeError):
+        except UnicodeDecodeError, UnicodeError:
             continue
 
     logger.error("Could not convert subtitle file to UTF-8")
@@ -180,7 +180,9 @@ def remove_markup_only_cues(sub_file: Path) -> int:
     empty subtitle on screen. Returns the number of cues removed.
     """
     content = sub_file.read_text(encoding="utf-8")
-    blocks = [block for block in CUE_SEPARATOR_PATTERN.split(content.strip()) if block.strip()]
+    blocks = [
+        block for block in CUE_SEPARATOR_PATTERN.split(content.strip()) if block.strip()
+    ]
 
     kept: list[list[str]] = []
     removed = 0
