@@ -1,6 +1,6 @@
 from typing import cast
-from PySubtrans.Options import Options, SettingsType
-from PySubtrans.SettingsType import GuiSettingsType, SettingsType
+from PySubtrans.Options import Options
+from PySubtrans.SettingsType import SettingsType
 from PySubtrans.TranslationClient import TranslationClient
 
 
@@ -13,7 +13,6 @@ class TranslationProvider:
         self.name: str = name
         self.settings: SettingsType = settings
         self._available_models: list[str] = []
-        self.refresh_when_changed: list[str] = []
         self.validation_message: str | None = None
 
     @property
@@ -25,13 +24,6 @@ class TranslationProvider:
             self._available_models = self.GetAvailableModels()
 
         return self._available_models
-
-    @property
-    def all_available_models(self) -> list[str]:
-        """
-        Returns all available models for the provider, including those currently filtered out
-        """
-        return self.available_models
 
     @property
     def selected_model(self) -> str | None:
@@ -47,27 +39,9 @@ class TranslationProvider:
         """
         raise NotImplementedError
 
-    def ResetAvailableModels(self):
-        """
-        Reset the available models for the provider
-        """
-        self._available_models = []
-
-    def GetInformation(self) -> str | None:
-        """
-        Returns information about the provider settings
-        """
-        return None
-
     def GetTranslationClient(self, settings: SettingsType) -> TranslationClient:
         """
         Returns a new instance of the translation client for this provider
-        """
-        raise NotImplementedError
-
-    def GetOptions(self, settings: SettingsType) -> GuiSettingsType:
-        """
-        Returns the configurable options for the provider
         """
         raise NotImplementedError
 
@@ -90,14 +64,6 @@ class TranslationProvider:
         for k, v in settings.items():
             if k in self.settings:
                 self.settings[k] = v
-
-    def GetCombinedSettings(self, overrides: SettingsType) -> SettingsType:
-        """
-        Merge saved settings with default settings to ensure all keys are present
-        """
-        combined_settings = SettingsType(self.settings.copy())
-        combined_settings.update(overrides)
-        return combined_settings
 
     @classmethod
     def get_providers(cls) -> dict:
@@ -148,18 +114,3 @@ class TranslationProvider:
                 return provider(provider_settings)
 
         raise ValueError(f"Unknown translation provider: {name}")
-
-    @classmethod
-    def get_available_models(cls, options: Options):
-        """Get the available models for the selected provider"""
-        if not isinstance(options, Options):
-            raise ValueError("Options object required")
-
-        if not options.provider:
-            return []
-
-        provider_class = cls.get_provider(options)
-        if not provider_class:
-            return []
-
-        return provider_class.available_models

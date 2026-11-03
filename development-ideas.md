@@ -1,6 +1,6 @@
-# LLM Subtitle Translation - Development Ideas & Improvements
+# ikonsub - Development Ideas & Improvements
 
-Based on the analysis of the `llm-subtrans` architecture (including its existing sliding context window and scene detection mechanisms), here are the key areas for improving the translation pipeline:
+Based on the analysis of the ikonsub architecture (including its existing sliding context window and scene detection mechanisms), here are the key areas for improving the translation pipeline:
 
 ## 1. Structured Outputs (JSON Schema) vs. Regex Parsing
 **Current State:** The system relies on string matching and regex (`TranslationParser.py`) to extract line numbers and translated text from the LLM's markdown-style response.
@@ -11,14 +11,6 @@ Based on the analysis of the `llm-subtrans` architecture (including its existing
 **Current State:** Scene detection splits batches based on hardcoded silence thresholds (e.g., 30s or 300s). For dense media (like documentaries), this threshold is never met, forcing the system to arbitrarily slice a single massive scene into arbitrary batches.
 **Improvement:** Implement adaptive chunking. If a scene exceeds the maximum batch size, the batcher should find the *longest available silence* within that window to make the cut, rather than strictly requiring a 30-second gap. Alternatively, use lightweight semantic embeddings to split batches when the topic changes.
 
-## 3. Spatial and Temporal Awareness (CPS Limits)
-**Current State:** The LLM translates text without knowing how long the text remains on screen, leading to literal translations that may be too long for a viewer to read in the allotted time.
-**Improvement:** Calculate Characters Per Second (CPS) for each line before prompting. Inject explicit constraints into the prompt (e.g., *"Line 42 is on screen for 1.2s. Your translation MUST NOT exceed 24 characters."*).
-
-## 4. Global Glossary via Pre-pass Entity Extraction
+## 3. Global Glossary via Pre-pass Entity Extraction
 **Current State:** The sliding context window maintains consistency with the *immediately preceding* batch, but cannot remember characters or terms established in Batch 1 that reappear in Batch 4.
 **Improvement:** Run a rapid, low-cost pre-pass (e.g., using `gemini-3.1-flash-lite`) over the entire SRT to extract proper nouns, character names, and unique terminology. Inject this "Global Glossary" into every batch prompt to ensure 100% consistency across the entire file.
-
-## 5. Decoupling Translation from Formatting (The "Mechanic Pass")
-**Current State:** The LLM is expected to perform high-quality, creative translation while simultaneously adhering to strict mechanical formatting rules (like Finnish continuation dashes or strict line-wrapping).
-**Improvement:** Adopt a two-stage pipeline. Use `llm-subtrans` purely for context-aware translation. Pipe the output into a deterministic fixer (like the `sisusub` pipeline) to mathematically enforce line lengths, fix punctuation, and handle continuation styles using code rather than LLM heuristics.

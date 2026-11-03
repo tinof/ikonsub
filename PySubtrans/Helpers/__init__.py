@@ -3,7 +3,6 @@ import os
 from typing import Any
 
 import regex
-from PySubtrans.Helpers.Localization import LocaleDisplayItem
 from PySubtrans.SubtitleError import SubtitleError
 
 
@@ -27,26 +26,12 @@ def GetValueFromName(name: str, values: list[Any], default: Any = None) -> Any:
     """
     for value in values:
         if str(name) == str(value) or name == GetValueName(value):
-            if isinstance(value, LocaleDisplayItem):
-                return value.code
             return value
 
     if default is not None:
         return default
 
     raise ValueError(f"Value '{name}' not found in {values}")
-
-
-def UpdateFields(item: dict[str, Any], update: dict[str, Any], fields: list[str]):
-    """
-    Patch selected fields in a dictionary
-    """
-    if not isinstance(item, dict) or not isinstance(update, dict):
-        raise ValueError(
-            f"Can't patch a {type(item).__name__} with a {type(update).__name__}"
-        )
-
-    item.update({field: update[field] for field in update.keys() if field in fields})
 
 
 def GetInputPath(filepath: str | None) -> str | None:

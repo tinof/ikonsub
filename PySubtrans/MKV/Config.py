@@ -14,12 +14,6 @@ class TranslationMode(str, Enum):
 
 
 # Centralized mappings to reduce duplication
-MODE_TO_CMD = {
-    TranslationMode.CHATGPT: ["gpt-subtrans"],
-    TranslationMode.CLAUDE: ["claude-subtrans"],
-    TranslationMode.GEMINI: ["gemini-subtrans"],
-}
-
 MODE_TO_DEFAULT_MODEL = {
     TranslationMode.CHATGPT: "gpt-4o-mini",
     TranslationMode.CLAUDE: "claude-haiku-5-5",
@@ -125,17 +119,3 @@ class MKVConfig:
             "English": "en",
         }
         return codes.get(lang, lang.lower()[:2])
-
-    @staticmethod
-    def get_flag(lang: str) -> str:
-        """Get emoji flag for language"""
-        flags = {
-            "Finnish": "🇫🇮",
-            "Greek": "🇬🇷",
-            "German": "🇩🇪",
-            "French": "🇫🇷",
-            "Spanish": "🇪🇸",
-            "Italian": "🇮🇹",
-            "English": "🇬🇧",
-        }
-        return flags.get(lang, "")

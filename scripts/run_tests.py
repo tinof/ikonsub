@@ -11,8 +11,8 @@ import unittest
 base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, base_path)
 
-from PySubtrans.Helpers.Tests import create_logfile, end_logfile, separator
-from tests.unit_tests import discover_tests
+from PySubtrans.Helpers.Tests import create_logfile, end_logfile, separator  # noqa: E402
+from tests.unit_tests import discover_tests  # noqa: E402
 
 total_run = 0
 total_failures = 0
@@ -51,7 +51,7 @@ def run_unit_tests(results_path: str) -> bool:
 
     runner = unittest.runner.TextTestRunner(verbosity=1)
 
-    py_tests, _ = discover_tests(base_path, separate_suites=True)
+    py_tests = discover_tests(base_path)
 
     logging.info("Running PySubtrans unit tests...")
     py_result = runner.run(py_tests)

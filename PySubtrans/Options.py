@@ -16,8 +16,6 @@ from PySubtrans.ProviderSettingsView import ProviderSettingsView
 from PySubtrans.SettingsType import SettingType, SettingsType
 from PySubtrans.version import __version__
 
-MULTILINE_OPTION = "multiline"
-
 settings_path = os.path.join(config_dir, "settings.json")
 
 # Load environment variables from .env file
@@ -99,19 +97,14 @@ default_settings = {
     "max_summary_length": env_int("MAX_SUMMARY_LENGTH", 240),
     "backoff_time": env_float("BACKOFF_TIME", 3.0),
     "project_file": env_bool("PROJECT_FILE", True),
-    "autosave": env_bool("AUTOSAVE", True),
     "preview": False,
     "retranslate": False,
     "reparse": False,
     "reload": False,
-    "last_used_path": None,
     "stop_on_error": env_bool("STOP_ON_ERROR"),
     "write_backup": env_bool("WRITE_BACKUP_FILE", True),
-    "theme": env_str("THEME", "default"),
-    "ui_language": env_str("UI_LANGUAGE", "en"),
     "large_context_mode": env_bool("LARGE_CONTEXT_MODE", False),
     "max_context_history_tokens": env_int("MAX_CONTEXT_HISTORY_TOKENS", 10000),
-    "firstrun": True,
 }
 
 
@@ -127,7 +120,6 @@ class Options(SettingsType):
     ):
         """Initialise the Options object with default options and any provided options."""
         super().__init__()
-        self.is_project_options: bool = False
 
         self.update(deepcopy(default_settings))
 
@@ -146,14 +138,6 @@ class Options(SettingsType):
         self.update(kwargs)
 
     # items() inherits from dict - no need to override
-
-    @property
-    def theme(self) -> str:
-        return self.get_str("theme") or ""
-
-    @property
-    def ui_language(self) -> str:
-        return self.get_str("ui_language") or "en"
 
     @property
     def version(self) -> str:

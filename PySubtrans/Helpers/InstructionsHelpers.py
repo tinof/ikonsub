@@ -4,7 +4,6 @@ import os
 from PySubtrans.Instructions import (
     Instructions,
     DEFAULT_TASK_TYPE,
-    default_instructions,
     default_retry_instructions,
 )
 from PySubtrans.Helpers.Resources import GetResourcePath, config_dir
@@ -95,30 +94,6 @@ def LoadInstructionsFile(filepath: str) -> Instructions:
     return instructions
 
 
-def SaveInstructions(instructions: Instructions, filepath: str) -> None:
-    """
-    Save instructions to a text file.
-    """
-    if filepath:
-        # Make sure the file has a .txt extension
-        if not filepath.endswith(".txt"):
-            filepath += ".txt"
-
-        # Write each section to the file with a header
-        with open(filepath, "w", encoding="utf-8", newline="") as f:
-            f.write("### prompt\n")
-            f.write(instructions.prompt or default_instructions)
-            if instructions.task_type != DEFAULT_TASK_TYPE:
-                f.write("\n\n### task_type\n{}".format(instructions.task_type))
-            f.write("\n\n### instructions\n")
-            f.write(instructions.instructions or default_instructions)
-            f.write("\n\n### retry_instructions\n")
-            f.write(instructions.retry_instructions or default_retry_instructions)
-            f.write("\n")
-
-        instructions.instruction_file = os.path.basename(filepath)
-
-
 def LoadLegacyInstructions(lines: list[str]) -> tuple[str | None, str | None]:
     """
     Retry instructions can be added to the file after a line of at least 3 # characters.
@@ -143,16 +118,6 @@ def GetInstructionsResourcePath(instructions_file: str | None = None) -> str:
     return GetResourcePath("instructions", instructions_file)
 
 
-def GetInstructionsResourceFiles() -> list[str]:
-    """
-    Get a list of instruction files in the instructions directory.
-    """
-    instruction_path = GetInstructionsResourcePath()
-    logging.debug(f"Looking for instruction files in {instruction_path}")
-    files = os.listdir(instruction_path)
-    return [file for file in files if file.lower().startswith("instructions")]
-
-
 def LoadInstructionsResource(resource_name: str) -> Instructions:
     """
     Load instructions from a file in the project/package.
@@ -171,38 +136,4 @@ def GetInstructionsUserPath(instructions_file: str | None = None) -> str:
         os.path.join(instructions_dir, instructions_file)
         if instructions_file
         else instructions_dir
-    )
-
-
-def GetInstructionsUserFiles() -> list[str]:
-    """
-    Get a list of instruction files in the user directory.
-    """
-    instructions_dir = GetInstructionsUserPath()
-    logging.debug(f"Looking for instruction files in {instructions_dir}")
-    if not os.path.exists(instructions_dir):
-        os.makedirs(instructions_dir)
-
-    files = os.listdir(instructions_dir)
-    return [file for file in files if file.lower().endswith(".txt")]
-
-
-def GetInstructionsFiles() -> list[str]:
-    """
-    Get a list of instruction files in the user and resource directories.
-    """
-    default_instructions = GetInstructionsResourceFiles()
-    user_instructions = GetInstructionsUserFiles()
-
-    instructions_map = {
-        os.path.basename(file).lower(): file for file in default_instructions
-    }
-    instructions_map.update(
-        {os.path.basename(file).lower(): file for file in user_instructions}
-    )
-
-    # Sort 'instructions.txt' to the top of the list followed by other names case-insensitive
-    return sorted(
-        list(instructions_map.values()),
-        key=lambda x: (x.lower() != "instructions.txt", x.lower()),
     )

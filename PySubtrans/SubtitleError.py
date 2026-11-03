@@ -28,12 +28,6 @@ class ProviderError(SubtitleError):
         self.provider = provider
 
 
-class ProviderConfigurationError(ProviderError):
-    def __init__(self, message: str, provider: Any, error: Exception | None = None):
-        super().__init__(message, provider)
-        self.error = error
-
-
 class TranslationError(SubtitleError):
     def __init__(
         self, message: str, translation: Any = None, error: Exception | None = None

@@ -16,7 +16,7 @@ This document helps developers understand where to find code and how components 
 | `scripts/exsubs.py` | Extracts subtitles from MKV files, translates them and runs the Finnish readability fixer |
 | `scripts/transubs.py` | Translates existing subtitle files (.srt, .ass, .vtt) |
 | `scripts/gemini_subtrans.py`, `gpt_subtrans.py`, `claude_subtrans.py` | Provider-specific translators with full options |
-| `scripts/batch-translate.py` | Batch translation script for processing multiple files |
+| `scripts/batch_translate.py` | Batch translation script for processing multiple files |
 
 ## Module Structure
 
@@ -113,7 +113,7 @@ Each `TranslationProvider` subclass serves as the registry entry for a translati
 
 - **`available_models`**: property containing available models that can be selected
 - **GetTranslationClient**: creates an appropriate client for API communication
-- **GetOptions**: Defines provider-specific options (API key, endpoints, etc.)
+- **ValidateSettings**: checks the provider settings (API key, Vertex project, etc.) and sets `validation_message` on failure
 
 ### TranslationClient (Communication Layer)
 The `TranslationClient` defines the API communication interface:
@@ -138,12 +138,12 @@ Several translation clients support streaming responses for real-time translatio
 
 **Key Methods:**
 - **`ProcessStreamingDelta(delta_text)`** – processes incoming streaming text chunks
-- **`_emit_partial_update()`** – emits partial translation updates to the GUI
+- **`_emit_partial_update()`** – emits partial translation updates to the registered streaming callback
 - **`_has_complete_line_group()`** – detects when enough content has accumulated for an update
 
 **Configuration:**
 Streaming can be enabled via provider settings:
-- `stream_responses` (bool) setting appears in provider options for supported clients
+- `stream_responses` (bool) provider setting, for supported clients
 - Streaming is opt-in and gracefully falls back to non-streaming for unsupported models
 
 ### Adding New Providers
@@ -151,7 +151,7 @@ To add a new provider:
 1. Create a new module in `PySubtrans/Providers/` with a `TranslationProvider` subclass
 2. Add an import statement for the new module in `PySubtrans/Providers/__init__.py`
 
-The provider will then automatically register at startup and its settings will be added to `SettingsDialog`.
+The provider will then automatically register at startup and becomes selectable by its `name`.
 
 ### Prompt Construction and Response Parsing
 The specific format for translation requests can vary by provider and responses can be inconsistent, so two helper classes exist to manage the differences between capabilities and expectations.

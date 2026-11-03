@@ -28,11 +28,6 @@ class OpenAIClient(TranslationClient):
     def __init__(self, settings: SettingsType):
         super().__init__(settings)
 
-        if not hasattr(openai, "OpenAI"):
-            raise TranslationImpossibleError(
-                _("The OpenAI library is out of date and must be updated")
-            )
-
         openai.api_key = self.api_key or openai.api_key
 
         if not openai.api_key:
