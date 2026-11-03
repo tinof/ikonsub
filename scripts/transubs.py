@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import shutil
 import statistics
 import subprocess
 import sys
@@ -24,8 +25,15 @@ from PySubtrans.MKV import (
     postprocess_timecodes,
     preprocess_timecodes,
 )
-from PySubtrans.MKV.Config import MKVConfig, TranslationMode
+from PySubtrans.Helpers.Localization import _
+from PySubtrans.MKV.Config import (
+    MODE_TO_DEFAULT_MODEL,
+    MODE_TO_RATE_LIMIT,
+    MKVConfig,
+    TranslationMode,
+)
 from PySubtrans.SubtitleProject import SubtitleProject
+from PySubtrans.SubtitleTranslator import SubtitleTranslator
 
 # Configure rich console and logging
 console = Console()
@@ -64,6 +72,11 @@ GEMINI_3_MODEL_PATTERN = regex.compile(r"gemini-[3-9]", regex.IGNORECASE)
 FINNISH_FIXER_WIDTH_LIMIT = 42
 FINNISH_FIXER_MAX_CPS = 17.0
 FINNISH_FIXER_TARGET_CPS = 15.0
+FINNISH_FIXER_COMMAND = "fix-finnish-subs"
+
+# A partial translation is moved to "<name>.fi.srt.partial". The extension is not in
+# SUBTITLE_EXTENSIONS, so no run treats it as a source or as a finished translation.
+PARTIAL_OUTPUT_SUFFIX = ".partial"
 
 SEASON_EPISODE_PATTERN = regex.compile(
     r"S(\d{1,2})E(\d{1,3})"  # S01E02
@@ -72,6 +85,10 @@ SEASON_EPISODE_PATTERN = regex.compile(
     regex.IGNORECASE,
 )
 SUBTITLE_EXTENSIONS = {".srt", ".ass", ".ssa", ".vtt"}
+
+
+class IncompleteTranslationError(Exception):
+    """The translation stopped early or left lines untranslated."""
 
 
 def _parse_season_episode(filename: str) -> tuple[int, int]:
@@ -86,9 +103,12 @@ def _parse_season_episode(filename: str) -> tuple[int, int]:
 
 
 def _is_already_translated(sub_file: Path, lang_code: str) -> bool:
-    """Check if a translated version of this subtitle file already exists."""
+    """Check if a translated version of this subtitle file already exists.
+
+    An empty file is a failed earlier run, so it does not count (same rule as exsubs).
+    """
     translated = _build_translated_output_path(sub_file, lang_code)
-    return translated.exists()
+    return translated.exists() and translated.stat().st_size > 0
 
 
 def _is_translated_file(sub_file: Path, lang_code: str) -> bool:
@@ -167,20 +187,76 @@ def _sisusub_ai_review_enabled() -> bool:
     return (os.getenv("SISUSUB_AI_REVIEW") or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _fix_finnish_subtitles(translated_file: Path) -> None:
-    """Run fix-finnish-subs on the translated subtitle file.
+def _output_signature(path: Path) -> tuple[int, int] | None:
+    """Return the size and mtime of an output file, or None when it does not exist."""
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return (stat.st_size, stat.st_mtime_ns)
+
+
+def _set_aside_partial_output(translated_file: Path) -> Path | None:
+    """Move a partial translation away from the final path, so a later run retries the file."""
+    if not translated_file.exists():
+        return None
+
+    partial_file = translated_file.with_name(translated_file.name + PARTIAL_OUTPUT_SUFFIX)
+    try:
+        translated_file.replace(partial_file)
+    except OSError as e:
+        logger.error(
+            _("Could not move partial translation {file} aside: {error}").format(
+                file=translated_file, error=e
+            )
+        )
+        try:
+            translated_file.unlink()
+        except OSError:
+            logger.error(_("Partial translation left at {file}").format(file=translated_file))
+        return None
+
+    logger.warning(_("Partial translation kept as {file}").format(file=partial_file.name))
+    return partial_file
+
+
+def _check_translation_complete(project: SubtitleProject, translator: SubtitleTranslator) -> None:
+    """Raise IncompleteTranslationError unless every line has a translation."""
+    if translator.aborted:
+        raise IncompleteTranslationError(_("Translation was aborted"))
+
+    subtitles = project.subtitles
+    if subtitles and subtitles.all_translated:
+        return
+
+    total = subtitles.linecount if subtitles else 0
+    missing = (
+        sum(len(batch.untranslated) for scene in subtitles.scenes for batch in scene.batches)
+        if subtitles and subtitles.scenes
+        else total
+    )
+    raise IncompleteTranslationError(
+        _("Translation incomplete: {missing} of {total} lines untranslated, {errors} errors").format(
+            missing=missing, total=total, errors=len(translator.errors)
+        )
+    )
+
+
+def _fix_finnish_subtitles(translated_file: Path) -> bool:
+    """Run fix-finnish-subs on the translated subtitle file. Return False if it failed.
 
     This runs exactly once: the fixer chain is not idempotent (merge fixers chain further and
-    the gap fixer re-shifts timings), so re-running it on failure degrades the output.
+    the gap fixer re-shifts timings), so re-running it on failure degrades the output. For the
+    same reason it has no timeout: a killed fixer can leave a half-fixed file.
     """
     if not translated_file.exists():
         logger.warning(f"Cannot fix subtitles; {translated_file} does not exist")
-        return
+        return False
 
     report_file = translated_file.with_stem(translated_file.stem + "_unfixed").with_suffix(".txt")
 
     command = [
-        "fix-finnish-subs",
+        FINNISH_FIXER_COMMAND,
         str(translated_file),
         "--report",
         str(report_file),
@@ -194,19 +270,25 @@ def _fix_finnish_subtitles(translated_file: Path) -> None:
     if not _sisusub_ai_review_enabled():
         command.append("--no-ai-review")
 
-    result = subprocess.run(command, check=False)
+    try:
+        result = subprocess.run(command, check=False)
+    except OSError as e:
+        logger.error(_("Could not run fix-finnish-subs: {error}").format(error=e))
+        return False
 
     if result.returncode == 0:
         logger.info(f"Fixed subtitles with fix-finnish-subs: {translated_file.name}")
     else:
-        logger.warning(
-            "fix-finnish-subs returned non-zero exit status %s for %s",
-            result.returncode,
-            translated_file,
+        logger.error(
+            _("fix-finnish-subs returned non-zero exit status {status} for {file}").format(
+                status=result.returncode, file=translated_file
+            )
         )
 
     if report_file.exists():
         console.print(f"  Readability report: {report_file}")
+
+    return result.returncode == 0
 
 
 class TranslationMetrics:
@@ -434,12 +516,11 @@ def translate_srt_file(
     show_metrics: bool = True,
     proofread: bool = False,
     filter_subs: bool = True,
-) -> None:
-    from PySubtrans.MKV.Config import (
-        MODE_TO_DEFAULT_MODEL,
-        MODE_TO_RATE_LIMIT,
-    )
+) -> bool:
+    """Translate one subtitle file. Return False if fix-finnish-subs failed.
 
+    A failed or incomplete translation raises, after moving any partial output aside.
+    """
     # Preprocess the input file in place
     preprocess_timecodes(sub_file)
     if filter_subs:
@@ -466,9 +547,6 @@ def translate_srt_file(
     scene_threshold = float(os.getenv("SCENE_THRESHOLD") or 60.0)
     min_batch_size = int(os.getenv("MIN_BATCH_SIZE") or 10)
     max_batch_size = int(os.getenv("MAX_BATCH_SIZE") or 50)
-    max_context_summaries = int(os.getenv("MAX_CONTEXT_SUMMARIES") or 10)
-    rate_limit: float | None = None
-
     max_context_summaries = int(os.getenv("MAX_CONTEXT_SUMMARIES") or 10)
     rate_limit: float | None = None
 
@@ -695,29 +773,47 @@ def translate_srt_file(
     metrics = TranslationMetrics() if (show_metrics and mode == TranslationMode.GEMINI) else None
     progress = TranslationProgress() if show_progress else None
     start = time.perf_counter()
+    planned_output = Path(
+        project.subtitles.outputpath if project.subtitles and project.subtitles.outputpath else desired_path
+    )
+    output_before = _output_signature(planned_output)
     try:
         if metrics:
             metrics.attach(translator)
         if progress:
             progress.attach(translator, sub_file, total_lines)
         project.TranslateSubtitles(translator)
+        _check_translation_complete(project, translator)
+    except Exception:
+        # SubtitleProject saves partial results before it re-raises. Move them off the final
+        # path, so the file is not skipped as done and fix-finnish-subs never sees them.
+        # A file this run did not write (an earlier, finished translation) stays where it is.
+        saved_path = project.subtitles.outputpath if project.subtitles else None
+        partial_path = Path(saved_path) if saved_path else desired_path
+        if partial_path != planned_output or _output_signature(partial_path) != output_before:
+            _set_aside_partial_output(partial_path)
+        raise
     finally:
         if progress:
             progress.detach(translator, final=True)
         if metrics:
             metrics.detach(translator)
             metrics.render(time.perf_counter() - start, total_lines, total_batches, rate_limit)
-    # Normalise file name and run ssync if we have a file
+    # Normalise the file name, then run fix-finnish-subs once
     normalised = _normalise_translated_output(sub_file, desired_path, target_language, lang_code)
-    if normalised.exists():
-        if lang_code == "fi":
-            _fix_finnish_subtitles(normalised)
+    if not normalised.exists():
+        logger.error(f"Translation produced no output file: {normalised}")
+        return False
+    if lang_code == "fi":
+        return _fix_finnish_subtitles(normalised)
+    return True
 
 
 def process_directory(
     target_language: str | None,
     provider_flag: str,
     *,
+    show_progress: bool = True,
     show_metrics: bool = True,
     proofread: bool = False,
     filter_subs: bool = True,
@@ -762,20 +858,32 @@ def process_directory(
     for sub in pending:
         console.print(f"[bold]⚙ Processing[/bold] {sub.name}")
         try:
-            translate_srt_file(
+            succeeded = translate_srt_file(
                 sub,
                 target_language,
                 provider_flag,
+                show_progress=show_progress,
                 show_metrics=show_metrics,
                 proofread=proofread,
                 filter_subs=filter_subs,
             )
-            stats["processed"] += 1
-            console.print(f"[green]✓ Completed[/green] {sub.name}\n")
-        except Exception as e:
+        except IncompleteTranslationError as e:
             stats["failed"] += 1
             logger.error(f"Failed to translate {sub.name}: {e}")
             console.print(f"[red]✗ Failed[/red] {sub.name}: {e}\n")
+            continue
+        except Exception as e:
+            stats["failed"] += 1
+            logger.exception(f"Failed to translate {sub.name}: {e}")
+            console.print(f"[red]✗ Failed[/red] {sub.name}: {e}\n")
+            continue
+
+        if succeeded:
+            stats["processed"] += 1
+            console.print(f"[green]✓ Completed[/green] {sub.name}\n")
+        else:
+            stats["failed"] += 1
+            console.print(f"[red]✗ Failed[/red] {sub.name}: fix-finnish-subs did not finish\n")
 
     # Summary
     console.print("\n[bold cyan]Summary[/bold cyan]")
@@ -868,11 +976,31 @@ def main() -> int:
     elif args.claude:
         provider_flag = "claude"
 
+    # Fail before any API call if the Finnish post-processing tool is missing
+    target_language = args.language or MKVConfig().target_language
+    if (
+        not args.proofread
+        and MKVConfig.get_language_code(target_language) == "fi"
+        and not shutil.which(FINNISH_FIXER_COMMAND)
+    ):
+        logger.error(
+            _("{command} not found on PATH; Finnish output needs it").format(
+                command=FINNISH_FIXER_COMMAND
+            )
+        )
+        return 1
+
+    if args.usage_json:
+        _persist_usage(Path(args.usage_json))
+
+    show_progress = not args.no_progress
+
     # Directory mode: process all untranslated subtitles in current directory
     if args.file is None:
         return process_directory(
             target_language=args.language,
             provider_flag=provider_flag,
+            show_progress=show_progress,
             show_metrics=not args.no_metrics,
             proofread=args.proofread,
             filter_subs=not args.no_filter,
@@ -884,20 +1012,22 @@ def main() -> int:
         logger.error(f"Subtitle file not found: {sub_path}")
         return 1
 
-    if args.usage_json:
-        _persist_usage(Path(args.usage_json))
     try:
-        translate_srt_file(
+        succeeded = translate_srt_file(
             sub_path,
             args.language,
             provider_flag,
+            show_progress=show_progress,
             show_metrics=not args.no_metrics,
             proofread=args.proofread,
             filter_subs=not args.no_filter,
         )
-        return 0
-    except Exception as e:
+        return 0 if succeeded else 1
+    except IncompleteTranslationError as e:
         logger.error(f"Translation failed: {e}")
+        return 1
+    except Exception as e:
+        logger.exception(f"Translation failed: {e}")
         return 1
 
 

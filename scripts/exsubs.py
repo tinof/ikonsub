@@ -29,6 +29,7 @@ from PySubtrans.MKV import (
     filter_subtitles,
     run_diagnostics,
 )
+from PySubtrans.MKV.Config import MODE_TO_DEFAULT_MODEL, MODE_TO_ENV, MODE_TO_RATE_LIMIT
 
 from PySubtrans import (
     batch_subtitles,
@@ -36,7 +37,9 @@ from PySubtrans import (
     init_translator,
     preprocess_subtitles,
 )
+from PySubtrans.Helpers.Localization import _
 from PySubtrans.SubtitleProject import SubtitleProject
+from PySubtrans.SubtitleTranslator import SubtitleTranslator
 
 # Configure rich console and logging
 console = Console()
@@ -61,6 +64,15 @@ FLASH_SCENE_THRESHOLD = 300.0
 FLASH_MIN_BATCH_SIZE = 100
 FLASH_MAX_BATCH_SIZE = 220
 
+# Large-context mode defaults, matching SubtitleBatcher
+LARGE_CONTEXT_SCENE_THRESHOLD = 300.0
+LARGE_CONTEXT_MIN_BATCH_SIZE = 1
+LARGE_CONTEXT_MAX_BATCH_SIZE = 600
+
+# Parallel batches default to 150 lines: in the 2026-10-23 A/B (transubs) 150-line parallel
+# batches scored level with sequential 600-line batches.
+PARALLEL_MAX_BATCH_SIZE = 150
+
 LANGUAGE_SUFFIX_PATTERN = regex.compile(
     r"^\.[a-z]{2,3}(?:-[a-z]{2,3})?$", regex.IGNORECASE
 )
@@ -72,6 +84,15 @@ GEMINI_3_MODEL_PATTERN = regex.compile(r"gemini-[3-9]", regex.IGNORECASE)
 FINNISH_FIXER_WIDTH_LIMIT = 42
 FINNISH_FIXER_MAX_CPS = 17.0
 FINNISH_FIXER_TARGET_CPS = 15.0
+FINNISH_FIXER_COMMAND = "fix-finnish-subs"
+
+# A partial translation is moved to "<name>.fi.srt.partial": no run treats it as a subtitle,
+# so the next run translates the episode again instead of skipping it.
+PARTIAL_OUTPUT_SUFFIX = ".partial"
+
+
+class IncompleteTranslationError(Exception):
+    """The translation stopped early or left lines untranslated."""
 
 
 def _looks_like_language_suffix(suffix: str) -> bool:
@@ -157,23 +178,79 @@ def _sisusub_ai_review_enabled() -> bool:
     return (os.getenv("SISUSUB_AI_REVIEW") or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _fix_finnish_subtitles(translated_file: Path) -> None:
+def _output_signature(path: Path) -> tuple[int, int] | None:
+    """Return the size and mtime of an output file, or None when it does not exist."""
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return (stat.st_size, stat.st_mtime_ns)
+
+
+def _set_aside_partial_output(translated_file: Path) -> Path | None:
+    """Move a partial translation away from the final path, so a later run retries the file."""
+    if not translated_file.exists():
+        return None
+
+    partial_file = translated_file.with_name(translated_file.name + PARTIAL_OUTPUT_SUFFIX)
+    try:
+        translated_file.replace(partial_file)
+    except OSError as e:
+        logger.error(
+            _("Could not move partial translation {file} aside: {error}").format(
+                file=translated_file, error=e
+            )
+        )
+        try:
+            translated_file.unlink()
+        except OSError:
+            logger.error(_("Partial translation left at {file}").format(file=translated_file))
+        return None
+
+    logger.warning(_("Partial translation kept as {file}").format(file=partial_file.name))
+    return partial_file
+
+
+def _check_translation_complete(project: SubtitleProject, translator: SubtitleTranslator) -> None:
+    """Raise IncompleteTranslationError unless every line has a translation."""
+    if translator.aborted:
+        raise IncompleteTranslationError(_("Translation was aborted"))
+
+    subtitles = project.subtitles
+    if subtitles and subtitles.all_translated:
+        return
+
+    total = subtitles.linecount if subtitles else 0
+    missing = (
+        sum(len(batch.untranslated) for scene in subtitles.scenes for batch in scene.batches)
+        if subtitles and subtitles.scenes
+        else total
+    )
+    raise IncompleteTranslationError(
+        _("Translation incomplete: {missing} of {total} lines untranslated, {errors} errors").format(
+            missing=missing, total=total, errors=len(translator.errors)
+        )
+    )
+
+
+def _fix_finnish_subtitles(translated_file: Path) -> bool:
     """
-    Run fix-finnish-subs on the translated subtitle file.
+    Run fix-finnish-subs on the translated subtitle file. Return False if it failed.
 
     This runs exactly once: the fixer chain is not idempotent (merge fixers chain further and
-    the gap fixer re-shifts timings), so re-running it on failure degrades the output.
+    the gap fixer re-shifts timings), so re-running it on failure degrades the output. For the
+    same reason it has no timeout: a killed fixer can leave a half-fixed file.
     """
     if not translated_file.exists():
         logger.warning(f"Cannot fix subtitles; {translated_file} does not exist")
-        return
+        return False
 
     report_file = translated_file.with_stem(
         translated_file.stem + "_unfixed"
     ).with_suffix(".txt")
 
     command = [
-        "fix-finnish-subs",
+        FINNISH_FIXER_COMMAND,
         str(translated_file),
         "--report",
         str(report_file),
@@ -191,19 +268,25 @@ def _fix_finnish_subtitles(translated_file: Path) -> None:
     if os.getenv("EXSUBS_FIXER_VERBOSE"):
         command.append("--verbose")
 
-    result = subprocess.run(command, check=False)
+    try:
+        result = subprocess.run(command, check=False)
+    except OSError as e:
+        logger.error(_("Could not run fix-finnish-subs: {error}").format(error=e))
+        return False
 
     if result.returncode == 0:
         logger.info(f"Fixed subtitles with fix-finnish-subs: {translated_file.name}")
     else:
-        logger.warning(
-            "fix-finnish-subs returned non-zero exit status %s for %s",
-            result.returncode,
-            translated_file,
+        logger.error(
+            _("fix-finnish-subs returned non-zero exit status {status} for {file}").format(
+                status=result.returncode, file=translated_file
+            )
         )
 
     if report_file.exists():
         console.print(f"  Readability report: {report_file}")
+
+    return result.returncode == 0
 
 
 class TranslationMetrics:
@@ -379,6 +462,60 @@ def _determine_gemini_rate_limit(model: str | None) -> float:
     return GEMINI_STANDARD_RATE_LIMIT
 
 
+def _resolve_batch_sizes(
+    mode: TranslationMode,
+    model: str | None,
+    large_context_mode: bool,
+    parallel_batches: bool,
+    max_batch_size_arg: int | None,
+    min_batch_size_arg: int | None,
+) -> tuple[float, int, int]:
+    """Return (scene_threshold, min_batch_size, max_batch_size).
+
+    Precedence, lowest first: mode/model defaults, then the SCENE_THRESHOLD, MIN_BATCH_SIZE
+    and MAX_BATCH_SIZE env vars, then the parallel default (when MAX_BATCH_SIZE is unset),
+    then the --max-batch-size/--min-batch-size arguments.
+    """
+    if mode == TranslationMode.GEMINI and large_context_mode:
+        # Large-context mode leaves batching to SubtitleBatcher's large defaults
+        scene_threshold = LARGE_CONTEXT_SCENE_THRESHOLD
+        min_batch_size = LARGE_CONTEXT_MIN_BATCH_SIZE
+        max_batch_size = LARGE_CONTEXT_MAX_BATCH_SIZE
+    elif mode == TranslationMode.GEMINI:
+        normalised = _normalise_model_name(model)
+        if normalised and GEMINI_FLASH_MODEL_SUFFIX in normalised:
+            scene_threshold = FLASH_SCENE_THRESHOLD
+            min_batch_size = FLASH_MIN_BATCH_SIZE
+            max_batch_size = FLASH_MAX_BATCH_SIZE
+        else:
+            scene_threshold = GEMINI_SCENE_THRESHOLD
+            min_batch_size = GEMINI_MIN_BATCH_SIZE
+            max_batch_size = GEMINI_MAX_BATCH_SIZE
+    elif mode == TranslationMode.CHATGPT:
+        scene_threshold, min_batch_size, max_batch_size = 120.0, 30, 100
+    else:
+        scene_threshold, min_batch_size, max_batch_size = 60.0, 10, 50
+
+    scene_threshold = float(os.getenv("SCENE_THRESHOLD") or scene_threshold)
+    min_batch_size = int(os.getenv("MIN_BATCH_SIZE") or min_batch_size)
+    max_batch_size = int(os.getenv("MAX_BATCH_SIZE") or max_batch_size)
+
+    if parallel_batches and not os.getenv("MAX_BATCH_SIZE"):
+        # Smaller batches keep the parallel workers busy
+        max_batch_size = PARALLEL_MAX_BATCH_SIZE
+
+    if max_batch_size_arg:
+        max_batch_size = max_batch_size_arg
+
+    if min_batch_size_arg:
+        min_batch_size = min_batch_size_arg
+    elif min_batch_size > max_batch_size:
+        # SubtitleBatcher rejects min > max; only an explicit --min-batch-size may do that
+        min_batch_size = max_batch_size
+
+    return scene_threshold, min_batch_size, max_batch_size
+
+
 def _using_vertex() -> bool:
     value = os.getenv("GEMINI_USE_VERTEX")
     if value is None:
@@ -443,14 +580,20 @@ def _env_default_mode() -> TranslationMode | None:
     return None
 
 
-def verify_dependencies():
-    """Verify required command line tools are available"""
-    required_commands = ["ffmpeg", "ffprobe"]
-    for cmd in required_commands:
-        result = subprocess.run(["which", cmd], capture_output=True)
-        if result.returncode != 0:
-            logger.error(f"{cmd} not found. Please install ffmpeg package.")
+def verify_dependencies(lang_code: str | None = None):
+    """Verify required command line tools are available before any API call"""
+    for cmd in ("ffmpeg", "ffprobe"):
+        if not shutil.which(cmd):
+            logger.error(_("{command} not found. Please install ffmpeg package.").format(command=cmd))
             sys.exit(1)
+
+    if lang_code == "fi" and not shutil.which(FINNISH_FIXER_COMMAND):
+        logger.error(
+            _("{command} not found on PATH; Finnish output needs it").format(
+                command=FINNISH_FIXER_COMMAND
+            )
+        )
+        sys.exit(1)
 
 
 def _detect_shell_profile() -> Path:
@@ -578,8 +721,6 @@ def verify_api_key(mode: TranslationMode):
     if mode == TranslationMode.GEMINI and _using_vertex():
         return
 
-    from PySubtrans.MKV.Config import MODE_TO_ENV
-
     required_key = MODE_TO_ENV[mode]
     if not os.getenv(required_key):
         logger.error(f"{required_key} not found in environment")
@@ -599,14 +740,18 @@ def process_video_file(
     max_batch_size: int | None = None,
     min_batch_size: int | None = None,
     filter_subs: bool = True,
-):
-    """Process a single video file - extract and translate subtitles"""
+) -> bool:
+    """Process a single video file - extract and translate subtitles.
+
+    Return True when the file is done (translated, fixed, or already translated) and False
+    when it failed. A failed or incomplete translation raises.
+    """
     logger.info(f"Processing {video_file}")
 
     # Only process MKV files
     if not video_file.suffix.lower() == ".mkv":
         logger.warning(f"Skipping {video_file} - only MKV files are supported")
-        return
+        return False
 
     subtitle_file = video_file.with_suffix(".srt")
     lang_code = config.get_language_code(config.target_language)
@@ -617,7 +762,7 @@ def process_video_file(
     if translated_file.exists():
         if translated_file.stat().st_size > 0:
             logger.info(f"Skipping {video_file} - translated subtitle already exists")
-            return
+            return True
         logger.warning(
             f"Empty translated subtitle found, translating again: {translated_file.name}"
         )
@@ -655,13 +800,13 @@ def process_video_file(
                 logger.error(f"Failed to copy to local temp: {e}")
                 if temp_file and temp_file.exists():
                     temp_file.unlink()
-                return
+                return False
 
         try:
             if not extract_subtitles(
                 extraction_source, subtitle_file, interactive, show_progress
             ):
-                return
+                return False
         finally:
             if temp_file and temp_file.exists():
                 temp_file.unlink()
@@ -692,13 +837,17 @@ def process_video_file(
             subtitle_file, translated_file, config.target_language, lang_code
         )
 
-        if translated_file.exists():
-            if lang_code == "fi":
-                _fix_finnish_subtitles(translated_file)
+        if not translated_file.exists():
+            logger.error(f"Translation produced no output file: {translated_file}")
+            return False
 
-            # Clean up the original extracted subtitle if translation succeeded
-            if subtitle_file.exists():
-                subtitle_file.unlink()
+        fixed = _fix_finnish_subtitles(translated_file) if lang_code == "fi" else True
+
+        # Clean up the original extracted subtitle if translation succeeded
+        if subtitle_file.exists():
+            subtitle_file.unlink()
+
+        return fixed
 
     except Exception as e:
         logger.error(f"Translation failed: {e}")
@@ -759,8 +908,6 @@ def translate_subtitles(
     min_batch_size_arg: int | None = None,
 ):
     """Translate subtitles using PySubtrans API"""
-    from PySubtrans.MKV.Config import MODE_TO_DEFAULT_MODEL, MODE_TO_RATE_LIMIT
-
     # Map mode to provider name
     provider_map = {
         TranslationMode.GEMINI: "Gemini",
@@ -770,24 +917,6 @@ def translate_subtitles(
 
     provider = provider_map.get(mode, "Gemini")
     model = MODE_TO_DEFAULT_MODEL[mode]
-    # Defaults; overridable by environment or model-specific logic below
-    scene_threshold = float(os.getenv("SCENE_THRESHOLD") or 60.0)
-    min_batch_size = int(os.getenv("MIN_BATCH_SIZE") or 10)
-    max_batch_size = int(os.getenv("MAX_BATCH_SIZE") or 50)
-
-    # Logic: Arg > Env > Parallel-Default > Default
-
-    # 1. Override with arguments if provided
-    if min_batch_size_arg:
-        min_batch_size = min_batch_size_arg
-    if max_batch_size_arg:
-        max_batch_size = max_batch_size_arg
-
-    # 2. If Parallel Mode is on and no explicit max_batch_size (arg or env), optimize for parallelism
-    # Check if user set env var explicitly to avoid overriding their preference
-    if parallel_batches and not max_batch_size_arg and not os.getenv("MAX_BATCH_SIZE"):
-        # Default to smaller batches for parallel mode to utilize workers
-        max_batch_size = 150
     max_context_summaries = int(os.getenv("MAX_CONTEXT_SUMMARIES") or 10)
     rate_limit: float | None = None
 
@@ -801,43 +930,19 @@ def translate_subtitles(
 
     if mode == TranslationMode.GEMINI:
         model = os.getenv("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
+    elif mode == TranslationMode.CHATGPT:
+        model = os.getenv("OPENAI_MODEL") or "gpt-5-mini"
 
-        # Model-specific tuned defaults (overridable by env)
-        # Only apply if large_context_mode is NOT enabled, as it has its own defaults in SubtitleBatcher
-        if not large_context_mode:
-            normalised = _normalise_model_name(model)
-            if normalised and GEMINI_FLASH_MODEL_SUFFIX in normalised:
-                scene_threshold = float(
-                    os.getenv("SCENE_THRESHOLD") or FLASH_SCENE_THRESHOLD
-                )
-                min_batch_size = int(
-                    os.getenv("MIN_BATCH_SIZE") or FLASH_MIN_BATCH_SIZE
-                )
-                max_batch_size = int(
-                    os.getenv("MAX_BATCH_SIZE") or FLASH_MAX_BATCH_SIZE
-                )
-            else:
-                scene_threshold = float(
-                    os.getenv("SCENE_THRESHOLD") or GEMINI_SCENE_THRESHOLD
-                )
-                min_batch_size = int(
-                    os.getenv("MIN_BATCH_SIZE") or GEMINI_MIN_BATCH_SIZE
-                )
-                max_batch_size = int(
-                    os.getenv("MAX_BATCH_SIZE") or GEMINI_MAX_BATCH_SIZE
-                )
-        else:
-            # If large context mode is on, let SubtitleBatcher handle defaults (or use env overrides)
-            # We just ensure we don't pass the small defaults
-            if not os.getenv("SCENE_THRESHOLD"):
-                scene_threshold = (
-                    300.0  # Match SubtitleBatcher default for large context
-                )
-            if not os.getenv("MAX_BATCH_SIZE"):
-                max_batch_size = 600  # Match SubtitleBatcher default for large context
-            if not os.getenv("MIN_BATCH_SIZE"):
-                min_batch_size = 1  # Let batcher decide or use small min
+    scene_threshold, min_batch_size, max_batch_size = _resolve_batch_sizes(
+        mode,
+        model,
+        large_context_mode,
+        parallel_batches,
+        max_batch_size_arg,
+        min_batch_size_arg,
+    )
 
+    if mode == TranslationMode.GEMINI:
         max_context_summaries = int(
             os.getenv("MAX_CONTEXT_SUMMARIES") or GEMINI_MAX_CONTEXT_SUMMARIES
         )
@@ -860,10 +965,6 @@ def translate_subtitles(
             if location:
                 settings_vertex["vertex_location"] = location
     elif mode == TranslationMode.CHATGPT:
-        model = os.getenv("OPENAI_MODEL") or "gpt-5-mini"
-        scene_threshold = float(os.getenv("SCENE_THRESHOLD") or 120.0)
-        min_batch_size = int(os.getenv("MIN_BATCH_SIZE") or 30)
-        max_batch_size = int(os.getenv("MAX_BATCH_SIZE") or 100)
         max_context_summaries = int(os.getenv("MAX_CONTEXT_SUMMARIES") or 6)
         settings_vertex = {}
         try:
@@ -1021,12 +1122,26 @@ def translate_subtitles(
     )
     progress = TranslationProgress() if show_progress else None
     start_time = time.perf_counter()
+    planned_output = Path(
+        project.subtitles.outputpath if project.subtitles and project.subtitles.outputpath else out_file
+    )
+    output_before = _output_signature(planned_output)
     try:
         if metrics:
             metrics.attach(translator)
         if progress:
             progress.attach(translator, sub_file, total_lines)
         project.TranslateSubtitles(translator)
+        _check_translation_complete(project, translator)
+    except Exception:
+        # SubtitleProject saves partial results before it re-raises. Move them off the final
+        # path, so the episode is not skipped as done and fix-finnish-subs never sees them.
+        # A file this run did not write (an earlier, finished translation) stays where it is.
+        saved_path = project.subtitles.outputpath if project.subtitles else None
+        partial_path = Path(saved_path) if saved_path else out_file
+        if partial_path != planned_output or _output_signature(partial_path) != output_before:
+            _set_aside_partial_output(partial_path)
+        raise
     finally:
         if progress:
             progress.detach(translator, final=True)
@@ -1047,8 +1162,9 @@ def process_directory(
     max_batch_size: int | None = None,
     min_batch_size: int | None = None,
     filter_subs: bool = True,
-):
-    """Process all MKV files in the current directory"""
+    show_metrics: bool = True,
+) -> int:
+    """Process all MKV files in the current directory. Return 1 if any file failed."""
     # Get all MKV files and sort them
     video_files = list(Path().glob("*.mkv"))
 
@@ -1060,7 +1176,7 @@ def process_directory(
 
     if not sorted_files:
         logger.warning("No MKV files found in current directory")
-        return
+        return 0
 
     console.print("\n[bold]Starting subtitle processing[/bold]")
 
@@ -1073,20 +1189,21 @@ def process_directory(
             lang_code = config.get_language_code(config.target_language)
             translated_file = _build_translated_output_path(subtitle_file, lang_code)
 
-            if translated_file.exists():
+            # Same rule as process_video_file: an empty file is a failed earlier run
+            if translated_file.exists() and translated_file.stat().st_size > 0:
                 console.print(
                     f"[yellow]⏭ Skipping[/yellow] {video_file.path.name} - translation exists"
                 )
                 stats["skipped"] += 1
             else:
                 console.print(f"[blue]⚙ Processing[/blue] {video_file.path.name}")
-                process_video_file(
+                succeeded = process_video_file(
                     video_file.path,
                     config,
                     mode,
                     interactive,
                     show_progress,
-                    show_progress,
+                    show_metrics=show_metrics,
                     copy_local=copy_local,
                     parallel_batches=parallel_batches,
                     parallel_workers=parallel_workers,
@@ -1094,19 +1211,19 @@ def process_directory(
                     min_batch_size=min_batch_size,
                     filter_subs=filter_subs,
                 )
-                translated_file = _normalise_translated_output(
-                    subtitle_file, translated_file, config.target_language, lang_code
-                )
-                if translated_file.exists():
+                if succeeded:
                     stats["processed"] += 1
                     console.print(f"[green]✓ Completed[/green] {video_file.path.name}")
                 else:
                     stats["failed"] += 1
                     console.print(f"[red]✗ Failed[/red] {video_file.path.name}")
 
+        except IncompleteTranslationError as e:
+            stats["failed"] += 1
+            logger.error(f"Error processing {video_file.path.name}: {e}")
         except Exception as e:
             stats["failed"] += 1
-            logger.error(f"Error processing {video_file.path.name}: {str(e)}")
+            logger.exception(f"Error processing {video_file.path.name}: {e}")
 
         console.print("─" * 40)
 
@@ -1115,6 +1232,8 @@ def process_directory(
     console.print(f"Processed: {stats['processed']}")
     console.print(f"Skipped: {stats['skipped']}")
     console.print(f"Failed: {stats['failed']}")
+
+    return 1 if stats["failed"] else 0
 
 
 def main():
@@ -1207,12 +1326,13 @@ def main():
     parser.add_argument(
         "--max-batch-size",
         type=int,
-        help="Maximum lines per batch (default: 600 for Gemini, 200 for Parallel)",
+        help="Maximum lines per batch (default: 150 in parallel mode, else the mode default, "
+        "600 for Gemini large-context mode); overrides MAX_BATCH_SIZE",
     )
     parser.add_argument(
         "--min-batch-size",
         type=int,
-        help="Minimum lines per batch",
+        help="Minimum lines per batch; overrides MIN_BATCH_SIZE",
     )
     args = parser.parse_args()
 
@@ -1249,21 +1369,18 @@ def main():
     if mode == TranslationMode.GEMINI and not args.no_parallel and _using_vertex():
         args.parallel = True
 
-    # Set defaults for parallel mode if enabled
-    if args.parallel:
-        if args.parallel_workers is None:
-            # Optimize for high-concurrency models (Gemini 3)
-            args.parallel_workers = 8
-        if args.max_batch_size is None and not os.getenv("MAX_BATCH_SIZE"):
-            # 150 lines scored level with sequential batches in the 2026-10-23 A/B (transubs)
-            args.max_batch_size = 150
+    # Set defaults for parallel mode if enabled. The 150-line parallel batch default is
+    # applied in translate_subtitles, below explicit --max-batch-size and MAX_BATCH_SIZE.
+    if args.parallel and args.parallel_workers is None:
+        # Optimize for high-concurrency models (Gemini 3)
+        args.parallel_workers = 8
 
     # Fallback default for workers if not parallel or not set
     if args.parallel_workers is None:
         args.parallel_workers = 4
 
     # Verify dependencies
-    verify_dependencies()
+    verify_dependencies(config.get_language_code(config.target_language))
     verify_api_key(mode)
 
     # Use file lock with proper error handling
@@ -1282,7 +1399,7 @@ def main():
 
                 if args.file:
                     # Process single file
-                    process_video_file(
+                    succeeded = process_video_file(
                         Path(args.file),
                         config,
                         mode,
@@ -1296,31 +1413,34 @@ def main():
                         min_batch_size=args.min_batch_size,
                         filter_subs=filter_subs,
                     )
-                else:
-                    # Process all MKV files in current directory
-                    process_directory(
-                        config,
-                        mode,
-                        args.interactive,
-                        show_progress,
-                        copy_local=args.copy_local,
-                        parallel_batches=args.parallel,
-                        parallel_workers=args.parallel_workers,
-                        max_batch_size=args.max_batch_size,
-                        min_batch_size=args.min_batch_size,
-                        filter_subs=filter_subs,
-                    )
+                    return 0 if succeeded else 1
 
-                return 0
+                # Process all MKV files in current directory
+                return process_directory(
+                    config,
+                    mode,
+                    args.interactive,
+                    show_progress,
+                    copy_local=args.copy_local,
+                    parallel_batches=args.parallel,
+                    parallel_workers=args.parallel_workers,
+                    max_batch_size=args.max_batch_size,
+                    min_batch_size=args.min_batch_size,
+                    filter_subs=filter_subs,
+                    show_metrics=show_metrics,
+                )
 
+            except IncompleteTranslationError as e:
+                logger.error(f"Processing error: {e}")
+                return 1
             except Exception as e:
-                logging.error(f"Processing error: {str(e)}")
+                logger.exception(f"Processing error: {e}")
                 return 1
     except TimeoutError:
-        logging.error("Could not acquire lock - another instance might be running")
+        logger.error("Could not acquire lock - another instance might be running")
         return 1
     except Exception as e:
-        logging.error(f"Unexpected error: {str(e)}")
+        logger.exception(f"Unexpected error: {e}")
         return 1
     finally:
         if lock.is_locked:

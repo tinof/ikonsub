@@ -6,6 +6,9 @@ from pathlib import Path
 
 logger = logging.getLogger("exsubs")
 
+# ffprobe reads files on network mounts (nzbdav/rclone); a stalled read must not hang the run
+FFPROBE_TIMEOUT_SECONDS = 120
+
 
 def get_mkv_subtitle_tracks(video_file: Path) -> list[dict]:
     """Get subtitle tracks from MKV file using ffprobe"""
@@ -27,7 +30,9 @@ def get_mkv_subtitle_tracks(video_file: Path) -> list[dict]:
             str(video_file),
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True, timeout=FFPROBE_TIMEOUT_SECONDS
+        )
 
         try:
             info = json.loads(result.stdout)
@@ -69,6 +74,9 @@ def get_mkv_subtitle_tracks(video_file: Path) -> list[dict]:
 
     except subprocess.CalledProcessError as e:
         logger.error(f"ffprobe command failed: {e}")
+        return []
+    except subprocess.TimeoutExpired:
+        logger.error(f"ffprobe timed out after {FFPROBE_TIMEOUT_SECONDS}s reading {video_file}")
         return []
     except Exception as e:
         logger.error(f"Failed to get subtitle tracks: {e}")
@@ -232,7 +240,9 @@ def _get_video_duration(video_file: Path) -> float | None:
             "-show_format",
             str(video_file),
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True, timeout=FFPROBE_TIMEOUT_SECONDS
+        )
         info = json.loads(result.stdout)
         duration_str = info.get("format", {}).get("duration")
         if duration_str:
