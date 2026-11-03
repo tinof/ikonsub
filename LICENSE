@@ -1,10 +1,13 @@
 ==========================
-LLM-Subtrans License
+ikonsub License
 ==========================
+
+ikonsub is derived from LLM-Subtrans (https://github.com/machinewrapped/llm-subtrans).
 
 MIT License
 
 Copyright (c) 2023 machinewrapped
+Copyright (c) 2025-2026 Tino Fotiou
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

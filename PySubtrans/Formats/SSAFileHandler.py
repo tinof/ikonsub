@@ -115,7 +115,7 @@ class SSAFileHandler(SubtitleFileHandler):
             str: formatted subtitle content
         """
         subs: pysubs2.SSAFile = pysubs2.SSAFile()
-        subs.info["TranslatedBy"] = "LLM-Subtrans"
+        subs.info["TranslatedBy"] = "ikonsub"
 
         self._build_metadata(subs, data.metadata)
 

@@ -1,8 +1,8 @@
 # PySubtrans
 
-PySubtrans is the subtitle translation engine that powers [LLM-Subtrans](https://github.com/machinewrapped/llm-subtrans). It provides tools to read and write subtitle files in various formats, connect to various LLMs as translators and manage a translation workflow.
+PySubtrans is the subtitle translation engine that powers [ikonsub](https://github.com/tinof/ikonsub). It comes from [LLM-Subtrans](https://github.com/machinewrapped/llm-subtrans) by machinewrapped. It provides tools to read and write subtitle files in various formats, connect to various LLMs as translators and manage a translation workflow.
 
-This package makes these capabilities available as a library that you can incorporate into your own tools and workflows to take advantage of the best-in-class translation quality that LLM-Subtrans provides.
+This package makes these capabilities available as a library that you can incorporate into your own tools and workflows to take advantage of the best-in-class translation quality that ikonsub provides.
 
 ## Installation
 
@@ -17,7 +17,7 @@ pip install pysubtrans[openai,gemini,claude]
 
 ## Quick start: translate a subtitle file
 
-The quickest way to get started is to use the helper functions exposed at the package root. They wrap the classes used by LLM-Subtrans so that you can execute a full translation pipeline with a few lines of code.
+The quickest way to get started is to use the helper functions exposed at the package root. They wrap the classes used by ikonsub so that you can execute a full translation pipeline with a few lines of code.
 
 ```python
 from PySubtrans import init_options, init_subtitles, init_translator
@@ -43,7 +43,7 @@ Subtitle format is auto-detected based on file extension or content.
 
 ### Working with a `SubtitleProject` with `init_project`
 
-`SubtitleProject` provides a high level interface for managing a translation job, with methods to read and write a project file to disk and event hooks on scene/batch translation. This is the framework that LLM-Subtrans uses to manage translation workflows, but it is general enough that it could be used in other contexts.
+`SubtitleProject` provides a high level interface for managing a translation job, with methods to read and write a project file to disk and event hooks on scene/batch translation. This is the framework that ikonsub uses to manage translation workflows, but it is general enough that it could be used in other contexts.
 
 `init_project` instantiates a `SubtitleProject` and loads and prepares the source subtitles if a file path is supplied.
 
@@ -138,7 +138,7 @@ translator.events.scene_translated.connect(on_scene_translated)  # Subscribe to 
 translator.TranslateSubtitles(subtitles)
 ```
 
-Note that different providers may require different settings. See the [LLM-Subtrans](https://github.com/machinewrapped/llm-subtrans/) documentation for details on supported providers.
+Note that different providers may require different settings. See the [ikonsub](https://github.com/tinof/ikonsub/) documentation for details on supported providers.
 
 #### Translation Events
 
@@ -360,7 +360,7 @@ continuing to evolve is the key to survival.
 
 Adapting the examples to your use case can greatly improve the model's performance by teaching it what good looks like.
   
-See [LLM-Subtrans](https://github.com/machinewrapped/llm-subtrans/instructions) for examples of instructions tailored to specific use cases.
+See [ikonsub](https://github.com/tinof/ikonsub/instructions) for examples of instructions tailored to specific use cases.
 
 ### A programmatic workflow example
 This example shows how to construct subtitles and translate them with progress feedback, working directly with the PySubtrans business logic.
@@ -467,13 +467,13 @@ with SubtitleEditor(subtitles) as editor:
 print(f"Final state: {subtitles.scenecount} scenes, {subtitles.linecount} lines")
 ```
 
-## Learning from LLM-Subtrans
+## Learning from ikonsub
 
-[LLM-Subtrans](https://github.com/machinewrapped/llm-subtrans) provides a complete end-to-end example of using PySubtrans in a CLI workflow. It can be used as a reference when integrating PySubtrans into your application if you want to use more advanced features.
+[ikonsub](https://github.com/tinof/ikonsub) provides a complete end-to-end example of using PySubtrans in a CLI workflow. It can be used as a reference when integrating PySubtrans into your application if you want to use more advanced features.
 
 ### Batch automation example
 
-The [LLM-Subtrans](https://github.com/machinewrapped/llm-subtrans)repository also includes [`scripts/batch_translate.py`](https://github.com/machinewrapped/llm-subtrans/scripts/batch_translate.py) as a ready-to-run sample. The script shows how to:
+The [ikonsub](https://github.com/tinof/ikonsub)repository also includes [`scripts/batch_translate.py`](https://github.com/tinof/ikonsub/scripts/batch_translate.py) as a ready-to-run sample. The script shows how to:
 
 - build an `Options` instance with `init_options`, including command line overrides for provider, model and preview settings,
 - walk a source directory using `SubtitleFormatRegistry.enumerate_formats()` to filter files that PySubtrans can translate,
@@ -482,7 +482,7 @@ The [LLM-Subtrans](https://github.com/machinewrapped/llm-subtrans)repository als
 
 ## If you need to know more
 
-For a more complete breakdown of the module layout and responsibilities of the various components of PySubtrans refer to the LLM-Subtrans [architecture guide](https://github.com/machinewrapped/llm-subtrans/blob/main/docs/architecture.md).
+For a more complete breakdown of the module layout and responsibilities of the various components of PySubtrans refer to the ikonsub [architecture guide](https://github.com/tinof/ikonsub/blob/main/docs/architecture.md).
 
 ## Release History
 

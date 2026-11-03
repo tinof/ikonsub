@@ -1,4 +1,4 @@
-# LLM-Subtrans Architecture (CLI Edition)
+# ikonsub Architecture
 
 ```mermaid
 graph TD
@@ -7,13 +7,15 @@ graph TD
 
 This document helps developers understand where to find code and how components interact when working on the codebase.
 
-**Note:** This is a CLI-only fork for Linux/macOS. All GUI and Windows-specific components have been removed.
+**Note:** ikonsub is a CLI-only app for Linux/macOS, derived from LLM-Subtrans.
 
 ## Entry Points
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/llm-subtrans.py` | CLI translator - loads subtitle file, translates using specified provider/model, saves results |
+| `scripts/exsubs.py` | Extracts subtitles from MKV files, translates them and runs the Finnish readability fixer |
+| `scripts/transubs.py` | Translates existing subtitle files (.srt, .ass, .vtt) |
+| `scripts/gemini_subtrans.py`, `gpt_subtrans.py`, `claude_subtrans.py` | Provider-specific translators with full options |
 | `scripts/batch-translate.py` | Batch translation script for processing multiple files |
 
 ## Module Structure

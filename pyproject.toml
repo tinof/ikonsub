@@ -3,9 +3,9 @@ requires = ["hatchling>=1.27.0", "uv-dynamic-versioning>=0.8.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "llm-subtrans"
+name = "ikonsub"
 dynamic = ["version"]
-description = "CLI subtitle translation tool with MKV extraction using large language models (Linux/macOS)"
+description = "ikonsub: CLI subtitle translator with MKV extraction and a Finnish readability pipeline, using LLMs (Linux/macOS)"
 readme = "readme.md"
 requires-python = ">=3.11"
 license = {file = "LICENSE"}

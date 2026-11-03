@@ -1,6 +1,6 @@
-# LLM-Subtrans Development Guide (CLI Edition)
+# ikonsub Development Guide
 
-**Note:** This is a CLI-only fork for Linux/macOS. All GUI and Windows-specific components have been removed.
+**Note:** ikonsub is a CLI-only app for Linux/macOS, derived from LLM-Subtrans (machinewrapped/llm-subtrans) and now developed separately. Nothing is merged from or sent to that project.
 
 `CLAUDE.md` is a symlink to this file — edit `AGENTS.md`; both names resolve to the same content.
 
@@ -30,13 +30,13 @@ This installs all optional provider dependencies (Gemini, OpenAI, Claude, etc.) 
 Install the CLI commands (`exsubs`, `transubs`, etc.) globally:
 
 ```bash
-uv tool install "llm-subtrans[openai,gemini,claude]" @ git+https://github.com/tinof/llm-subtrans.git
+uv tool install "ikonsub[openai,gemini,claude] @ git+https://github.com/tinof/ikonsub.git"
 ```
 
 Or for editable/local development:
 
 ```bash
-uv tool install --editable /path/to/llm-subtrans --with "google-genai" --with "google-api-core" --with "openai" --with "anthropic"
+uv tool install --editable /path/to/ikonsub --with "google-genai" --with "google-api-core" --with "openai" --with "anthropic"
 ```
 
 ### Optional Extras
@@ -177,36 +177,11 @@ these contracts intact:
 
 Consult `docs/architecture.md` for detailed information on the project architecture and components.
 
-## Upstream Sync (Fork Maintenance)
-
-- `upstream` should point at the original repo, `https://github.com/machinewrapped/llm-subtrans.git`, but it is **not configured by default** — this checkout has only `origin`. Verify with `git remote -v` and add it before syncing:
-  `git remote add upstream https://github.com/machinewrapped/llm-subtrans.git`
-- Preferred workflow for public main: merge (not rebase) to preserve history and avoid force-pushes.
-- Keep our CLI-only customizations intact: do not reintroduce GUI or Windows-specific code.
-- Keep only the Gemini, OpenAI and Claude providers. When upstream changes a provider we deleted (Azure, Bedrock, Custom Server, DeepSeek, Mistral, OpenRouter), resolve the conflict by keeping it deleted.
-
-### Quick Steps
-
-- Fetch upstream: `git fetch upstream`
-- Review ahead/behind:
-  - Upstream ahead: `git log --oneline main..upstream/main`
-  - Fork ahead: `git log --oneline upstream/main..main`
-- Merge: `git merge upstream/main` and resolve conflicts by
-  - Preserving: top-level `pyproject.toml` (CLI description/version, scripts) and Linux/macOS-only constraints
-  - Adopting: changes under `PySubtrans/` (core engine), tests, locales
-- Validate after merge: `make check && make test`
-- Push if green: `git push origin main`
-
-### Prompt Template (for Codex)
-
-- "Merge upstream/main into our main; preserve CLI-only fork constraints (no GUI/Windows), keep top-level pyproject CLI metadata/scripts, adopt upstream PySubtrans changes, run checks/tests with make, and push to origin/main if tests pass."
-
-### When to Rebase
-
-- Only if a linear history is required and force-push is acceptable. Otherwise, prefer merges.
-
 ## Repository Hygiene
 
 - Never print or read `.env` contents.
+- Keep the app CLI-only: do not reintroduce GUI or Windows-specific code.
+- Keep only the Gemini, OpenAI and Claude providers.
+- Keep the `LLMSUBTRANS_*` environment variables and the existing config directories, so installed setups keep working.
 - New files or scripts must not add imports in the middle of functions.
 - Use `regex` (not `re`) for regular expressions.
