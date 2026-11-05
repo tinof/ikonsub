@@ -8,7 +8,7 @@ turns that part off. A diff that touches this file is always Tier 2.
 ## Settings
 
 ```
-contract:       1.1
+contract:       1.2
 repo:           tinof/ikonsub
 base:           main
 merge:          squash
@@ -27,6 +27,7 @@ logic:          'PySubtrans/**' 'scripts/**' 'tools/**'
 tests:          'tests/**'
 self-check:     none
 review-surfaces: exec
+self-review:    allowed
 ```
 
 - With `merge: squash` the PR body becomes the commit body: follow the PR body format in `~/.claude/CLAUDE.md` (no headings or checklists, no hard wrap).
@@ -112,6 +113,12 @@ none
 
 none
 
+## Unattended
+
+- `move-steps`: E5.2-E5.4
+- `move-gate`: `git show origin/main:tools/check_pure_move.py | uv run python - --base origin/main`
+- `move-review`: gate
+
 ## Codex notes
 
 - Codex's read-only sandbox cannot run `uv`, `make` or `pytest` (uv cannot write its cache), and has no network; it reviews by reading. Its "checks could not run" note is expected, not a finding.
@@ -129,3 +136,11 @@ and pytest. Every needed tool is installed on the Oracle host, so `gate-fallback
 rules agents follow. This host runs Gemini through Vertex with gcloud credentials, so `credentials`
 accepts that as well as API keys. The repo had no tags or release doc on 2026-11-05, so `## Release` is `none`; E2
 in the roadmap sets versioning up. `## Material` stays `none` until E3.1 names the baseline episodes.
+
+`self-review: allowed` (owner, 2026-11-05) lets `/ship:roadmap-batch` build and review with Claude
+only, with no Codex cross-family review. Steps that touch the Tier 2 paths above (for example E4.1 in
+`SubtitleProcessor.py`, F2.1 in `Options.py`) are better shipped one at a time with `/ship`, which
+still routes Codex when asked. The roadmap's `live` tag means a paid provider run, not a deploy: every
+`live` step also carries `owner`, so batch skips it and roadmap-next leaves it to the owner. The move
+gate runs the base's copy of `tools/check_pure_move.py` (E5.14), so a step cannot change its own
+proof; until E5.14 merges, the move steps fall back to a normal review.

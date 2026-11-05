@@ -23,7 +23,7 @@ commit trailers. A step without a gate, or with `Gate: TODO(owner)`, waits for t
 | `desk` | Code or doc work; needs nothing |
 | `owner` | Needs the owner: a decision, material or a test only they can run |
 | `reassess` | A stop point: its outcome decides what follows, so the next run re-plans |
-| `live` | A live provider run: needs credentials (probe `credentials`) and the media tools (probe `media-tools`), and spends API credits |
+| `live` | A paid provider run: needs credentials (probe `credentials`) and the media tools (probe `media-tools`). Always paired with `owner`: the owner runs it or approves its scope |
 | `api-key` | Needs a Gemini API key in the environment (probe `gemini-api-key`): the Developer API path, which Vertex runs do not exercise |
 
 **How to update.** Format: `~/.claude/skills/ship/reference/roadmap-format.md`. This file holds open
@@ -56,6 +56,9 @@ same item stay startable. `/ship:roadmap-next` reads this list; remove an entry 
   model switches users to the reasoning client and changes cost and latency.
 - **E2.1: choose the first ikonsub version.** No tags exist, so the wheel says `0.0.1.devN` while
   `PySubtrans/version.py` says `v1.5.6`.
+- **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2: paid live runs.** Run them, or approve a scope and a budget
+  for an agent run; `/ship:roadmap-batch` never starts them.
+- **E2.3: tag the first release.** It pushes a tag and adds `## Release` to `.claude/workflow.md`.
 - **E3.1: name the reference episodes and where they live.** `AGENTS.md:177` asks for a comparison
   against "the kept baseline artifacts", but no path names them.
 
@@ -113,8 +116,11 @@ maintainability, then translation-quality features, then throughput and releases
 - The API-key client pins `api_version = "v1alpha"` (`PySubtrans/Providers/Clients/GeminiClient.py:587`,
   `PySubtrans/Providers/Provider_Gemini.py:284`); the SDK default is `v1beta`.
   `HARM_CATEGORY_CIVIC_INTEGRITY` (`GeminiClient.py:167`) is deprecated in google-genai.
-- [D3.1][live][api-key] Drop the `v1alpha` overrides and the civic-integrity setting. Gate: unit tests, and one
-  live API-key run with `thinking_level` set that translates a batch.
+- [D3.1][desk] Drop the `v1alpha` overrides and the civic-integrity setting. Gate: unit tests that the
+  API-key client and the model listing use the SDK default API version and send no civic-integrity
+  setting; `make check && make test`.
+- [D3.2][owner][live][api-key] One live API-key run with `thinking_level` set that translates a batch
+  on `v1beta`; revert D3.1 if it fails. Gate: the run's result in the log. Needs: D3.1.
 
 ### D4: Default model names are spread over the entry points
 
@@ -137,10 +143,15 @@ maintainability, then translation-quality features, then throughput and releases
   `response_schema`, OpenAI Responses `json_schema`, Claude), how `[MERGE N+M]`, timing annotations
   and `names` map onto it, the fallback to `TranslationParser`, and the measurement plan. Gate: the
   doc merged and the owner's go or no-go in the log.
-- [F1.2][live] Implement it for Gemini behind a `structured_output` setting (default off, registered in
-  `Options.default_settings`). Gate: unit tests, and `subtitle_metrics` on a reference episode with a
-  cue-count delta of 0 and CPS no worse than the regex path. Needs: F1.1.
-- [F1.3][live] Extend it to OpenAI and Claude. Gate: the same measurement per provider. Needs: F1.2.
+- [F1.2][desk] Implement it for Gemini behind a `structured_output` setting (default off, registered in
+  `Options.default_settings`). Gate: unit tests with a mocked Gemini client, including `[MERGE N+M]`
+  and the fallback to `TranslationParser`. Needs: F1.1.
+- [F1.3][desk] Extend it to OpenAI and Claude, still default off. Gate: the same unit tests per
+  provider. Needs: F1.2.
+- [F1.4][owner][live] Measure Gemini structured output on a reference episode. Gate: `subtitle_metrics`
+  with a cue-count delta of 0 and CPS no worse than the regex path, in the log. Needs: F1.2.
+- [F1.5][owner][live][reassess] Measure OpenAI and Claude the same way, and decide the default per
+  provider. Gate: the measurements and the decision in the log. Needs: F1.3, F1.4.
 
 ### F2: Global glossary pre-pass
 
@@ -150,14 +161,14 @@ maintainability, then translation-quality features, then throughput and releases
 - [F2.1][desk] A pre-pass with a cheap model extracts names and terms from the whole file into the
   existing `names` setting, behind a `glossary_prepass` setting (default off). Gate: `DummyProvider`
   tests showing the glossary reaches every batch prompt.
-- [F2.2][live][reassess] Measure name-spelling variants with and without the pre-pass on a reference
+- [F2.2][owner][live][reassess] Measure name-spelling variants with and without the pre-pass on a reference
   episode, and set the default from the result. Gate: the measurement in the log. Needs: F2.1.
 
 ### F3: Semantic batch boundaries
 
 - **Status:** Partial; long scenes split at the longest gap, near the middle on ties (PR #3).
 - `development-ideas.md` idea 2 also proposes splitting where the topic changes, using embeddings.
-- [F3.1][live][reassess] Measure batch sizes and split points on a dense documentary after PR #3, and
+- [F3.1][owner][live][reassess] Measure batch sizes and split points on a dense documentary after PR #3, and
   decide whether a semantic split is worth building. Gate: the measurement and the decision in the
   log.
 
@@ -168,7 +179,7 @@ maintainability, then translation-quality features, then throughput and releases
   (`scripts/transubs.py:483`).
 - [F4.1][desk] Correct the docstring and the readme on parallel mode with an API key. Gate:
   `make check`.
-- [F4.2][live][api-key][reassess] Measure throughput and 429s for parallel and sequential runs on a Gemini API
+- [F4.2][owner][live][api-key][reassess] Measure throughput and 429s for parallel and sequential runs on a Gemini API
   key, and set the default from the result. Gate: the measurement in the log. Needs: F4.1.
 
 ### F5: Resume a failed translation
@@ -192,16 +203,18 @@ maintainability, then translation-quality features, then throughput and releases
   creates. Gate: `test_CliPipeline` green and the settings each script passes to `init_options`
   unchanged. Needs: E5.2.
 - [E1.2][desk] Define `GEMINI_3_MODEL_PATTERN`, the temperature policy and the Finnish pipeline values
-  once, and update the `AGENTS.md` wording. Gate: the same settings test, and one definition of each
-  (`rg -c`). Needs: E1.1.
+  once, in code only. Gate: the same settings test, and one definition of each (`rg -c`). Needs: E1.1.
+- [E1.3][desk] Update the `AGENTS.md` wording ("change both or neither") to name the single
+  definition. Gate: `make check`, and the wording matches the code. Needs: E1.2.
 
 ### E2: Versioning and a changelog
 
 - **Status:** Open; needs the owner's version choice.
 - [E2.1][owner] Choose the first ikonsub version. Gate: the choice recorded in the log.
-- [E2.2][desk] Read `PySubtrans.__version__` from `importlib.metadata`, start `CHANGELOG.md`, tag the
-  chosen version, and add a `## Release` section to `.claude/workflow.md`. Gate: `uv tool list` shows
-  the tagged version. Needs: E2.1.
+- [E2.2][desk] Read `PySubtrans.__version__` from `importlib.metadata` and start `CHANGELOG.md`. Gate:
+  a test that `__version__` equals `importlib.metadata.version("ikonsub")`. Needs: E2.1.
+- [E2.3][owner] Tag the chosen version and add a `## Release` section to `.claude/workflow.md`. Gate:
+  `uv tool list` shows the tagged version. Needs: E2.2.
 
 ### E3: Translation-quality baseline
 
@@ -232,31 +245,36 @@ maintainability, then translation-quality features, then throughput and releases
   and a probe function with 51 statements makes it fail.
 - [E5.2][desk] Split `scripts/exsubs.py` (1476 lines, limit 800) by pure moves; the shared pipeline
   helpers go into one module `scripts/transubs.py` can use. Gate: `make check && make test`, and
-  `git diff --color-moved=dimmed-zebra` shows only moved blocks.
+  `git diff --color-moved=dimmed-zebra` shows only moved blocks. Needs: E5.14.
 - [E5.3][desk] Split `scripts/transubs.py` (1129 lines, limit 800) by pure moves. Gate: `make check &&
-  make test`, and a diff that shows only moved blocks.
+  make test`, and a diff that shows only moved blocks. Needs: E5.14.
 - [E5.4][desk] Split `PySubtrans/SubtitleTranslator.py` (983 lines, limit 800) by pure moves. Gate:
-  `make check && make test`, and a diff that shows only moved blocks.
+  `make check && make test`, and a diff that shows only moved blocks. Needs: E5.14.
 - [E5.5][desk] Split `translate_srt_file` (165 statements, `scripts/transubs.py:550`) by phase. Gate:
-  `make check && make test`, behaviour unchanged.
+  `make check && make test`, behaviour unchanged. Needs: E5.3.
 - [E5.6][desk] Split `translate_subtitles` (125 statements, `scripts/exsubs.py:918`) by phase. Gate:
-  `make check && make test`, behaviour unchanged.
+  `make check && make test`, behaviour unchanged. Needs: E5.2.
 - [E5.7][desk] Split `run_diagnostics` (81 statements, `PySubtrans/MKV/Diagnostics.py:8`) by phase.
   Gate: `make check && make test`, behaviour unchanged.
 - [E5.8][desk] Split `BatchProcessor.run` (72 statements, `scripts/batch_translate.py:122`) by phase.
   Gate: `make check && make test`, behaviour unchanged.
 - [E5.9][desk] Split `main` (68 statements, `scripts/exsubs.py:1264`) by phase. Gate: `make check &&
-  make test`, behaviour unchanged.
+  make test`, behaviour unchanged. Needs: E5.2.
 - [E5.10][desk] Split `SubtitleTranslator._translate_parallel` (55 statements,
   `PySubtrans/SubtitleTranslator.py:229`) by phase. Gate: `make check && make test`, behaviour
-  unchanged.
+  unchanged. Needs: E5.4.
 - [E5.11][desk] Split `process_video_file` (54 statements, `scripts/exsubs.py:750`) by phase. Gate:
-  `make check && make test`, behaviour unchanged.
+  `make check && make test`, behaviour unchanged. Needs: E5.2.
 - [E5.12][desk] Split `OpenAIClient._try_send_messages` (52 statements,
   `PySubtrans/Providers/Clients/OpenAIClient.py:106`) by phase. Gate: `make check && make test`,
-  behaviour unchanged.
+  behaviour unchanged. Needs: D1.1.
 - [E5.13][desk] Trim AGENTS.md (10615 bytes, budget 8000): move detail to its topic doc or the log.
   Gate: `wc -c AGENTS.md` at most 8000, with every rule still in `AGENTS.md` or linked from it.
+- [E5.14][desk] Write `tools/check_pure_move.py`, the `move-gate` of `.claude/workflow.md`: for the
+  changed Python files between `--base` and HEAD, the top-level functions, classes and assignments
+  must match by AST before and after (only imports and `__all__` may change); it accepts and logs
+  `--step <ID>`. Gate: tests where a fixture pure move passes and a move with one edited line fails;
+  `make check && make test`.
 
 ## Explicit non-goals
 
