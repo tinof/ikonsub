@@ -116,7 +116,7 @@ none
 ## Unattended
 
 - `move-steps`: E5.2-E5.4
-- `move-gate`: `git show origin/main:tools/check_pure_move.py | uv run python - --base origin/main`
+- `move-gate`: `set -o pipefail; git show origin/main:tools/check_pure_move.py | uv run python - --base origin/main`
 - `move-review`: gate
 
 ## Codex notes
