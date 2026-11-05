@@ -8,6 +8,20 @@ from PySubtrans.Helpers.TestCases import LoggedTestCase
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = REPO_ROOT / ".claude" / "workflow.md"
 
+# Files that carry the Finnish readability contract (AGENTS.md, "Finnish Readability Pipeline"):
+# a change to any of them must get a Tier 2 review whatever its size.
+FINNISH_PIPELINE_FILES = [
+    "instructions/instructions_fi.txt",
+    "PySubtrans/Options.py",
+    "PySubtrans/SubtitleProcessor.py",
+    "PySubtrans/SubtitleTranslator.py",
+    "PySubtrans/SubtitleValidator.py",
+    "PySubtrans/TranslationParser.py",
+    "PySubtrans/TranslationPrompt.py",
+    "scripts/exsubs.py",
+    "scripts/transubs.py",
+]
+
 
 def _section(name: str) -> str:
     """Return the body of a `## <name>` section of the workflow contract."""
@@ -18,6 +32,14 @@ def _section(name: str) -> str:
     if match is None:
         raise AssertionError(f"workflow contract has no ## {name} section")
     return match.group(1)
+
+
+def _tier2_globs() -> list[str]:
+    """Read the fenced glob block of ## Tier 2 paths."""
+    match = regex.search(r"```\n(.*?)```", _section("Tier 2 paths"), regex.S)
+    if match is None:
+        raise AssertionError("## Tier 2 paths has no fenced glob block")
+    return [line.strip() for line in match.group(1).splitlines() if line.strip()]
 
 
 def _unattended_value(key: str) -> str:
@@ -58,3 +80,24 @@ class WorkflowContractTests(LoggedTestCase):
         self.assertLoggedTrue(
             f"move gate fails (exit {result.returncode})", result.returncode != 0
         )
+
+    def test_tier2_paths_cover_the_finnish_pipeline_files(self) -> None:
+        """Every file of the Finnish readability contract matches a Tier 2 glob.
+
+        /ship adds `:(glob)` to each line and asks git which changed files match, so the same
+        pathspecs are matched here against the tracked files.
+        """
+        globs = _tier2_globs()
+        result = subprocess.run(
+            ["git", "ls-files", "--", *[f":(glob){p}" for p in globs]],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        matched = set(result.stdout.splitlines())
+
+        for path in FINNISH_PIPELINE_FILES:
+            with self.subTest(path=path):
+                self.assertLoggedIn("Tier 2 covers", path, matched)

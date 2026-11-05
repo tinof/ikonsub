@@ -44,6 +44,10 @@ PySubtrans/TranslationParser.py
 PySubtrans/SubtitleValidator.py
 PySubtrans/SubtitleProcessor.py
 PySubtrans/Options.py
+PySubtrans/TranslationPrompt.py
+PySubtrans/SubtitleTranslator.py
+scripts/exsubs.py
+scripts/transubs.py
 PySubtrans/Helpers/Resources.py
 pyproject.toml
 uv.lock
@@ -54,8 +58,10 @@ CLAUDE.md
 .agents/**
 ```
 
-The instruction templates, the parser, the validator, the continuation pre-merge and `Options` together
-carry the Finnish readability contract in `AGENTS.md`, which has broken silently before.
+The instruction templates, the parser, the validator, the continuation pre-merge, `Options`, the prompt
+builder (timing annotations), `SubtitleTranslator` (the `postprocess_translation` key) and the two CLI
+scripts (pipeline settings, the `fix-finnish-subs` call) together carry the Finnish readability contract
+in `AGENTS.md`, which has broken silently before.
 `Resources.py` resolves the config directories that installed setups depend on. `pyproject.toml` and
 `uv.lock` decide what `uv tool install` users get. CI workflows and agent config change how every
 later change is checked.
