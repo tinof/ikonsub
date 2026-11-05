@@ -9,7 +9,8 @@ __pycache__
 *.ssa
 *.vtt
 *.zip
-/.claude
+/.claude/*
+!/.claude/workflow.md
 /.env
 /.vscode
 /*.cmd
