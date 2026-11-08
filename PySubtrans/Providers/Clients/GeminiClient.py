@@ -1,10 +1,7 @@
-import json
 import logging
-import os
 import random
 import threading
 import time
-from pathlib import Path
 from typing import Any
 
 import regex
@@ -38,84 +35,16 @@ from PySubtrans.Translation import Translation
 from PySubtrans.TranslationClient import TranslationClient
 from PySubtrans.TranslationPrompt import TranslationPrompt
 from PySubtrans.TranslationRequest import TranslationRequest
+from PySubtrans.UsageLedger import GEMINI_USAGE_LEDGER
+from PySubtrans.UsageLedger import GeminiUsageLedger as GeminiUsageLedger
 
 
 def _is_gemini_3_or_later(model: str | None) -> bool:
     return bool(regex.search(r"gemini-[3-9]", model or "", regex.IGNORECASE))
 
 
-class GeminiUsageLedger:
-    """
-    Token usage of every Gemini response in this process, per model and location.
-
-    A response counts whether or not its translation is then accepted: a retried batch
-    is billed for every attempt that came back. transubs writes it out with --usage-json;
-    with `persist_to` set, the file is rewritten after every response, so a run killed by
-    its caller's timeout still leaves what it was billed for.
-    """
-
-    _FIELDS = ("prompt_tokens", "cached_tokens", "output_tokens", "thoughts_tokens")
-
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._rows: dict[tuple[str, str], dict[str, int]] = {}
-        self._path: Path | None = None
-
-    def persist_to(self, path: Path | None) -> None:
-        """Rewrite `path` with the snapshot after each response (None stops it)."""
-        with self._lock:
-            self._path = path
-            self._write_locked()
-
-    def _write_locked(self) -> None:
-        if self._path is None:
-            return
-        payload = {
-            "version": 1,
-            "gemini": [
-                {"model": model, "location": location, **row}
-                for (model, location), row in self._rows.items()
-            ],
-        }
-        try:
-            partial = self._path.with_name(f"{self._path.name}.partial")
-            partial.write_text(json.dumps(payload), encoding="utf-8")
-            os.replace(partial, self._path)
-        except OSError as e:
-            logging.warning(f"Could not write Gemini usage to {self._path}: {e}")
-
-    def record(self, model: str, location: str, usage: Any) -> None:
-        if usage is None:
-            return
-        values = {
-            "prompt_tokens": usage.prompt_token_count,
-            "cached_tokens": usage.cached_content_token_count,
-            "output_tokens": usage.candidates_token_count,
-            "thoughts_tokens": usage.thoughts_token_count,
-        }
-        with self._lock:
-            row = self._rows.setdefault(
-                (model, location), {"requests": 0, **{f: 0 for f in self._FIELDS}}
-            )
-            row["requests"] += 1
-            for field, value in values.items():
-                row[field] += int(value or 0)
-            self._write_locked()
-
-    def snapshot(self) -> list[dict[str, Any]]:
-        with self._lock:
-            return [
-                {"model": model, "location": location, **row}
-                for (model, location), row in self._rows.items()
-            ]
-
-    def reset(self) -> None:
-        with self._lock:
-            self._rows.clear()
-            self._write_locked()
-
-
-USAGE_LEDGER = GeminiUsageLedger()
+# Kept under its old names for existing imports
+USAGE_LEDGER = GEMINI_USAGE_LEDGER
 
 
 class GeminiClient(TranslationClient):

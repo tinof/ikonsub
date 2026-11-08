@@ -102,7 +102,7 @@ All of the above are also available as `make` targets:
 
 **CRITICAL RULE: NEVER add imports in the middle of functions or methods - ALL imports MUST be at the top of the file.**
 
-The few existing exceptions are deliberate: the module-level `try`/`except ImportError` guards in `Provider_*.py` (a missing extra must not break import), the lazy `PySubtrans.Providers`/`PySubtrans.Formats` registry imports (circular imports), and two lazy imports in `scripts/transubs.py` (circular import, ~3 s startup). Do not add more.
+The few existing exceptions are deliberate: the module-level `try`/`except ImportError` guards in `Provider_*.py` (a missing extra must not break import), the lazy `PySubtrans.Providers`/`PySubtrans.Formats` registry imports (circular imports), and one lazy import in `scripts/transubs.py` (`setup_vertex` from exsubs). Do not add more.
 
 - **Naming**: PascalCase for classes and methods, snake_case for variables
 - **Imports**: Standard lib -> third-party -> local, alphabetical within groups
@@ -169,8 +169,12 @@ these contracts intact:
   (merges chain further, gap fixing re-shifts timings). Do not reintroduce a
   retry loop.
 - **Temperature policy:** Gemini 3.x stays at 1.0 (documented repetition-loop
-  risk when lowered); other providers default to 0.3. `GEMINI_3_MODEL_PATTERN`
-  in both scripts — change both or neither.
+  risk when lowered); OpenAI defaults to 0.3. `GEMINI_3_MODEL_PATTERN`
+  in both scripts — change both or neither. Claude takes no temperature (API
+  version 2026-10-21 rejects it); its quality/cost knob is `CLAUDE_EFFORT`
+  (default `medium`, pinned for the run because changing it breaks the prompt
+  cache). The Claude system prompt carries the only cache breakpoint: keep
+  per-batch content out of it.
 - **Measure, don't eyeball:** `tools/subtitle_metrics.py` reports raw-character
   line lengths, CPS, display times, dialogue-dash counts, and cue-count delta
   vs the source. Run it before/after on a real episode for any change touching

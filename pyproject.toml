@@ -27,7 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 openai = ["openai>=3.42"]
 gemini = ["google-genai>=2.34"]
-claude = ["anthropic>=2.4"]
+claude = ["anthropic>=2.6"]
 # Kept empty so existing `ikonsub[mkv]` install commands still resolve; the MKV
 # dependencies are core dependencies.
 mkv = []

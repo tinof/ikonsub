@@ -31,9 +31,11 @@ from PySubtrans.MKV.Config import (
     MODE_TO_RATE_LIMIT,
     MKVConfig,
     TranslationMode,
+    claude_effort,
 )
 from PySubtrans.SubtitleProject import SubtitleProject
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
+from PySubtrans.UsageLedger import USAGE_FILE
 
 # Configure rich console and logging
 console = Console()
@@ -658,7 +660,11 @@ def translate_srt_file(
         except ValueError:
             rate_limit = None
     else:
-        rate_value = MODE_TO_RATE_LIMIT.get(mode)
+        if mode == TranslationMode.CLAUDE:
+            model = os.getenv("CLAUDE_MODEL") or model
+        rate_value = (
+            mode == TranslationMode.CLAUDE and os.getenv("CLAUDE_RATE_LIMIT")
+        ) or MODE_TO_RATE_LIMIT.get(mode)
         if rate_value:
             try:
                 rate_limit = float(rate_value)
@@ -684,8 +690,6 @@ def translate_srt_file(
         env_temp = os.getenv("GEMINI_TEMPERATURE") or env_temp
     elif mode == TranslationMode.CHATGPT:
         env_temp = os.getenv("OPENAI_TEMPERATURE") or env_temp
-    elif mode == TranslationMode.CLAUDE:
-        env_temp = os.getenv("CLAUDE_TEMPERATURE") or env_temp
 
     # Gemini 3.x is documented to degrade (repetition loops) at reduced temperature, so it
     # keeps the model default; other providers benefit from a low temperature on a
@@ -757,7 +761,11 @@ def translate_srt_file(
     console.print(f"  Provider: {provider}")
     console.print(f"  Model: {model}")
     console.print(f"  Target Language: {effective_language}")
-    console.print(f"  Temperature: {temperature}")
+    if mode == TranslationMode.CLAUDE:
+        # The Claude API rejects temperature; effort is the setting that matters
+        console.print(f"  Effort: {claude_effort()}")
+    else:
+        console.print(f"  Temperature: {temperature}")
     if settings["parallel_batches"]:
         console.print(
             f"  Batches: up to {max_batch_size} lines, {settings['max_parallel_workers']} in parallel"
@@ -1025,8 +1033,8 @@ def main() -> int:
     parser.add_argument(
         "--usage-json",
         metavar="PATH",
-        help="Write the Gemini token usage of the run (per model and location) to PATH, "
-        "also when the run fails",
+        help="Write the token usage of the run to PATH (Gemini per model and location, "
+        "Claude per serving model), also when the run fails",
     )
 
     args = parser.parse_args()
@@ -1112,15 +1120,13 @@ def main() -> int:
 
 
 def _persist_usage(path: Path) -> None:
-    """Keep the run's Gemini usage in `path` for a caller that prices it.
+    """Keep the run's Gemini and Claude usage in `path` for a caller that prices it.
 
-    The ledger rewrites the file after every response, so it holds what was billed even
+    The ledgers rewrite the file after every response, so it holds what was billed even
     when the caller kills this process at its timeout. A failure here is only logged.
     """
     try:
-        from PySubtrans.Providers.Clients.GeminiClient import USAGE_LEDGER
-
-        USAGE_LEDGER.persist_to(path)
+        USAGE_FILE.persist_to(path)
     except Exception as e:
         logger.warning(f"Could not record usage to {path}: {e}")
 

@@ -18,6 +18,7 @@ else:
 
         from PySubtrans.Helpers.Localization import _
         from PySubtrans.Providers.Clients.AnthropicClient import (
+            DEFAULT_EFFORT,
             DEFAULT_MAX_TOKENS,
             AnthropicClient,
         )
@@ -35,14 +36,27 @@ else:
                     SettingsType(
                         {
                             "api_key": settings.get_str("api_key")
-                            or os.getenv("CLAUDE_API_KEY"),
+                            or os.getenv("CLAUDE_API_KEY")
+                            or os.getenv("ANTHROPIC_API_KEY"),
                             "model": settings.get_str("model")
                             or os.getenv("CLAUDE_MODEL", self.default_model),
                             "stream_responses": settings.get_bool(
                                 "stream_responses",
                                 os.getenv("CLAUDE_STREAM_RESPONSES", "True") == "True",
                             ),
-                            "thinking": settings.get_bool("thinking", False),
+                            "thinking": settings.get_bool(
+                                "thinking",
+                                os.getenv("CLAUDE_THINKING", "False") == "True",
+                            ),
+                            # Thinking depth on current models, which think even with
+                            # thinking off: low, medium, high, xhigh, max or "default"
+                            "effort": settings.get_str("effort")
+                            or os.getenv("CLAUDE_EFFORT", DEFAULT_EFFORT),
+                            # Server-side refusal fallback on models that support it
+                            "fallbacks": settings.get_bool(
+                                "fallbacks",
+                                os.getenv("CLAUDE_FALLBACKS", "True") == "True",
+                            ),
                             "max_tokens": settings.get_int("max_tokens")
                             or env_int("CLAUDE_MAX_TOKENS", DEFAULT_MAX_TOKENS),
                             "max_thinking_tokens": settings.get_int(
@@ -104,10 +118,15 @@ else:
                     return []
 
                 try:
-                    client = anthropic.Anthropic(api_key=self.api_key)
-                    model_list = client.models.list()
-
-                    return [m for m in model_list if m.type == "model"]
+                    proxy = self.settings.get_str("proxy")
+                    http_client = (
+                        anthropic.DefaultHttpxClient(proxy=proxy) if proxy else None
+                    )
+                    with anthropic.Anthropic(
+                        api_key=self.api_key,
+                        http_client=http_client,
+                    ) as client:
+                        return [m for m in client.models.list() if m.type == "model"]
 
                 except Exception as e:
                     logging.error(
@@ -118,6 +137,10 @@ else:
                     return []
 
             def _get_model_id(self, name: str) -> str:
+                # A model id needs no lookup: only display names cost an API call
+                if name.startswith("claude-"):
+                    return name
+
                 if not self.claude_models:
                     self.claude_models = self._get_claude_models()
 
