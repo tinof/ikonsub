@@ -13,7 +13,7 @@ from PySubtrans.Providers.Clients.AnthropicClient import (
 )
 from PySubtrans.Providers.Provider_Claude import Provider_Claude
 from PySubtrans.SettingsType import SettingsType
-from PySubtrans.SubtitleError import TranslationImpossibleError
+from PySubtrans.SubtitleError import TranslationError, TranslationImpossibleError
 from PySubtrans.TranslationPrompt import TranslationPrompt
 from PySubtrans.TranslationRequest import TranslationRequest
 
@@ -29,15 +29,34 @@ def _status_error(
     )
 
 
-def _message(text: str = "translated") -> MagicMock:
+def _message(text: str = "translated", stop_reason: str = "end_turn") -> MagicMock:
     message = MagicMock()
-    message.stop_reason = "end_turn"
+    message.stop_reason = stop_reason
     message.usage = None
     piece = MagicMock()
     piece.type = "text"
     piece.text = text
     message.content = [piece]
     return message
+
+
+def _stream(message: MagicMock, chunks: list[str] | None = None) -> MagicMock:
+    """A messages.stream() context manager that yields chunks and then message"""
+    stream = MagicMock()
+    stream.text_stream = iter(chunks or [])
+    stream.get_final_message.return_value = message
+    context = MagicMock()
+    context.__enter__.return_value = stream
+    context.__exit__.return_value = False
+    return context
+
+
+def _streams(side_effect: list) -> list:
+    """Wrap messages in stream contexts; errors are raised by the stream() call"""
+    return [
+        item if isinstance(item, BaseException) else _stream(item)
+        for item in side_effect
+    ]
 
 
 class AnthropicClientRetryTests(LoggedTestCase):
@@ -54,7 +73,10 @@ class AnthropicClientRetryTests(LoggedTestCase):
                 **extra,
             }
         )
-        return AnthropicClient(settings)
+        client = AnthropicClient(settings)
+        # Record backoff waits instead of sleeping (backoff_time 0 falls back to 5 s)
+        client._abort_event.wait = MagicMock(return_value=False)
+        return client
 
     def _make_request(self) -> TranslationRequest:
         prompt = TranslationPrompt("Translate this", True)
@@ -64,10 +86,9 @@ class AnthropicClientRetryTests(LoggedTestCase):
 
     def _send(self, client: AnthropicClient, side_effect: list) -> MagicMock:
         sdk = MagicMock()
-        sdk.messages.create.side_effect = side_effect
+        sdk.messages.stream.side_effect = _streams(side_effect)
         client.client = sdk
-        with patch("PySubtrans.Providers.Clients.AnthropicClient.time.sleep"):
-            client._request_translation(self._make_request())
+        client._request_translation(self._make_request())
         return sdk
 
     def test_transient_errors_are_retried(self) -> None:
@@ -82,7 +103,7 @@ class AnthropicClientRetryTests(LoggedTestCase):
                 _message(),
             ],
         )
-        self.assertLoggedEqual("attempts", 4, sdk.messages.create.call_count)
+        self.assertLoggedEqual("attempts", 4, sdk.messages.stream.call_count)
 
     def test_mid_stream_overload_is_retried(self) -> None:
         """An overloaded_error event in a 200 stream (plain APIStatusError) is retried."""
@@ -94,7 +115,7 @@ class AnthropicClientRetryTests(LoggedTestCase):
                 _message(),
             ],
         )
-        self.assertLoggedEqual("attempts", 2, sdk.messages.create.call_count)
+        self.assertLoggedEqual("attempts", 2, sdk.messages.stream.call_count)
 
     def test_mid_stream_connection_drop_is_retried(self) -> None:
         """A dropped stream (raw httpx2 error, not APIError) is retried from a clean slate."""
@@ -126,8 +147,7 @@ class AnthropicClientRetryTests(LoggedTestCase):
             self._make_request().prompt,
             lambda update: updates.append(update.text or ""),
         )
-        with patch("PySubtrans.Providers.Clients.AnthropicClient.time.sleep"):
-            client._request_translation(request)
+        client._request_translation(request)
 
         self.assertLoggedEqual("stream attempts", 2, sdk.messages.stream.call_count)
         self.assertLoggedEqual("non-streaming calls", 0, sdk.messages.create.call_count)
@@ -152,7 +172,93 @@ class AnthropicClientRetryTests(LoggedTestCase):
         with self.assertRaises(TranslationImpossibleError):
             self._send(client, [error, _message()])
         assert isinstance(client.client, MagicMock)
-        self.assertLoggedEqual("attempts", 1, client.client.messages.create.call_count)
+        self.assertLoggedEqual("attempts", 1, client.client.messages.stream.call_count)
+
+    def test_retry_follows_retry_after(self) -> None:
+        """A 429 with retry-after waits as long as the server asks, capped."""
+        client = self._make_client()
+        response = httpx2.Response(429, request=REQUEST, headers={"retry-after": "7"})
+        body = {
+            "type": "error",
+            "error": {"type": "rate_limit_error", "message": "slow"},
+        }
+        error = anthropic.RateLimitError("slow", response=response, body=body)
+        self._send(client, [error, _message()])
+        wait = client._abort_event.wait
+        assert isinstance(wait, MagicMock)
+        self.assertLoggedEqual("waited", 7.0, wait.call_args.args[0])
+
+    @skip_if_debugger_attached
+    def test_exhausted_retries_report_last_error(self) -> None:
+        """When every attempt fails, the error names the last API error."""
+        client = self._make_client(max_retries=1)
+        errors = [
+            _status_error(anthropic.OverloadedError, 529, "overloaded_error"),
+            _status_error(anthropic.OverloadedError, 529, "overloaded_error"),
+        ]
+        with self.assertRaises(TranslationImpossibleError) as raised:
+            self._send(client, errors)
+        self.assertLoggedIn("last error", "overloaded_error", str(raised.exception))
+
+    @skip_if_debugger_attached
+    def test_missing_credentials_end_the_run(self) -> None:
+        """The SDK's TypeError for missing credentials is fatal, not a batch error."""
+        client = self._make_client()
+        error = TypeError(
+            "Could not resolve authentication method. Expected one of api_key"
+        )
+        with self.assertRaises(TranslationImpossibleError):
+            self._send(client, [error])
+
+    def test_sdk_retry_rules_are_kept(self) -> None:
+        """408, 409 and x-should-retry: true are retried, like the SDK would."""
+        client = self._make_client()
+        should_retry = httpx2.Response(
+            400, request=REQUEST, headers={"x-should-retry": "true"}
+        )
+        body = {"type": "error", "error": {"type": "invalid_request_error"}}
+        sdk = self._send(
+            client,
+            [
+                _status_error(anthropic.RequestTimeoutError, 408, "timeout_error"),
+                _status_error(anthropic.ConflictError, 409, "conflict"),
+                anthropic.BadRequestError("retry me", response=should_retry, body=body),
+                _message(),
+            ],
+        )
+        self.assertLoggedEqual("attempts", 4, sdk.messages.stream.call_count)
+
+    def test_retry_after_ms_is_preferred(self) -> None:
+        """retry-after-ms wins over retry-after, as in the SDK."""
+        client = self._make_client()
+        response = httpx2.Response(
+            429,
+            request=REQUEST,
+            headers={"retry-after-ms": "1500", "retry-after": "30"},
+        )
+        body = {"type": "error", "error": {"type": "rate_limit_error"}}
+        error = anthropic.RateLimitError("slow", response=response, body=body)
+        self._send(client, [error, _message()])
+        wait = client._abort_event.wait
+        assert isinstance(wait, MagicMock)
+        self.assertLoggedEqual("waited", 1.5, wait.call_args.args[0])
+
+    @skip_if_debugger_attached
+    def test_other_type_errors_are_batch_errors(self) -> None:
+        """A TypeError that is not about credentials does not end the run."""
+        client = self._make_client()
+        with self.assertRaises(TranslationError) as raised:
+            self._send(client, [TypeError("bad callback")])
+        self.assertLoggedFalse(
+            "not fatal", isinstance(raised.exception, TranslationImpossibleError)
+        )
+
+    @skip_if_debugger_attached
+    def test_credentials_error_ends_the_run(self) -> None:
+        """A profile that cannot be loaded is fatal."""
+        client = self._make_client()
+        with self.assertRaises(TranslationImpossibleError):
+            self._send(client, [anthropic.CredentialsError("expired profile")])
 
     def test_client_is_created_once(self) -> None:
         """The SDK client is built on first use and reused for later batches."""
@@ -160,7 +266,9 @@ class AnthropicClientRetryTests(LoggedTestCase):
         with patch(
             "PySubtrans.Providers.Clients.AnthropicClient.anthropic.Anthropic"
         ) as factory:
-            factory.return_value.messages.create.side_effect = [_message(), _message()]
+            factory.return_value.messages.stream.side_effect = _streams(
+                [_message(), _message()]
+            )
             client._request_translation(self._make_request())
             client._request_translation(self._make_request())
         self.assertLoggedEqual("clients created", 1, factory.call_count)

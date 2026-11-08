@@ -26,6 +26,21 @@ MODE_TO_ENV = {
     TranslationMode.GEMINI: "GEMINI_API_KEY",
 }
 
+# Also accepted in place of the MODE_TO_ENV key
+MODE_TO_ALT_ENV = {
+    TranslationMode.CLAUDE: "ANTHROPIC_API_KEY",
+}
+
+# Must match AnthropicClient.DEFAULT_EFFORT (kept here so the scripts can show it
+# without importing the optional anthropic SDK)
+CLAUDE_DEFAULT_EFFORT = "medium"
+
+
+def claude_effort() -> str:
+    """The Claude effort level the provider will use (CLAUDE_EFFORT or the default)"""
+    return os.getenv("CLAUDE_EFFORT") or CLAUDE_DEFAULT_EFFORT
+
+
 MODE_TO_RATE_LIMIT = {
     TranslationMode.CHATGPT: "5000",
     TranslationMode.CLAUDE: "600",

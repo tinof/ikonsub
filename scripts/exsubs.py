@@ -36,7 +36,13 @@ from PySubtrans.MKV import (
     select_best_track_with_fallback,
     select_track_interactively,
 )
-from PySubtrans.MKV.Config import MODE_TO_DEFAULT_MODEL, MODE_TO_ENV, MODE_TO_RATE_LIMIT
+from PySubtrans.MKV.Config import (
+    MODE_TO_ALT_ENV,
+    MODE_TO_DEFAULT_MODEL,
+    MODE_TO_ENV,
+    MODE_TO_RATE_LIMIT,
+    claude_effort,
+)
 from PySubtrans.SubtitleProject import SubtitleProject
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
 
@@ -742,8 +748,10 @@ def verify_api_key(mode: TranslationMode):
         return
 
     required_key = MODE_TO_ENV[mode]
-    if not os.getenv(required_key):
-        logger.error(f"{required_key} not found in environment")
+    alt_key = MODE_TO_ALT_ENV.get(mode)
+    if not os.getenv(required_key) and not (alt_key and os.getenv(alt_key)):
+        names = f"{required_key} or {alt_key}" if alt_key else required_key
+        logger.error(f"{names} not found in environment")
         sys.exit(1)
 
 
@@ -952,6 +960,8 @@ def translate_subtitles(
         model = os.getenv("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
     elif mode == TranslationMode.CHATGPT:
         model = os.getenv("OPENAI_MODEL") or "gpt-5-mini"
+    elif mode == TranslationMode.CLAUDE:
+        model = os.getenv("CLAUDE_MODEL") or model
 
     scene_threshold, min_batch_size, max_batch_size = _resolve_batch_sizes(
         mode,
@@ -995,7 +1005,9 @@ def translate_subtitles(
         except ValueError:
             rate_limit = None
     else:
-        rate_value = MODE_TO_RATE_LIMIT.get(mode)
+        rate_value = (
+            mode == TranslationMode.CLAUDE and os.getenv("CLAUDE_RATE_LIMIT")
+        ) or MODE_TO_RATE_LIMIT.get(mode)
         if rate_value:
             try:
                 rate_limit = float(rate_value)
@@ -1009,8 +1021,6 @@ def translate_subtitles(
         env_temp = os.getenv("GEMINI_TEMPERATURE") or env_temp
     elif mode == TranslationMode.CHATGPT:
         env_temp = os.getenv("OPENAI_TEMPERATURE") or env_temp
-    elif mode == TranslationMode.CLAUDE:
-        env_temp = os.getenv("CLAUDE_TEMPERATURE") or env_temp
 
     # Gemini 3.x is documented to degrade (repetition loops) at reduced temperature, so it keeps
     # the model default; other providers benefit from a low temperature on a format-critical task.
@@ -1084,7 +1094,11 @@ def translate_subtitles(
     console.print(f"  Provider: {provider}")
     console.print(f"  Model: {model}")
     console.print(f"  Target Language: {config.target_language}")
-    console.print(f"  Temperature: {temperature}")
+    if mode == TranslationMode.CLAUDE:
+        # The Claude API rejects temperature; effort is the setting that matters
+        console.print(f"  Effort: {claude_effort()}")
+    else:
+        console.print(f"  Temperature: {temperature}")
     if rate_limit:
         console.print(f"  Rate Limit: {rate_limit:.0f} RPM")
     elif settings_vertex.get("use_vertex"):

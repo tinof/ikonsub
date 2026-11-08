@@ -537,21 +537,38 @@ class SubtitleTranslator:
             if self.client.enable_streaming
             else None
         )
-        translation: Translation | None = self.client.RequestTranslation(
-            batch.prompt, streaming_callback=streaming_callback
-        )
+        # Streaming writes unvalidated lines into the batch as they arrive. A response
+        # that is truncated or refused must not leave them behind as a translation.
+        # MergeTranslations replaces lines rather than editing them, so a shallow copy
+        # is a full snapshot.
+        streamed_before = list(batch.translated)
 
-        if (translation and translation.reached_token_limit) and not self.aborted:
-            logging.warning(_("Hit API token limit, splitting batch and retrying..."))
-            self._translate_split_batch(
-                batch,
-                originals,
-                context,
-                instructions,
-                line_numbers,
-                streaming_callback,
+        try:
+            translation: Translation | None = self.client.RequestTranslation(
+                batch.prompt, streaming_callback=streaming_callback
             )
-            return
+
+            if (translation and translation.reached_token_limit) and not self.aborted:
+                logging.warning(
+                    _("Hit API token limit, splitting batch and retrying...")
+                )
+                batch._translated = streamed_before
+                self._translate_split_batch(
+                    batch,
+                    originals,
+                    context,
+                    instructions,
+                    line_numbers,
+                    streaming_callback,
+                )
+                return
+
+        except TranslationImpossibleError:
+            raise
+
+        except TranslationError:
+            batch._translated = streamed_before
+            raise
 
         if not self.aborted:
             if not translation:
@@ -770,6 +787,11 @@ class SubtitleTranslator:
                 "Retranslation is not the expected type", translation=retranslation
             )
 
+        if retranslation.reached_token_limit:
+            raise TranslationError(
+                "Retranslation hit the token limit", translation=retranslation
+            )
+
         logging.debug(
             f"Scene {batch.scene} batch {batch.number} retranslation:\n{retranslation.text}\n"
         )
@@ -801,10 +823,11 @@ class SubtitleTranslator:
         """
         mid = len(originals) // 2
         if mid == 0:
-            logging.warning(
-                _("Batch too small to split, cannot recover from token limit")
+            raise TranslationError(
+                _(
+                    "Scene {scene} batch {batch} is too small to split and still hit the token limit"
+                ).format(scene=batch.scene, batch=batch.number)
             )
-            return
 
         logging.info(
             _("Splitting batch of {n} lines at midpoint for retranslation...").format(
@@ -831,12 +854,19 @@ class SubtitleTranslator:
             batch_a.prompt, streaming_callback=cb_a
         )
 
+        if translation_a and translation_a.reached_token_limit:
+            raise TranslationError(
+                f"The first half of scene {batch.scene} batch {batch.number} still hit the token limit",
+                translation=translation_a,
+            )
+
         if not translation_a or not translation_a.has_translation:
             raise TranslationError(
                 f"Unable to translate first half of scene {batch.scene} batch {batch.number}"
             )
 
         self.ProcessBatchTranslation(batch_a, translation_a, line_numbers)
+        self._retry_split_half(batch_a, line_numbers, context)
 
         # --- Build context from first half for second half ---
         context_b = dict(context)
@@ -861,12 +891,19 @@ class SubtitleTranslator:
             batch_b.prompt, streaming_callback=cb_b
         )
 
+        if translation_b and translation_b.reached_token_limit:
+            raise TranslationError(
+                f"The second half of scene {batch.scene} batch {batch.number} still hit the token limit",
+                translation=translation_b,
+            )
+
         if not translation_b or not translation_b.has_translation:
             raise TranslationError(
                 f"Unable to translate second half of scene {batch.scene} batch {batch.number}"
             )
 
         self.ProcessBatchTranslation(batch_b, translation_b, line_numbers)
+        self._retry_split_half(batch_b, line_numbers, context_b)
 
         # --- Merge both halves back into the original batch ---
         batch._translated = MergeTranslations(batch_a.translated, batch_b.translated)
@@ -886,6 +923,25 @@ class SubtitleTranslator:
                 or context.get("synopsis", "")
             )
             batch.UpdateContext(context)
+
+    def _retry_split_half(
+        self,
+        half: SubtitleBatch,
+        line_numbers: list[int] | None,
+        context: dict[str, Any],
+    ) -> None:
+        """
+        Retranslate a half that failed validation, as an unsplit batch would be
+        """
+        if not half.errors or not self.retry_on_error or self.aborted:
+            return
+
+        logging.warning(
+            _(
+                "Scene {scene} batch {batch} (split half) failed validation, requesting retranslation"
+            ).format(scene=half.scene, batch=half.number)
+        )
+        self.RequestRetranslation(half, line_numbers=line_numbers, context=context)
 
     def _get_best_summary(self, candidates: list[str | None]) -> str | None:
         """

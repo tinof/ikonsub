@@ -33,6 +33,13 @@ def main() -> int:
         "-m", "--model", type=str, default=None, help="The model to use for translation"
     )
     parser.add_argument(
+        "--effort",
+        type=str,
+        default=None,
+        choices=["low", "medium", "high", "xhigh", "max", "default"],
+        help="Thinking effort (default: CLAUDE_EFFORT or medium)",
+    )
+    parser.add_argument(
         "--proxy",
         type=str,
         default=None,
@@ -44,7 +51,12 @@ def main() -> int:
 
     try:
         options: Options = CreateOptions(
-            args, provider, model=args.model or default_model, proxy=args.proxy
+            args,
+            provider,
+            model=args.model or default_model,
+            proxy=args.proxy,
+            # Passed only when given, so CLAUDE_EFFORT still applies otherwise
+            **({"effort": args.effort} if args.effort else {}),
         )
 
         # Create a project for the translation

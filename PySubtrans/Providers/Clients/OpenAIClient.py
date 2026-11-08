@@ -74,18 +74,15 @@ class OpenAIClient(TranslationClient):
 
         translation = Translation(response) if response else None
 
-        if translation:
-            if translation.quota_reached:
-                raise TranslationImpossibleError(
-                    _(
-                        "Account quota reached, please upgrade your plan or wait until it renews"
-                    )
+        if translation and translation.quota_reached:
+            raise TranslationImpossibleError(
+                _(
+                    "Account quota reached, please upgrade your plan or wait until it renews"
                 )
+            )
 
-            if translation.reached_token_limit:
-                raise TranslationError(
-                    _("Too many tokens in translation"), translation=translation
-                )
+        # A translation that hit the token limit is returned, not raised:
+        # SubtitleTranslator splits the batch in half and retries it
 
         return translation
 

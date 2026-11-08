@@ -18,7 +18,6 @@ from PySubtrans.Helpers.Tests import log_input_expected_error, skip_if_debugger_
 from PySubtrans.Providers.Clients.OpenAIReasoningClient import OpenAIReasoningClient
 from PySubtrans.SettingsType import SettingsType
 from PySubtrans.SubtitleError import (
-    TranslationError,
     TranslationImpossibleError,
     TranslationResponseError,
 )
@@ -296,18 +295,15 @@ class OpenAIReasoningFinishReasonTests(LoggedTestCase):
         self.assertLoggedEqual("finish_reason", "length", result.get("finish_reason"))
         self.assertLoggedEqual("text", "", result.get("text"))
 
-    @skip_if_debugger_attached
-    def test_truncated_response_raises_token_limit_error(self) -> None:
-        """RequestTranslation turns a truncated response into a token-limit TranslationError."""
+    def test_truncated_response_returns_token_limit_translation(self) -> None:
+        """A truncated response is returned flagged, so the translator splits the batch."""
         response = _make_response(
             "incomplete", "Bonj", incomplete_reason="max_output_tokens"
         )
         with patch.object(
             OpenAIReasoningClient, "_get_client_response", return_value=response
         ):
-            with self.assertRaises(TranslationError) as context:
-                self.client._request_translation(_make_request())
-        translation = context.exception.translation
+            translation = self.client._request_translation(_make_request())
         self.assertLoggedTrue(
             "reached token limit",
             translation is not None and translation.reached_token_limit,
