@@ -277,7 +277,7 @@ class GeminiTargetThinkingTests(LoggedTestCase):
         """A level winning over a budget is the normal precedence, not an adjustment"""
         with patch.object(GeminiClient, "_emit_warning") as warn:
             self._make_client(
-                thinking_level="low", enable_thinking=True, thinking_budget=-1
+                thinking_level="low", enable_thinking=True, thinking_budget=1024
             )
         self.assertLoggedEqual("warnings", 0, warn.call_count)
 

@@ -219,14 +219,18 @@ class TestFinnishPipelineSettings(LoggedTestCase):
 
     def test_exsubs_temperature_policy(self):
         gemini = CaptureExsubsSettings(TranslationMode.GEMINI)
+        gemini_3 = CaptureExsubsSettings(TranslationMode.GEMINI, FLASH_MODEL)
         openai = CaptureExsubsSettings(TranslationMode.CHATGPT)
         self.assertLoggedEqual("gemini temperature", 1.0, gemini["temperature"])
+        self.assertLoggedEqual("gemini 3.x temperature", 1.0, gemini_3["temperature"])
         self.assertLoggedEqual("openai temperature", 0.3, openai["temperature"])
 
     def test_transubs_temperature_policy(self):
         gemini = CaptureTransubsSettings("gemini")
+        gemini_3 = CaptureTransubsSettings("gemini", FLASH_MODEL)
         openai = CaptureTransubsSettings("gpt")
         self.assertLoggedEqual("gemini temperature", 1.0, gemini["temperature"])
+        self.assertLoggedEqual("gemini 3.x temperature", 1.0, gemini_3["temperature"])
         self.assertLoggedEqual("openai temperature", 0.3, openai["temperature"])
 
     def test_transubs_batch_defaults(self):
