@@ -49,7 +49,7 @@ exsubs --gemini -l Finnish
 exsubs video.mkv --gpt -l Spanish -i
 ```
 
-**Defaults**: Uses Gemini via Vertex AI in location `global` (default model: `gemini-4-hydrogen`, override with `GEMINI_MODEL`). Optimized for 1M context window. Automatically enables parallel translation for modern Gemini models. Temperature defaults to 1.0 on Gemini 3.x (lowering it causes repetition loops) and 0.3 elsewhere; override with `LLM_TEMPERATURE`. Gemini 4 ignores temperature. On Gemini 4 the thinking level is `low` unless `GEMINI_THINKING_LEVEL` is set.
+**Defaults**: Uses Gemini via Vertex AI in location `global` (default model: `gemini-4-hydrogen`, override with `GEMINI_MODEL`). Optimized for 1M context window. Automatically enables parallel translation for modern Gemini models. Temperature defaults to 1.0 on Gemini 3.x (lowering it causes repetition loops) and 0.3 elsewhere; override with `LLM_TEMPERATURE`. Gemini 4 ignores temperature. On Gemini 4 the thinking level is `low` unless `GEMINI_THINKING_LEVEL` is set; `GEMINI_THINKING_BUDGET` does not apply there (Gemini 4 rejects budgets).
 
 **Finnish post-processing**: after translation, `exsubs` runs
 [sisusub](https://github.com/tinof/sisusub)'s `fix-finnish-subs` once with

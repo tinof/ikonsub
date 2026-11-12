@@ -8,9 +8,10 @@ from PySubtrans.Helpers.TestCases import LoggedTestCase
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = REPO_ROOT / ".claude" / "workflow.md"
 
-# Files that carry the Finnish readability contract (AGENTS.md, "Finnish Readability Pipeline"):
-# a change to any of them must get a Tier 2 review whatever its size.
+# Files that carry the Finnish readability contract (docs/finnish-pipeline.md, linked from
+# AGENTS.md): a change to any of them must get a Tier 2 review whatever its size.
 FINNISH_PIPELINE_FILES = [
+    "docs/finnish-pipeline.md",
     "instructions/instructions_fi.txt",
     "PySubtrans/Options.py",
     "PySubtrans/SubtitleProcessor.py",
