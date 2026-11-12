@@ -191,7 +191,7 @@ class TestExsubsBatchSizePrecedence(LoggedTestCase):
 
 
 class TestFinnishPipelineSettings(LoggedTestCase):
-    """The settings contract from AGENTS.md, as passed to init_options by both scripts."""
+    """The settings contract from CLAUDE.md, as passed to init_options by both scripts."""
 
     def _assert_contract(self, settings: dict[str, Any]) -> None:
         self.assertLoggedTrue(
