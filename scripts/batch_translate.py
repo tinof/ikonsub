@@ -59,6 +59,7 @@ from PySubtrans import (
     init_translator,
 )
 from PySubtrans.Helpers import GetOutputPath
+from PySubtrans.MKV.Config import gemini_thinking_level
 from PySubtrans.SettingsType import redact_sensitive_values
 
 # Default configuration options for batch processing.
@@ -374,6 +375,13 @@ def build_config(args: argparse.Namespace) -> BatchJobConfig:
             )
         key, value = override.split("=", 1)
         settings[key] = value
+
+    # Gemini 4 thinks at HIGH unless told otherwise; request low as the other CLIs do
+    provider = (settings.get_str("provider") or "").lower()
+    if provider == "gemini" and not settings.get_str("thinking_level"):
+        thinking_level = gemini_thinking_level(settings.get_str("model"))
+        if thinking_level:
+            settings["thinking_level"] = thinking_level
 
     # Initialize an Options instance with the combined settings
     options = init_options(**settings)

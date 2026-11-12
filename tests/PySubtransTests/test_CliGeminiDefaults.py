@@ -1,4 +1,4 @@
-"""Tests for the Gemini defaults of exsubs, transubs and gemini-subtrans: model, Vertex
+"""Tests for the Gemini defaults of exsubs, transubs, gemini-subtrans and batch-translate: model, Vertex
 location and the thinking level requested on Gemini 4."""
 
 import contextlib
@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.MKV.Config import MODE_TO_DEFAULT_MODEL, MKVConfig, TranslationMode
-from scripts import exsubs, gemini_subtrans, transubs
+from scripts import batch_translate, exsubs, gemini_subtrans, transubs
 from tests.PySubtransTests.test_CliPipeline import (
     BASE_ENV,
     CaptureExsubsSettings,
@@ -151,3 +151,49 @@ class TestGeminiDefaults(LoggedTestCase):
         high = CaptureGeminiSubtransSettings(HIGH_THINKING)
         self.assertLoggedIsNone("gemini 3 thinking_level", gemini_3["thinking_level"])
         self.assertLoggedEqual("env thinking_level", "high", high["thinking_level"])
+
+
+def CaptureBatchTranslateSettings(
+    argv: list[str] | None = None, env: dict[str, str] | None = None
+) -> dict[str, Any]:
+    """Run batch-translate's build_config and return the settings it passes to init_options"""
+    captured: dict[str, Any] = {}
+
+    def fake_init_options(**settings: Any):
+        captured.update(settings)
+        raise _SettingsCaptured()
+
+    with (
+        patch.dict(os.environ, {**BASE_ENV, **(env or {})}, clear=True),
+        patch.object(batch_translate, "init_options", side_effect=fake_init_options),
+    ):
+        try:
+            batch_translate.build_config(batch_translate.parse_args(argv or []))
+        except _SettingsCaptured:
+            pass
+    return captured
+
+
+class TestBatchTranslateDefaults(LoggedTestCase):
+    """batch-translate requests thinking low on its Gemini 4 default, like the other CLIs"""
+
+    def test_thinking_level_low_on_default_model(self):
+        settings = CaptureBatchTranslateSettings()
+        self.assertLoggedEqual("model", DEFAULT_MODEL, settings["model"])
+        self.assertLoggedEqual("thinking_level", "low", settings.get("thinking_level"))
+
+    def test_no_thinking_level_on_gemini_3(self):
+        settings = CaptureBatchTranslateSettings(["--model", "gemini-3.8-flash"])
+        self.assertLoggedNotIn("thinking_level", "thinking_level", settings)
+
+    def test_thinking_level_overrides_win(self):
+        env = CaptureBatchTranslateSettings(env=HIGH_THINKING)
+        option = CaptureBatchTranslateSettings(["--option", "thinking_level=medium"])
+        self.assertLoggedEqual("env", "high", env.get("thinking_level"))
+        self.assertLoggedEqual("option", "medium", option.get("thinking_level"))
+
+    def test_no_thinking_level_outside_gemini(self):
+        settings = CaptureBatchTranslateSettings(
+            ["--provider", "OpenAI", "--model", "gpt-5"]
+        )
+        self.assertLoggedNotIn("thinking_level", "thinking_level", settings)
