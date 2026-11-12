@@ -53,6 +53,12 @@ def _gemini_generation(model: str | None) -> int | None:
 # The only models that accept thinking level xhigh
 _XHIGH_MODEL_PATTERN = regex.compile(r"gemini-4-hydrogen", regex.IGNORECASE)
 
+# Models that reject thinking level minimal with HTTP 400 (Google's thinking-level table):
+# every Gemini 4, 3.7 and 3.8 Flash, and the 3.x Pro models
+_NO_MINIMAL_MODEL_PATTERN = regex.compile(
+    r"gemini-(?:[4-9]|3\.[78]-|3(?:\.\d+)?-pro)", regex.IGNORECASE
+)
+
 # Upper budget bound for each thinking level on Gemini 4, which rejects thinking_budget
 _GEMINI_4_BUDGET_LEVELS = ((1024, "low"), (8192, "medium"))
 
@@ -69,7 +75,7 @@ def _resolve_thinking(
     if level:
         if level == "xhigh" and not _XHIGH_MODEL_PATTERN.search(model or ""):
             level = "high"
-        if gemini_4 and level == "minimal":
+        if level == "minimal" and _NO_MINIMAL_MODEL_PATTERN.search(model or ""):
             level = "low"
         if generation is None or generation >= 3:
             return level, None

@@ -174,7 +174,7 @@ class GeminiTargetThinkingTests(LoggedTestCase):
             ("gemini-3.8-flash", "xhigh", None, ("high", None)),
             ("gemini-2.5-flash", "xhigh", None, (None, None)),
             ("gemini-4-hydrogen", "minimal", None, ("low", None)),
-            ("gemini-3.8-flash", "minimal", None, ("minimal", None)),
+            ("gemini-3.8-flash", "minimal", None, ("low", None)),
             ("gemini-4-argon", "medium", 1024, ("medium", None)),
             ("gemini-4-hydrogen", None, -1, (None, None)),
             ("gemini-4-hydrogen", None, 0, ("low", None)),
@@ -201,6 +201,28 @@ class GeminiTargetThinkingTests(LoggedTestCase):
                     _resolve_thinking(model, level, budget),
                 )
 
+    def test_minimal_follows_the_model_support_table(self) -> None:
+        """minimal reaches only models that accept it (Google's thinking-level table);
+        gemini-3.8-flash answers HTTP 400 THINKING_LEVEL_MINIMAL, so it gets low"""
+        cases = [
+            ("gemini-3.8-flash", "low"),
+            ("gemini-3.8-flash-cyber", "low"),
+            ("gemini-3.7-flash", "low"),
+            ("gemini-3.1-pro-preview", "low"),
+            ("gemini-3.6-flash", "minimal"),
+            ("gemini-3.5-flash", "minimal"),
+            ("gemini-3.5-flash-lite", "minimal"),
+            ("gemini-3.1-flash-lite", "minimal"),
+            ("gemini-3-flash-preview", "minimal"),
+        ]
+        for model, expected in cases:
+            with self.subTest(model=model):
+                self.assertLoggedEqual(
+                    f"{model} minimal",
+                    (expected, None),
+                    _resolve_thinking(model, "minimal", None),
+                )
+
     def test_fallback_chain_xhigh(self) -> None:
         """xhigh reaches hydrogen only; the fallbacks get high"""
         sent = self._sent_thinking(thinking_level="xhigh")
@@ -217,14 +239,14 @@ class GeminiTargetThinkingTests(LoggedTestCase):
         )
 
     def test_fallback_chain_minimal(self) -> None:
-        """minimal becomes low on Gemini 4 and stays minimal on Gemini 3"""
+        """minimal becomes low on every target here: none of them accepts it"""
         sent = self._sent_thinking(thinking_level="minimal")
         self.assertLoggedEqual(
             "sent per target",
             list(
                 zip(
                     CHAIN_MODELS,
-                    [("LOW", None), ("LOW", None), ("MINIMAL", None)],
+                    [("LOW", None), ("LOW", None), ("LOW", None)],
                     strict=True,
                 )
             ),
