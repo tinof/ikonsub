@@ -61,7 +61,7 @@ CLAUDE.md
 The instruction templates, the parser, the validator, the continuation pre-merge, `Options`, the prompt
 builder (timing annotations), `SubtitleTranslator` (the `postprocess_translation` key) and the two CLI
 scripts (pipeline settings, the `fix-finnish-subs` call) together carry the Finnish readability contract
-in `AGENTS.md`, which has broken silently before.
+in `CLAUDE.md`, which has broken silently before.
 `Resources.py` resolves the config directories that installed setups depend on. `pyproject.toml` and
 `uv.lock` decide what `uv tool install` users get. CI workflows and agent config change how every
 later change is checked.
@@ -87,7 +87,6 @@ default
 
 - `python`: files '*.py'; file 800; function 50 by `ruff PLR0915`; item E5.
 - `claude-md`: files 'CLAUDE.md'; file 24000 bytes; item E5.
-- `agents-md`: files 'AGENTS.md'; file 8000 bytes; item E5.
 - `roadmap`: files 'ROADMAP.md'; file 48000 bytes; item E5.
 
 ## Probes

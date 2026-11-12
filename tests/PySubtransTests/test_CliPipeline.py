@@ -26,6 +26,8 @@ BASE_ENV: dict[str, str] = {
 
 NO_VERTEX: dict[str, str] = {"GEMINI_USE_VERTEX": "0"}
 SMALL_BATCHES: dict[str, str] = {"LARGE_CONTEXT_MODE": "false"}
+# The flash-tuned batch sizes apply only to flash models; the default model is not one
+FLASH_MODEL: dict[str, str] = {"GEMINI_MODEL": "gemini-3.8-flash"}
 
 
 class _SettingsCaptured(Exception):
@@ -146,7 +148,7 @@ class TestExsubsBatchSizePrecedence(LoggedTestCase):
     def test_parallel_default_beats_model_default(self):
         settings = CaptureExsubsSettings(
             TranslationMode.GEMINI,
-            {**NO_VERTEX, **SMALL_BATCHES},
+            {**NO_VERTEX, **SMALL_BATCHES, **FLASH_MODEL},
             parallel_batches=True,
         )
         # flash model: min 100 from the tuned defaults, max from the parallel default
@@ -154,7 +156,7 @@ class TestExsubsBatchSizePrecedence(LoggedTestCase):
 
     def test_sequential_model_default(self):
         settings = CaptureExsubsSettings(
-            TranslationMode.GEMINI, {**NO_VERTEX, **SMALL_BATCHES}
+            TranslationMode.GEMINI, {**NO_VERTEX, **SMALL_BATCHES, **FLASH_MODEL}
         )
         self.assertLoggedEqual("max/min batch size", (220, 100), _batch_sizes(settings))
 
@@ -189,7 +191,7 @@ class TestExsubsBatchSizePrecedence(LoggedTestCase):
 
 
 class TestFinnishPipelineSettings(LoggedTestCase):
-    """The settings contract from AGENTS.md, as passed to init_options by both scripts."""
+    """The settings contract from CLAUDE.md, as passed to init_options by both scripts."""
 
     def _assert_contract(self, settings: dict[str, Any]) -> None:
         self.assertLoggedTrue(
@@ -217,14 +219,18 @@ class TestFinnishPipelineSettings(LoggedTestCase):
 
     def test_exsubs_temperature_policy(self):
         gemini = CaptureExsubsSettings(TranslationMode.GEMINI)
+        gemini_3 = CaptureExsubsSettings(TranslationMode.GEMINI, FLASH_MODEL)
         openai = CaptureExsubsSettings(TranslationMode.CHATGPT)
-        self.assertLoggedEqual("gemini 3.x temperature", 1.0, gemini["temperature"])
+        self.assertLoggedEqual("gemini temperature", 1.0, gemini["temperature"])
+        self.assertLoggedEqual("gemini 3.x temperature", 1.0, gemini_3["temperature"])
         self.assertLoggedEqual("openai temperature", 0.3, openai["temperature"])
 
     def test_transubs_temperature_policy(self):
         gemini = CaptureTransubsSettings("gemini")
+        gemini_3 = CaptureTransubsSettings("gemini", FLASH_MODEL)
         openai = CaptureTransubsSettings("gpt")
-        self.assertLoggedEqual("gemini 3.x temperature", 1.0, gemini["temperature"])
+        self.assertLoggedEqual("gemini temperature", 1.0, gemini["temperature"])
+        self.assertLoggedEqual("gemini 3.x temperature", 1.0, gemini_3["temperature"])
         self.assertLoggedEqual("openai temperature", 0.3, openai["temperature"])
 
     def test_transubs_batch_defaults(self):

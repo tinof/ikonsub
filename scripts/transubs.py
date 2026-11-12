@@ -27,11 +27,13 @@ from PySubtrans.MKV import (
     preprocess_timecodes,
 )
 from PySubtrans.MKV.Config import (
+    GEMINI_4_MODEL_PATTERN,
     MODE_TO_DEFAULT_MODEL,
     MODE_TO_RATE_LIMIT,
     MKVConfig,
     TranslationMode,
     claude_effort,
+    gemini_thinking_level,
 )
 from PySubtrans.SubtitleProject import SubtitleProject
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
@@ -46,7 +48,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("transubs")
 
-GEMINI_DEFAULT_MODEL = "gemini-3.1-flash-lite"
+GEMINI_DEFAULT_MODEL = "gemini-4-hydrogen"
 GEMINI_SCENE_THRESHOLD = 240.0
 GEMINI_MIN_BATCH_SIZE = 80
 GEMINI_MAX_BATCH_SIZE = 180
@@ -68,7 +70,8 @@ LANGUAGE_SUFFIX_PATTERN = regex.compile(
     r"^\.[a-z]{2,3}(?:-[a-z]{2,3})?$", regex.IGNORECASE
 )
 
-# Gemini 3.x and later should be left at the default temperature
+# Gemini 3.x and later should be left at the default temperature (Gemini 4 ignores
+# temperature)
 GEMINI_3_MODEL_PATTERN = regex.compile(r"gemini-[3-9]", regex.IGNORECASE)
 
 # Readability limits handed to fix-finnish-subs, matching the translation prompt budget
@@ -528,9 +531,7 @@ def _vertex_project() -> str | None:
 
 def _vertex_location() -> str | None:
     return (
-        os.getenv("VERTEX_LOCATION")
-        or os.getenv("GEMINI_VERTEX_LOCATION")
-        or "europe-west1"
+        os.getenv("VERTEX_LOCATION") or os.getenv("GEMINI_VERTEX_LOCATION") or "global"
     )
 
 
@@ -590,6 +591,7 @@ def translate_srt_file(
     max_batch_size = int(os.getenv("MAX_BATCH_SIZE") or 50)
     max_context_summaries = int(os.getenv("MAX_CONTEXT_SUMMARIES") or 10)
     rate_limit: float | None = None
+    thinking_level: str | None = None
 
     # Check for large context mode
     # Default to True for Gemini, False for others, unless explicitly set
@@ -601,6 +603,7 @@ def translate_srt_file(
 
     if mode == TranslationMode.GEMINI:
         model = os.getenv("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
+        thinking_level = gemini_thinking_level(model)
 
         # Only apply manual tuning if large_context_mode is NOT enabled
         if not large_context_mode:
@@ -750,6 +753,8 @@ def translate_srt_file(
     if rate_limit:
         settings["rate_limit"] = rate_limit
     settings.update(settings_vertex)
+    if thinking_level:
+        settings["thinking_level"] = thinking_level
 
     # Resolve instruction file (same logic as exsubs via MKVConfig)
     if config.instruction_file:
@@ -764,8 +769,12 @@ def translate_srt_file(
     if mode == TranslationMode.CLAUDE:
         # The Claude API rejects temperature; effort is the setting that matters
         console.print(f"  Effort: {claude_effort()}")
+    elif GEMINI_4_MODEL_PATTERN.search(model or ""):
+        console.print(f"  Temperature: {temperature} (ignored by Gemini 4)")
     else:
         console.print(f"  Temperature: {temperature}")
+    if thinking_level:
+        console.print(f"  Thinking level: {thinking_level}")
     if settings["parallel_batches"]:
         console.print(
             f"  Batches: up to {max_batch_size} lines, {settings['max_parallel_workers']} in parallel"

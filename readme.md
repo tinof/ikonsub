@@ -49,7 +49,7 @@ exsubs --gemini -l Finnish
 exsubs video.mkv --gpt -l Spanish -i
 ```
 
-**Defaults**: Uses Gemini via Vertex AI (default model: `gemini-3.1-flash-lite`, override with `GEMINI_MODEL`). Optimized for 1M context window. Automatically enables parallel translation for modern Gemini models. Temperature defaults to 1.0 on Gemini 3.x (lowering it causes repetition loops) and 0.3 elsewhere; override with `LLM_TEMPERATURE`.
+**Defaults**: Uses Gemini via Vertex AI in location `global` (default model: `gemini-4-hydrogen`, override with `GEMINI_MODEL`). Optimized for 1M context window. Automatically enables parallel translation for modern Gemini models. Temperature defaults to 1.0 on Gemini 3.x (lowering it causes repetition loops) and 0.3 elsewhere; override with `LLM_TEMPERATURE`. Gemini 4 ignores temperature. On Gemini 4 the thinking level is `low` unless `GEMINI_THINKING_LEVEL` is set; `GEMINI_THINKING_BUDGET` does not apply there (Gemini 4 rejects budgets).
 
 **Finnish post-processing**: after translation, `exsubs` runs
 [sisusub](https://github.com/tinof/sisusub)'s `fix-finnish-subs` once with
@@ -130,7 +130,9 @@ Settings are managed via environment variables or `.env` file. Common overrides:
 
 ```sh
 export GEMINI_USE_VERTEX=true             # Use Vertex AI (default for exsubs)
-export GEMINI_MODEL=gemini-3.1-flash-lite # Specific model
+export GEMINI_MODEL=gemini-4-hydrogen     # Specific model
+export VERTEX_LOCATION=global             # Vertex AI location (gemini-4-hydrogen and gemini-4-carbon serve only global, us and eu)
+export GEMINI_THINKING_LEVEL=low          # Thinking level (default low on Gemini 4; xhigh only on gemini-4-hydrogen)
 export SCENE_THRESHOLD=300                # Start a new scene when the gap between lines exceeds 300s (large context)
 export MAX_BATCH_SIZE=600                 # Max lines per batch
 export MAX_RETRIES=5                      # Retries for transient API errors (default: 5)

@@ -37,11 +37,13 @@ from PySubtrans.MKV import (
     select_track_interactively,
 )
 from PySubtrans.MKV.Config import (
+    GEMINI_4_MODEL_PATTERN,
     MODE_TO_ALT_ENV,
     MODE_TO_DEFAULT_MODEL,
     MODE_TO_ENV,
     MODE_TO_RATE_LIMIT,
     claude_effort,
+    gemini_thinking_level,
 )
 from PySubtrans.SubtitleProject import SubtitleProject
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
@@ -55,7 +57,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("exsubs")
 
-GEMINI_DEFAULT_MODEL = "gemini-3.1-flash-lite"
+GEMINI_DEFAULT_MODEL = "gemini-4-hydrogen"
 GEMINI_SCENE_THRESHOLD = 240.0
 GEMINI_MIN_BATCH_SIZE = 80
 GEMINI_MAX_BATCH_SIZE = 180
@@ -82,7 +84,8 @@ LANGUAGE_SUFFIX_PATTERN = regex.compile(
     r"^\.[a-z]{2,3}(?:-[a-z]{2,3})?$", regex.IGNORECASE
 )
 
-# Gemini 3.x and later should be left at the default temperature
+# Gemini 3.x and later should be left at the default temperature (Gemini 4 ignores
+# temperature)
 GEMINI_3_MODEL_PATTERN = regex.compile(r"gemini-[3-9]", regex.IGNORECASE)
 
 # Readability limits handed to fix-finnish-subs, matching the translation prompt budget
@@ -577,9 +580,7 @@ def _vertex_project() -> str | None:
 
 def _vertex_location() -> str | None:
     return (
-        os.getenv("VERTEX_LOCATION")
-        or os.getenv("GEMINI_VERTEX_LOCATION")
-        or "europe-west1"
+        os.getenv("VERTEX_LOCATION") or os.getenv("GEMINI_VERTEX_LOCATION") or "global"
     )
 
 
@@ -701,7 +702,7 @@ def setup_vertex(yes: bool = False) -> int:
         )
 
     # 4) Decide region/model
-    region = os.getenv("VERTEX_LOCATION") or "europe-west1"
+    region = os.getenv("VERTEX_LOCATION") or "global"
     model = os.getenv("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
 
     exports: list[str] = [
@@ -947,6 +948,7 @@ def translate_subtitles(
     model = MODE_TO_DEFAULT_MODEL[mode]
     max_context_summaries = int(os.getenv("MAX_CONTEXT_SUMMARIES") or 10)
     rate_limit: float | None = None
+    thinking_level: str | None = None
 
     # Check for large context mode
     # Default to True for Gemini, False for others, unless explicitly set
@@ -976,6 +978,7 @@ def translate_subtitles(
         max_context_summaries = int(
             os.getenv("MAX_CONTEXT_SUMMARIES") or GEMINI_MAX_CONTEXT_SUMMARIES
         )
+        thinking_level = gemini_thinking_level(model)
 
         use_vertex = _using_vertex()
         if use_vertex:
@@ -1081,6 +1084,9 @@ def translate_subtitles(
     if settings_vertex:
         settings.update(settings_vertex)
 
+    if thinking_level:
+        settings["thinking_level"] = thinking_level
+
     # Set instruction file if it exists
     if config.instruction_file and config.instruction_file.exists():
         settings["instruction_file"] = str(config.instruction_file)
@@ -1097,8 +1103,12 @@ def translate_subtitles(
     if mode == TranslationMode.CLAUDE:
         # The Claude API rejects temperature; effort is the setting that matters
         console.print(f"  Effort: {claude_effort()}")
+    elif GEMINI_4_MODEL_PATTERN.search(model or ""):
+        console.print(f"  Temperature: {temperature} (ignored by Gemini 4)")
     else:
         console.print(f"  Temperature: {temperature}")
+    if thinking_level:
+        console.print(f"  Thinking level: {thinking_level}")
     if rate_limit:
         console.print(f"  Rate Limit: {rate_limit:.0f} RPM")
     elif settings_vertex.get("use_vertex"):
