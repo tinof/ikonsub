@@ -169,7 +169,12 @@ these contracts intact:
   (merges chain further, gap fixing re-shifts timings). Do not reintroduce a
   retry loop.
 - **Temperature policy:** Gemini 3.x stays at 1.0 (documented repetition-loop
-  risk when lowered); OpenAI defaults to 0.3. `GEMINI_3_MODEL_PATTERN`
+  risk when lowered); OpenAI defaults to 0.3. Gemini 4 ignores temperature;
+  its knob is thinking, which the scripts set to `low` on Gemini 4 through
+  `gemini_thinking_level()` (`GEMINI_THINKING_LEVEL` wins). `GeminiClient`
+  resolves thinking per fallback target: Gemini 4 rejects `thinking_budget`
+  and `minimal` with HTTP 400. The default `gemini-4-hydrogen` is short-term
+  GA (45-day retirement notice). `GEMINI_3_MODEL_PATTERN`
   in both scripts — change both or neither. Claude takes no temperature (API
   version 2026-10-21 rejects it); its quality/cost knob is `CLAUDE_EFFORT`
   (default `medium`, pinned for the run because changing it breaks the prompt
