@@ -107,6 +107,20 @@ class GeminiThinkingConfigTests(LoggedTestCase):
             "provider thinking_budget", -1, provider.settings.get_int("thinking_budget")
         )
 
+    def test_provider_location_defaults_to_global(self) -> None:
+        """Without VERTEX_LOCATION the provider uses global, where gemini-4-hydrogen runs"""
+        with patch.dict(os.environ, {"VERTEX_PROJECT": "p"}, clear=True):
+            provider = GeminiProvider(SettingsType({}))
+        self.assertLoggedEqual("vertex_location", "global", provider.vertex_location)
+
+    def test_provider_location_env_wins(self) -> None:
+        """VERTEX_LOCATION overrides the default location"""
+        with patch.dict(
+            os.environ, {"VERTEX_PROJECT": "p", "VERTEX_LOCATION": "us"}, clear=True
+        ):
+            provider = GeminiProvider(SettingsType({}))
+        self.assertLoggedEqual("vertex_location", "us", provider.vertex_location)
+
 
 class GeminiTargetThinkingTests(LoggedTestCase):
     """Each target model gets the thinking setting it accepts (Gemini 4 rules)."""

@@ -72,7 +72,7 @@ DEFAULT_OPTIONS = SettingsType(
         "output_format": None,  # Optional format override, e.g. "srt". If not specified, inferred from source file.
         "provider": "Gemini",  # Translation provider to use: "Gemini", "OpenAI" or "Claude"
         "api_key": None,  # Your API key for the selected provider
-        "model": "gemini-3.1-flash-lite",  # Your preferred model name
+        "model": "gemini-4-hydrogen",  # Your preferred model name
         "prompt": "Translate these subtitles into [target_language]",  # High level prompt template
         "instruction_file": "instructions.txt",  # Optional file containing detailed instructions for the translator
         "scene_threshold": 60.0,  # Scene detection threshold in seconds

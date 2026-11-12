@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+import regex
+
 
 class TranslationMode(str, Enum):
     """Supported translation modes"""
@@ -17,7 +19,7 @@ class TranslationMode(str, Enum):
 MODE_TO_DEFAULT_MODEL = {
     TranslationMode.CHATGPT: "gpt-4o-mini",
     TranslationMode.CLAUDE: "claude-haiku-5-5",
-    TranslationMode.GEMINI: "gemini-3.1-flash-lite",
+    TranslationMode.GEMINI: "gemini-4-hydrogen",
 }
 
 MODE_TO_ENV = {
@@ -39,6 +41,23 @@ CLAUDE_DEFAULT_EFFORT = "medium"
 def claude_effort() -> str:
     """The Claude effort level the provider will use (CLAUDE_EFFORT or the default)"""
     return os.getenv("CLAUDE_EFFORT") or CLAUDE_DEFAULT_EFFORT
+
+
+# exsubs and transubs request thinking level low on Gemini 4 unless GEMINI_THINKING_LEVEL
+# is set (kept here so the scripts can use it without importing the google-genai SDK)
+GEMINI_4_MODEL_PATTERN = regex.compile(r"gemini-[4-9]", regex.IGNORECASE)
+GEMINI_4_THINKING_LEVEL = "low"
+
+
+def gemini_thinking_level(model: str | None) -> str | None:
+    """The Gemini thinking level the scripts request (GEMINI_THINKING_LEVEL, else low on
+    Gemini 4), or None to leave it to the provider"""
+    level = (os.getenv("GEMINI_THINKING_LEVEL") or "").strip()
+    if level:
+        return level
+    if GEMINI_4_MODEL_PATTERN.search(model or ""):
+        return GEMINI_4_THINKING_LEVEL
+    return None
 
 
 MODE_TO_RATE_LIMIT = {

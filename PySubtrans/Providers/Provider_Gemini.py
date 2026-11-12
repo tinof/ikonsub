@@ -100,7 +100,7 @@ else:
                             "vertex_location": settings.get_str("vertex_location")
                             or os.getenv("VERTEX_LOCATION")
                             or os.getenv("GEMINI_VERTEX_LOCATION")
-                            or "europe-west1",
+                            or "global",
                             # Seconds one request may wait for the response (streamed: between
                             # chunks). A stalled request is retried instead of hanging the run.
                             "request_timeout": settings.get_float(

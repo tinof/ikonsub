@@ -2,6 +2,7 @@ import logging
 import os
 
 from PySubtrans import init_translator
+from PySubtrans.MKV.Config import gemini_thinking_level
 from PySubtrans.Options import Options
 from PySubtrans.SubtitleProject import SubtitleProject
 from scripts.check_imports import check_required_imports
@@ -19,7 +20,7 @@ def main() -> int:
 
     # Provider configuration
     provider = "Gemini"
-    default_model = os.getenv("GEMINI_MODEL") or "Gemini 2.0 Flash"
+    default_model = os.getenv("GEMINI_MODEL") or "gemini-4-hydrogen"
 
     parser = CreateArgParser("Translates subtitles using a Google Gemini model")
     parser.add_argument(
@@ -44,17 +45,20 @@ def main() -> int:
         "--vertex-location",
         type=str,
         default=None,
-        help="Vertex AI region (default europe-west1)",
+        help="Vertex AI location (default global)",
     )
     args = parser.parse_args()
 
     InitLogger("gemini-subtrans", args.debug)
 
     try:
+        model = args.model or default_model
         options: Options = CreateOptions(
             args,
             provider,
-            model=args.model or default_model,
+            model=model,
+            # GEMINI_THINKING_LEVEL, else low on Gemini 4; Options drops a None level
+            thinking_level=gemini_thinking_level(model),
             use_vertex=args.vertex,
             vertex_project=args.vertex_project,
             vertex_location=args.vertex_location,
