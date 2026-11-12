@@ -2,6 +2,7 @@ import logging
 import random
 import threading
 import time
+import warnings
 from typing import Any
 
 import regex
@@ -41,6 +42,77 @@ from PySubtrans.UsageLedger import GeminiUsageLedger as GeminiUsageLedger
 
 def _is_gemini_3_or_later(model: str | None) -> bool:
     return bool(regex.search(r"gemini-[3-9]", model or "", regex.IGNORECASE))
+
+
+def _gemini_generation(model: str | None) -> int | None:
+    """The major Gemini version in a model name, or None when the name has none"""
+    match = regex.search(r"gemini-(\d+)", model or "", regex.IGNORECASE)
+    return int(match.group(1)) if match else None
+
+
+# The only models that accept thinking level xhigh
+_XHIGH_MODEL_PATTERN = regex.compile(r"gemini-4-hydrogen", regex.IGNORECASE)
+
+# Upper budget bound for each thinking level on Gemini 4, which rejects thinking_budget
+_GEMINI_4_BUDGET_LEVELS = ((1024, "low"), (8192, "medium"))
+
+
+def _resolve_thinking(
+    model: str | None, level: str | None, budget: int | None
+) -> tuple[str | None, int | None]:
+    """
+    The thinking level and budget a model accepts for the requested level and budget.
+    The level is lower case; the budget is None unless one was requested.
+    """
+    generation = _gemini_generation(model)
+    gemini_4 = generation is not None and generation >= 4
+    if level:
+        if level == "xhigh" and not _XHIGH_MODEL_PATTERN.search(model or ""):
+            level = "high"
+        if gemini_4 and level == "minimal":
+            level = "low"
+        if generation is None or generation >= 3:
+            return level, None
+        # Gemini 2.x has no thinking levels: fall through to the budget
+
+    if budget is None:
+        return None, None
+
+    if gemini_4:
+        if budget < 0:
+            return None, None
+        for limit, budget_level in _GEMINI_4_BUDGET_LEVELS:
+            if budget <= limit:
+                return budget_level, None
+        return "high", None
+
+    return None, budget
+
+
+def _effective_thinking(
+    level: str | None, budget: int | None
+) -> tuple[str | None, int | None]:
+    """What a request asks for: a level wins over a budget, and budget -1 is the default"""
+    if level:
+        return level, None
+    return None, budget if budget is not None and budget >= 0 else None
+
+
+def _describe_thinking(level: str | None, budget: int | None) -> str:
+    if level:
+        return _("level {level}").format(level=level)
+    if budget is not None and budget >= 0:
+        return _("budget {budget}").format(budget=budget)
+    return _("the model default")
+
+
+def _thinking_level(level: str) -> ThinkingLevel:
+    if level == "xhigh":
+        # google-genai 2.34 has no XHIGH member and warns on every construction
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            return ThinkingLevel("XHIGH")
+    return ThinkingLevel(level.upper())
 
 
 # Kept under its old names for existing imports
@@ -107,26 +179,33 @@ class GeminiClient(TranslationClient):
         thinking_budget = settings.get_int("thinking_budget", -1)
         if thinking_budget is None:
             thinking_budget = -1
-        thinking_level = settings.get_str("thinking_level")
-        include_thoughts = False  # Gemini appends thoughts to the text if this is true, breaking the parser
+        self._thinking_level: str | None = (
+            settings.get_str("thinking_level") or ""
+        ).strip().lower() or None
+        # An explicit budget (0 turns thinking off on 2.5 Flash) is sent even without
+        # enable_thinking
+        self._thinking_budget: int | None = (
+            thinking_budget if enable_thinking or thinking_budget >= 0 else None
+        )
 
-        # Gemini 3.x models use the thinking_level enum (minimal/low/medium/high);
-        # Gemini 2.5.x use the integer thinking_budget. They are mutually exclusive
-        # (sending both returns HTTP 400), so thinking_level wins when set. An
-        # explicit budget (0 turns thinking off on 2.5 Flash) is sent even without
-        # enable_thinking. When neither is configured the model keeps its default
-        # dynamic thinking.
-        if thinking_level:
-            self.thinking_config: ThinkingConfig | None = ThinkingConfig(
-                include_thoughts=include_thoughts,
-                thinking_level=ThinkingLevel(thinking_level.upper()),
-            )
-        elif enable_thinking or thinking_budget >= 0:
-            self.thinking_config = ThinkingConfig(
-                include_thoughts=include_thoughts, thinking_budget=thinking_budget
-            )
-        else:
-            self.thinking_config = None
+        # Each target model gets the thinking it accepts, so a fallback from another
+        # generation does not fail with HTTP 400 (_resolve_thinking):
+        # - thinking_level (minimal/low/medium/high) and thinking_budget are mutually
+        #   exclusive, so the level wins when both are set.
+        # - xhigh exists only on gemini-4-hydrogen; other models get high.
+        # - Gemini 4 rejects minimal (low instead) and any budget, which maps to the
+        #   nearest level (up to 1024 low, up to 8192 medium, above that high).
+        # - Gemini 2.x has no levels, so it gets the budget alone.
+        # Without either setting the model keeps its default dynamic thinking.
+        self._thinking_configs: dict[str, ThinkingConfig | None] = {}
+        for target_model, _location in self._targets():
+            if target_model not in self._thinking_configs:
+                self._thinking_configs[target_model] = self._build_thinking_config(
+                    target_model
+                )
+        self.thinking_config: ThinkingConfig | None = self._thinking_configs[
+            self.model or ""
+        ]
 
     @property
     def api_key(self) -> str | None:
@@ -180,6 +259,47 @@ class GeminiClient(TranslationClient):
             if target not in targets:
                 targets.append(target)
         return targets
+
+    def _build_thinking_config(self, model: str) -> ThinkingConfig | None:
+        """
+        The thinking config for a model, with a warning when the model needs another
+        setting than the one requested
+        """
+        level, budget = _resolve_thinking(
+            model, self._thinking_level, self._thinking_budget
+        )
+        requested = _effective_thinking(self._thinking_level, self._thinking_budget)
+        if _effective_thinking(level, budget) != requested:
+            self._emit_warning(
+                _(
+                    "Gemini {model} does not accept thinking {requested}; using {used}"
+                ).format(
+                    model=model,
+                    requested=_describe_thinking(*requested),
+                    used=_describe_thinking(level, budget),
+                )
+            )
+
+        # Gemini appends thoughts to the text if include_thoughts is true, breaking the parser
+        if level:
+            return ThinkingConfig(
+                include_thoughts=False, thinking_level=_thinking_level(level)
+            )
+        if budget is not None:
+            return ThinkingConfig(include_thoughts=False, thinking_budget=budget)
+        return None
+
+    def _thinking_config_for(self, model: str) -> ThinkingConfig | None:
+        """
+        The thinking config for a target model, built on first use for a model that is
+        not a configured target
+        """
+        if model in self._thinking_configs:
+            return self._thinking_configs[model]
+        with self._client_lock:
+            if model not in self._thinking_configs:
+                self._thinking_configs[model] = self._build_thinking_config(model)
+            return self._thinking_configs[model]
 
     def _request_translation(
         self, request: TranslationRequest, temperature: float | None = None
@@ -295,7 +415,7 @@ class GeminiClient(TranslationClient):
             temperature=temperature,
             system_instruction=prompt.system_prompt,
             safety_settings=self.safety_settings,
-            thinking_config=self.thinking_config,
+            thinking_config=self._thinking_config_for(model),
             automatic_function_calling=self.automatic_function_calling,
             max_output_tokens=None,
             response_modalities=[],
