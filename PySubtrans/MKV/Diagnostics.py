@@ -3,13 +3,23 @@ import time
 from pathlib import Path
 
 import regex as re
+from rich.console import Console
 
 
-def run_diagnostics(console):  # noqa: PLR0915 -- E5.7
+def run_diagnostics(console):
     """Run system diagnostics to identify potential bottlenecks"""
     console.print("\n[bold cyan]Running system diagnostics...[/bold cyan]")
 
-    # Check available tools
+    available_tools = _check_tools(console)
+    _run_disk_test(console, available_tools)
+    _show_filesystem_info(console)
+    _show_memory_info(console)
+    _show_io_stats(console, available_tools)
+    _show_recommendations(console)
+
+
+def _check_tools(console: Console) -> dict[str, bool]:
+    """Report which system tools are installed"""
     tools = ["ionice", "iostat", "iotop", "dd"]
     available_tools = {}
     for tool in tools:
@@ -22,7 +32,11 @@ def run_diagnostics(console):  # noqa: PLR0915 -- E5.7
         status = "[green]✓[/green]" if available else "[red]✗[/red]"
         console.print(f"  {status} {tool}")
 
-    # Check disk I/O performance with a quick test
+    return available_tools
+
+
+def _run_disk_test(console: Console, available_tools: dict[str, bool]) -> None:
+    """Check disk I/O performance with a quick dd test"""
     console.print("\n[bold]Running disk I/O test...[/bold]")
     if available_tools.get("dd"):
         try:
@@ -75,7 +89,9 @@ def run_diagnostics(console):  # noqa: PLR0915 -- E5.7
     else:
         console.print("  [yellow]dd not available - skipping I/O test[/yellow]")
 
-    # Check filesystem type
+
+def _show_filesystem_info(console: Console) -> None:
+    """Report the filesystem type of the current directory"""
     console.print("\n[bold]Filesystem information:[/bold]")
     try:
         result = subprocess.run(
@@ -95,7 +111,9 @@ def run_diagnostics(console):  # noqa: PLR0915 -- E5.7
     except Exception as e:
         console.print(f"  [red]Could not get filesystem info: {e}[/red]")
 
-    # Check memory and swap (Linux only)
+
+def _show_memory_info(console: Console) -> None:
+    """Report memory and swap (Linux only)"""
     console.print("\n[bold]Memory information:[/bold]")
     try:
         if Path("/proc/meminfo").exists():
@@ -125,7 +143,9 @@ def run_diagnostics(console):  # noqa: PLR0915 -- E5.7
     except Exception as e:
         console.print(f"  [red]Could not get memory info: {e}[/red]")
 
-    # Check current I/O load if iostat is available
+
+def _show_io_stats(console: Console, available_tools: dict[str, bool]) -> None:
+    """Report current I/O load if iostat is available"""
     if available_tools.get("iostat"):
         console.print("\n[bold]Current I/O statistics:[/bold]")
         try:
@@ -146,6 +166,9 @@ def run_diagnostics(console):  # noqa: PLR0915 -- E5.7
         except Exception as e:
             console.print(f"  [red]Could not get I/O stats: {e}[/red]")
 
+
+def _show_recommendations(console: Console) -> None:
+    """Print general advice for slow extraction"""
     console.print("\n[bold]Optimization recommendations:[/bold]")
     console.print(
         "1. If using network/cloud storage, consider moving files to local SSD"
