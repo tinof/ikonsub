@@ -47,6 +47,8 @@ Filled in by the first `/ship:roadmap-next` run.
 
 **Reassess:** owner-decision (steering 2026-11-17): Focus D1, F5.1, D4; D2.1 and E2.1 decided, D4.2
 is now desk work (`gpt-6-luna`), E5.13 dropped, nine steps tagged `[batch]`.
+**Reassess:** new-defect (E5.1, PR #24): E5.15 splits two long test methods; E2.2 waits for the owner
+(settings version).
 
 ### Waiting for the owner
 
@@ -56,6 +58,11 @@ same item stay startable. `/ship:roadmap-next` reads this list; remove an entry 
 - **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2: paid live runs.** Run them, or approve a scope and a budget
   for an agent run; `/ship:roadmap-batch` never starts them.
 - **E2.3: tag the first release (`0.1.0`).** It pushes a tag and adds `## Release` to `.claude/workflow.md`.
+- **E2.2: should the settings-file version follow the package version?** Reading `__version__` from
+  `importlib.metadata` turns it from `v1.5.6` into `0.1.0`, and `Options.py:65,241-243` compares the
+  saved settings version with it to run `_update_version`. Options: a separate settings version pinned
+  at `v1.5.6` in `Options.py`; let it follow the package version. Recommended: pin it, because a saved
+  `v1.5.6` would otherwise look newer than every `0.x` release.
 - **E3.1: name the reference episodes and where they live.** `AGENTS.md:177` asks for a comparison
   against "the kept baseline artifacts", but no path names them.
 
@@ -198,7 +205,7 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 - **Status:** Open; the first version is `0.1.0` (E2.1, in the log).
 - **Decided 2026-11-17 (owner):** the first ikonsub release is `0.1.0`.
-- [E2.2][desk][batch] Read `PySubtrans.__version__` from `importlib.metadata` and start `CHANGELOG.md`. Gate:
+- [E2.2][desk] Read `PySubtrans.__version__` from `importlib.metadata` and start `CHANGELOG.md`. Gate:
   a test that `__version__` equals `importlib.metadata.version("ikonsub")`. Needs: E2.1.
 - [E2.3][owner] Tag `0.1.0` and add a `## Release` section to `.claude/workflow.md`. Gate:
   `uv tool list` shows the tagged version. Needs: E2.2.
@@ -224,11 +231,8 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 ### E5: Code size
 
-- **Status:** Open; 3 files over 800 lines, 8 functions over 50 statements (scan of 2026-11-05).
-- PLR0915 is not in ruff's `select` (`pyproject.toml`), so nothing stops new long functions.
-- [E5.1][desk][batch] Add ruff `PLR0915` at `lint.pylint.max-statements = 50` and mark the 8 current
-  violations with `# noqa: PLR0915 -- E5.<n>`, naming each one's split step. Gate: `make check` green,
-  and a probe function with 51 statements makes it fail.
+- **Status:** Open; ruff `PLR0915` now fails new functions over 50 statements (E5.1, in the log);
+  3 files over 800 lines and 10 marked functions over 50 statements remain.
 - [E5.2][desk] Split `scripts/exsubs.py` (1476 lines, limit 800) by pure moves; the shared pipeline
   helpers go into one module `scripts/transubs.py` can use. Gate: `make check && make test`, and
   `git diff --color-moved=dimmed-zebra` shows only moved blocks. Needs: E5.14.
@@ -236,29 +240,33 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
   make test`, and a diff that shows only moved blocks. Needs: E5.14.
 - [E5.4][desk] Split `PySubtrans/SubtitleTranslator.py` (983 lines, limit 800) by pure moves. Gate:
   `make check && make test`, and a diff that shows only moved blocks. Needs: E5.14.
-- [E5.5][desk] Split `translate_srt_file` (165 statements, `scripts/transubs.py:550`) by phase. Gate:
+- [E5.5][desk] Split `translate_srt_file` (172 statements, `scripts/transubs.py:546`) by phase. Gate:
   `make check && make test`, behaviour unchanged. Needs: E5.3.
-- [E5.6][desk] Split `translate_subtitles` (125 statements, `scripts/exsubs.py:918`) by phase. Gate:
+- [E5.6][desk] Split `translate_subtitles` (132 statements, `scripts/exsubs.py:920`) by phase. Gate:
   `make check && make test`, behaviour unchanged. Needs: E5.2.
 - [E5.7][desk][batch] Split `run_diagnostics` (81 statements, `PySubtrans/MKV/Diagnostics.py:8`) by phase.
   Gate: `make check && make test`, behaviour unchanged.
-- [E5.8][desk][batch] Split `BatchProcessor.run` (72 statements, `scripts/batch_translate.py:122`) by phase.
+- [E5.8][desk][batch] Split `BatchProcessor.run` (72 statements, `scripts/batch_translate.py:123`) by phase.
   Gate: `make check && make test`, behaviour unchanged.
-- [E5.9][desk] Split `main` (68 statements, `scripts/exsubs.py:1264`) by phase. Gate: `make check &&
+- [E5.9][desk] Split `main` (68 statements, `scripts/exsubs.py:1277`) by phase. Gate: `make check &&
   make test`, behaviour unchanged. Needs: E5.2.
 - [E5.10][desk] Split `SubtitleTranslator._translate_parallel` (55 statements,
   `PySubtrans/SubtitleTranslator.py:229`) by phase. Gate: `make check && make test`, behaviour
   unchanged. Needs: E5.4.
-- [E5.11][desk] Split `process_video_file` (54 statements, `scripts/exsubs.py:750`) by phase. Gate:
+- [E5.11][desk] Split `process_video_file` (54 statements, `scripts/exsubs.py:752`) by phase. Gate:
   `make check && make test`, behaviour unchanged. Needs: E5.2.
-- [E5.12][desk] Split `OpenAIClient._try_send_messages` (52 statements,
-  `PySubtrans/Providers/Clients/OpenAIClient.py:106`) by phase. Gate: `make check && make test`,
+- [E5.12][desk] Split `OpenAIClient._try_send_messages` (56 statements,
+  `PySubtrans/Providers/Clients/OpenAIClient.py:104`) by phase. Gate: `make check && make test`,
   behaviour unchanged. Needs: D1.1.
 - [E5.14][desk] Write `tools/check_pure_move.py`, the `move-gate` of `.claude/workflow.md`: for the
   changed Python files between `--base` and HEAD, the top-level functions, classes and assignments
   must match by AST before and after (only imports and `__all__` may change); it accepts and logs
   `--step <ID>`. Gate: tests where a fixture pure move passes and a move with one edited line fails;
   `make check && make test`.
+- [E5.15][desk][batch] Split the test methods `test_SubtitleBatches` (172 statements,
+  `tests/PySubtransTests/test_ChineseDinner.py:102`) and `test_SubtitleEditor_UpdateLine` (85, `:486`)
+  into helpers or smaller methods and drop their `PLR0915` markers. Gate: `make check && make test`,
+  with the same assertions still run.
 
 ## Explicit non-goals
 
