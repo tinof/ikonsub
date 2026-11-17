@@ -543,7 +543,7 @@ def _env_default_mode() -> TranslationMode | None:
     return None
 
 
-def translate_srt_file(
+def translate_srt_file(  # noqa: PLR0915 -- E5.5
     sub_file: Path,
     target_language: str | None,
     provider_flag: str | None,

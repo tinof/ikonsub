@@ -749,7 +749,7 @@ def verify_api_key(mode: TranslationMode):
         sys.exit(1)
 
 
-def process_video_file(
+def process_video_file(  # noqa: PLR0915 -- E5.11
     video_file: Path,
     config: MKVConfig,
     mode: TranslationMode,
@@ -917,7 +917,7 @@ def extract_subtitles(
     )
 
 
-def translate_subtitles(
+def translate_subtitles(  # noqa: PLR0915 -- E5.6
     sub_file: Path,
     out_file: Path,
     config: MKVConfig,
@@ -1274,7 +1274,7 @@ def process_directory(
     return 1 if stats["failed"] else 0
 
 
-def main():
+def main():  # noqa: PLR0915 -- E5.9
     parser = argparse.ArgumentParser(
         description="Extract and translate subtitles from MKV files"
     )

@@ -226,7 +226,7 @@ class SubtitleTranslator:
                 )
                 return
 
-    def _translate_parallel(self, subtitles: Subtitles):
+    def _translate_parallel(self, subtitles: Subtitles):  # noqa: PLR0915 -- E5.10
         """
         Parallel batch translation using pre-computed source-based context.
         All batches are translated concurrently using ThreadPoolExecutor.

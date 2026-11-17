@@ -99,7 +99,7 @@ class ChineseDinnerTests(SubtitleTestCase):
             )
             log_info("Names: " + ", ".join(project_settings.get_list("names")))
 
-    def test_SubtitleBatches(self):
+    def test_SubtitleBatches(self):  # noqa: PLR0915 -- E5.15
         """
         Test subtitle batcher, batch context and batch merging
         """
@@ -483,7 +483,7 @@ class ChineseDinnerTests(SubtitleTestCase):
             "Translated", "Why are you going to kill me?", line.translation
         )
 
-    def test_SubtitleEditor_UpdateLine(self):
+    def test_SubtitleEditor_UpdateLine(self):  # noqa: PLR0915 -- E5.15
         """
         Test SubtitleEditor.UpdateLine functionality with real subtitle data
         """
