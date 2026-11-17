@@ -2,6 +2,7 @@ import logging
 import os
 
 from PySubtrans import init_translator
+from PySubtrans.MKV.Config import OPENAI_DEFAULT_MODEL
 from PySubtrans.Options import Options
 from PySubtrans.SubtitleProject import SubtitleProject
 from scripts.check_imports import check_required_imports
@@ -19,7 +20,7 @@ def main() -> int:
 
     # Provider configuration
     provider = "OpenAI"
-    default_model = os.getenv("OPENAI_MODEL") or "gpt-5-mini"
+    default_model = os.getenv("OPENAI_MODEL") or OPENAI_DEFAULT_MODEL
 
     parser = CreateArgParser("Translates subtitles using an OpenAI model")
     parser.add_argument(

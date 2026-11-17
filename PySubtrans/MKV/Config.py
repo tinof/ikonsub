@@ -15,11 +15,18 @@ class TranslationMode(str, Enum):
     GEMINI = "gemini"
 
 
+# The default model of each provider. Every script and the OpenAI and Claude provider
+# fallbacks read these, so change a default here only. OPENAI_MODEL, CLAUDE_MODEL and
+# GEMINI_MODEL override them.
+OPENAI_DEFAULT_MODEL = "gpt-5-mini"
+CLAUDE_DEFAULT_MODEL = "claude-haiku-5-5"
+GEMINI_DEFAULT_MODEL = "gemini-4-hydrogen"
+
 # Centralized mappings to reduce duplication
 MODE_TO_DEFAULT_MODEL = {
-    TranslationMode.CHATGPT: "gpt-4o-mini",
-    TranslationMode.CLAUDE: "claude-haiku-5-5",
-    TranslationMode.GEMINI: "gemini-4-hydrogen",
+    TranslationMode.CHATGPT: OPENAI_DEFAULT_MODEL,
+    TranslationMode.CLAUDE: CLAUDE_DEFAULT_MODEL,
+    TranslationMode.GEMINI: GEMINI_DEFAULT_MODEL,
 }
 
 MODE_TO_ENV = {

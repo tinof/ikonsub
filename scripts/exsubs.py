@@ -38,10 +38,12 @@ from PySubtrans.MKV import (
 )
 from PySubtrans.MKV.Config import (
     GEMINI_4_MODEL_PATTERN,
+    GEMINI_DEFAULT_MODEL,
     MODE_TO_ALT_ENV,
     MODE_TO_DEFAULT_MODEL,
     MODE_TO_ENV,
     MODE_TO_RATE_LIMIT,
+    OPENAI_DEFAULT_MODEL,
     claude_effort,
     gemini_thinking_level,
 )
@@ -57,7 +59,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("exsubs")
 
-GEMINI_DEFAULT_MODEL = "gemini-4-hydrogen"
 GEMINI_SCENE_THRESHOLD = 240.0
 GEMINI_MIN_BATCH_SIZE = 80
 GEMINI_MAX_BATCH_SIZE = 180
@@ -961,7 +962,7 @@ def translate_subtitles(
     if mode == TranslationMode.GEMINI:
         model = os.getenv("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
     elif mode == TranslationMode.CHATGPT:
-        model = os.getenv("OPENAI_MODEL") or "gpt-5-mini"
+        model = os.getenv("OPENAI_MODEL") or OPENAI_DEFAULT_MODEL
     elif mode == TranslationMode.CLAUDE:
         model = os.getenv("CLAUDE_MODEL") or model
 

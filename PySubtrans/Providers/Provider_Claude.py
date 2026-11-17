@@ -2,6 +2,7 @@ import importlib.util
 import logging
 
 from PySubtrans.Helpers.Localization import _
+from PySubtrans.MKV.Config import CLAUDE_DEFAULT_MODEL
 from PySubtrans.Options import env_float, env_int
 from PySubtrans.SettingsType import SettingsType
 
@@ -28,7 +29,7 @@ else:
         class Provider_Claude(TranslationProvider):
             name = "Claude"
 
-            default_model = "claude-haiku-5-5"
+            default_model = CLAUDE_DEFAULT_MODEL
 
             def __init__(self, settings: SettingsType):
                 super().__init__(
