@@ -1,5 +1,6 @@
 from typing import Any, Literal, cast
 
+import httpx2
 from openai import (
     APIConnectionError,
     APITimeoutError,
@@ -211,7 +212,8 @@ class OpenAIReasoningClient(OpenAIClient):
 
         except RateLimitError:
             raise
-        except APITimeoutError, APIConnectionError:
+        except APITimeoutError, APIConnectionError, httpx2.TransportError:
+            # A dropped connection is retried by the shared loop, from a clean slate
             raise
         except OpenAIError as error:
             stream_error = error
