@@ -3,6 +3,22 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-17: E5.1 Lint functions over 50 statements (PR #24)
+
+- [E5.1][desk][batch] Add ruff `PLR0915` at `lint.pylint.max-statements = 50` and mark the 8 current
+  violations with `# noqa: PLR0915 -- E5.<n>`, naming each one's split step. Gate: `make check` green,
+  and a probe function with 51 statements makes it fail.
+- **Decided 2026-11-17 (batch, recommended; owner may override):** ruff at HEAD reported 10
+  violations: the 8 named ones plus `test_SubtitleBatches` and `test_SubtitleEditor_UpdateLine` in
+  `tests/PySubtransTests/test_ChineseDinner.py`, which had no split step. They carry
+  `# noqa: PLR0915 -- E5.15`, and E5.15 splits them. Not taken: a `tests/**` per-file-ignore, which
+  would loosen the contract's `*.py` function limit.
+- Resolution: `PLR0915` is in the pinned ruff `select` list, with `[tool.ruff.lint.pylint]`
+  `max-statements = 50`; the 10 functions over the limit carry markers naming E5.5 to E5.12 and E5.15.
+- Evidence: a temporary 51-statement function made `make check` fail with `PLR0915 Too many statements
+  (51 > 50)` in `PySubtrans/`, `scripts/`, `tools/` and `tests/`; `make check && make test` 493 passed;
+  CI on PR #24. Built and reviewed by `/ship:roadmap-batch` (self mode, Claude cold review LGTM).
+
 ## 2026-11-17: D2.2 One env_bool for scripts and providers (PR #21)
 
 - [D2.2][desk][batch] One shared `env_bool` helper used by the scripts and the providers, per the decision.
