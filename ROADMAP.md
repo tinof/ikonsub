@@ -47,8 +47,8 @@ Filled in by the first `/ship:roadmap-next` run.
 
 **Reassess:** owner-decision (steering 2026-11-17): Focus D1, F5.1, D4; D2.1 and E2.1 decided, D4.2
 is now desk work (`gpt-6-luna`), E5.13 dropped, nine steps tagged `[batch]`.
-**Reassess:** new-defect (E5.1, PR #24): E5.15 splits two long test methods; E2.2 waits for the owner
-(settings version).
+**Reassess:** new-defect (E5.1, PR #24): E5.15 splits two long test methods.
+**Reassess:** owner-decision (batch 2026-11-17): E2.2 pins the settings version; startable again.
 
 ### Waiting for the owner
 
@@ -58,11 +58,6 @@ same item stay startable. `/ship:roadmap-next` reads this list; remove an entry 
 - **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2: paid live runs.** Run them, or approve a scope and a budget
   for an agent run; `/ship:roadmap-batch` never starts them.
 - **E2.3: tag the first release (`0.1.0`).** It pushes a tag and adds `## Release` to `.claude/workflow.md`.
-- **E2.2: should the settings-file version follow the package version?** Reading `__version__` from
-  `importlib.metadata` turns it from `v1.5.6` into `0.1.0`, and `Options.py:65,241-243` compares the
-  saved settings version with it to run `_update_version`. Options: a separate settings version pinned
-  at `v1.5.6` in `Options.py`; let it follow the package version. Recommended: pin it, because a saved
-  `v1.5.6` would otherwise look newer than every `0.x` release.
 - **E3.1: name the reference episodes and where they live.** `AGENTS.md:177` asks for a comparison
   against "the kept baseline artifacts", but no path names them.
 
@@ -205,8 +200,14 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 - **Status:** Open; the first version is `0.1.0` (E2.1, in the log).
 - **Decided 2026-11-17 (owner):** the first ikonsub release is `0.1.0`.
-- [E2.2][desk] Read `PySubtrans.__version__` from `importlib.metadata` and start `CHANGELOG.md`. Gate:
-  a test that `__version__` equals `importlib.metadata.version("ikonsub")`. Needs: E2.1.
+- **Decided 2026-11-17 (owner):** the settings-file version gets its own constant, pinned at
+  `v1.5.6` in `PySubtrans/Options.py` (`default_settings["version"]`, the check at `:241-243`), so a
+  saved `v1.5.6` file never looks newer than a `0.x` release. Not taken: settings follow the package
+  version.
+- [E2.2][desk][batch] Read `PySubtrans.__version__` from `importlib.metadata`, keep the settings
+  version pinned at `v1.5.6` in `Options.py`, and start `CHANGELOG.md`. Gate: a test that
+  `__version__` equals `importlib.metadata.version("ikonsub")`, and a test that a saved `v1.5.6`
+  settings file is not migrated and stays `v1.5.6`. Needs: E2.1.
 - [E2.3][owner] Tag `0.1.0` and add a `## Release` section to `.claude/workflow.md`. Gate:
   `uv tool list` shows the tagged version. Needs: E2.2.
 
