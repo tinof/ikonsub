@@ -95,15 +95,8 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 ### D1: OpenAI connection drops end the run
 
-- **Status:** Open; Claude retries dropped connections since PR #5, OpenAI does not.
-- `OpenAIClient._try_send_messages` raises `TranslationError` on `openai.APIConnectionError` without a
-  retry (`PySubtrans/Providers/Clients/OpenAIClient.py:182`). A transport error mid-stream reaches its
-  `except Exception` and becomes `TranslationImpossibleError`, which stops the run
-  (`OpenAIClient.py:202`).
-- [D1.1][desk][batch] Retry `APIConnectionError` and mid-stream transport errors in the OpenAI chat and
-  Responses clients with the existing backoff, resetting stream progress as `AnthropicClient` does.
-  Gate: tests where a connection error before the response and a drop mid-stream are retried and the
-  retry's text is used; `make check && make test`.
+- **Status:** Partial; the OpenAI chat and Responses clients retry dropped connections (D1.1, in the
+  log); D1.2 checks the Gemini stream for the same gap.
 - [D1.2][desk] Check `GeminiClient._send_messages` (`GeminiClient.py:314`) for the same gap and retry
   a dropped stream there too. Gate: a test of a mid-stream drop on the Gemini stream that retries and
   succeeds.
@@ -132,14 +125,10 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 ### D4: Default model names are spread over the entry points
 
-- **Status:** Open.
-- Defaults live in `scripts/exsubs.py:39,52`, `scripts/transubs.py:30,47`, `scripts/gpt_subtrans.py:22`,
-  `scripts/gemini_subtrans.py:22` and `scripts/claude_subtrans.py:47`, and have drifted before.
-- **Decided 2026-11-17 (owner):** the OpenAI default becomes `gpt-6-luna`. D4.1 keeps today's
-  effective value `gpt-5-mini` and drops the unused `gpt-4o-mini` in `PySubtrans/MKV/Config.py:20`;
-  D4.2 then switches the constant.
-- [D4.1][desk][batch] Move each provider's default model into one module that every script reads,
-  values unchanged. Gate: a test that each CLI's default equals the shared constant.
+- **Status:** Partial; every CLI and the OpenAI and Claude providers read one default per provider
+  from `PySubtrans/MKV/Config.py` (D4.1, in the log); D4.2 switches the OpenAI constant.
+- **Decided 2026-11-17 (owner):** the OpenAI default becomes `gpt-6-luna`; D4.2 switches
+  `OPENAI_DEFAULT_MODEL` in `PySubtrans/MKV/Config.py`.
 - [D4.2][desk][batch] Set the shared OpenAI default to `gpt-6-luna`. Gate: the D4.1 test expects
   `gpt-6-luna` for every CLI, and a test that the model routes to `OpenAIReasoningClient`. Needs: D4.1.
 
