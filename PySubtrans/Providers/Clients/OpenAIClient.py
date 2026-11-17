@@ -3,6 +3,7 @@ import time
 from json import JSONDecodeError
 from typing import Any
 
+import httpx2
 import openai
 
 from PySubtrans.Helpers import FormatMessages
@@ -176,9 +177,22 @@ class OpenAIClient(TranslationClient):
                     time.sleep(backoff_time)
                     continue
 
-            except openai.APIConnectionError as e:
+            except (openai.APIConnectionError, httpx2.TransportError) as e:
+                # The SDK reports a dropped stream as APIConnectionError; a raw
+                # transport error can still escape outside its wrappers
+                if retry < self.max_retries and not self.aborted:
+                    self._emit_warning(
+                        _(
+                            "Connection error: {error}, retrying in {backoff_time} seconds..."
+                        ).format(
+                            error=str(e) or type(e).__name__, backoff_time=backoff_time
+                        )
+                    )
+                    time.sleep(backoff_time)
+                    continue
+
                 if not self.aborted:
-                    raise TranslationError(str(e), error=e) from e
+                    raise TranslationError(str(e) or type(e).__name__, error=e) from e
 
             except TranslationImpossibleError:
                 # Error that has no chance of success on retry
