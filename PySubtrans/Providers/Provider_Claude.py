@@ -3,7 +3,7 @@ import logging
 
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.MKV.Config import CLAUDE_DEFAULT_MODEL
-from PySubtrans.Options import env_float, env_int
+from PySubtrans.Options import env_bool, env_float, env_int
 from PySubtrans.SettingsType import SettingsType
 
 if not importlib.util.find_spec("anthropic"):
@@ -43,11 +43,11 @@ else:
                             or os.getenv("CLAUDE_MODEL", self.default_model),
                             "stream_responses": settings.get_bool(
                                 "stream_responses",
-                                os.getenv("CLAUDE_STREAM_RESPONSES", "True") == "True",
+                                env_bool("CLAUDE_STREAM_RESPONSES", True),
                             ),
                             "thinking": settings.get_bool(
                                 "thinking",
-                                os.getenv("CLAUDE_THINKING", "False") == "True",
+                                env_bool("CLAUDE_THINKING", False),
                             ),
                             # Thinking depth on current models, which think even with
                             # thinking off: low, medium, high, xhigh, max or "default"
@@ -56,7 +56,7 @@ else:
                             # Server-side refusal fallback on models that support it
                             "fallbacks": settings.get_bool(
                                 "fallbacks",
-                                os.getenv("CLAUDE_FALLBACKS", "True") == "True",
+                                env_bool("CLAUDE_FALLBACKS", True),
                             ),
                             "max_tokens": settings.get_int("max_tokens")
                             or env_int("CLAUDE_MAX_TOKENS", DEFAULT_MAX_TOKENS),

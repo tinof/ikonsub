@@ -24,9 +24,18 @@ settings_path = os.path.join(config_dir, "settings.json")
 dotenv.load_dotenv()
 
 
+TRUE_ENV_VALUES = frozenset({"1", "true", "yes", "on"})
+
+
 def env_bool(key: str, default: bool = False) -> bool:
-    var = os.getenv(key, default)
-    return True if var and str(var).lower() in ("true", "yes", "1") else False
+    """Read a boolean environment variable; 1/true/yes/on (any case) count as true.
+
+    An unset or empty variable returns the default; any other value is false.
+    """
+    value = os.getenv(key)
+    if value is None or not value.strip():
+        return default
+    return value.strip().lower() in TRUE_ENV_VALUES
 
 
 def env_int(key: str, default: int | None = None) -> int | None:

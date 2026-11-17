@@ -3,7 +3,7 @@ import logging
 import os
 import subprocess
 
-from PySubtrans.Options import env_float, env_int
+from PySubtrans.Options import env_bool, env_float, env_int
 from PySubtrans.SettingsType import SettingsType
 
 if not importlib.util.find_spec("google"):
@@ -69,16 +69,15 @@ else:
                             or os.getenv("GEMINI_MODEL"),
                             "stream_responses": settings.get_bool(
                                 "stream_responses",
-                                os.getenv("GEMINI_STREAM_RESPONSES", "True") == "True",
+                                env_bool("GEMINI_STREAM_RESPONSES", True),
                             ),
                             "enable_thinking": settings.get_bool(
                                 "enable_thinking",
-                                os.getenv("GEMINI_ENABLE_THINKING", "False") == "True",
+                                env_bool("GEMINI_ENABLE_THINKING", False),
                             ),
                             "large_context_mode": settings.get_bool(
                                 "large_context_mode",
-                                os.getenv("GEMINI_LARGE_CONTEXT_MODE", "True")
-                                == "True",
+                                env_bool("GEMINI_LARGE_CONTEXT_MODE", True),
                             ),
                             "thinking_budget": -1
                             if thinking_budget is None
@@ -93,7 +92,7 @@ else:
                             ),
                             "use_vertex": settings.get_bool(
                                 "use_vertex",
-                                os.getenv("GEMINI_USE_VERTEX", "False") == "True",
+                                env_bool("GEMINI_USE_VERTEX", False),
                             ),
                             "vertex_project": settings.get_str("vertex_project")
                             or _default_vertex_project(),

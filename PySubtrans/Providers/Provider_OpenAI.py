@@ -3,7 +3,7 @@ import logging
 import os
 
 from PySubtrans.MKV.Config import OPENAI_DEFAULT_MODEL
-from PySubtrans.Options import env_float
+from PySubtrans.Options import env_bool, env_float
 from PySubtrans.SettingsType import SettingsType
 
 if not importlib.util.find_spec("openai"):
@@ -49,7 +49,7 @@ else:
                                 "rate_limit", env_float("OPENAI_RATE_LIMIT")
                             ),
                             "free_plan": settings.get_bool(
-                                "free_plan", os.getenv("OPENAI_FREE_PLAN") == "True"
+                                "free_plan", env_bool("OPENAI_FREE_PLAN", False)
                             ),
                             "max_instruct_tokens": settings.get_int(
                                 "max_instruct_tokens",
@@ -57,7 +57,7 @@ else:
                             ),
                             "use_httpx": settings.get_bool(
                                 "use_httpx",
-                                os.getenv("OPENAI_USE_HTTPX", "False") == "True",
+                                env_bool("OPENAI_USE_HTTPX", False),
                             ),
                             "reasoning_effort": settings.get_str(
                                 "reasoning_effort",
@@ -65,7 +65,7 @@ else:
                             ),
                             "stream_responses": settings.get_bool(
                                 "stream_responses",
-                                os.getenv("OPENAI_STREAM_RESPONSES", "False") == "True",
+                                env_bool("OPENAI_STREAM_RESPONSES", False),
                             ),
                             "proxy": settings.get_str("proxy"),
                         }

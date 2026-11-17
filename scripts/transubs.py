@@ -37,6 +37,7 @@ from PySubtrans.MKV.Config import (
     claude_effort,
     gemini_thinking_level,
 )
+from PySubtrans.Options import env_bool
 from PySubtrans.SubtitleProject import SubtitleProject
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
 from PySubtrans.UsageLedger import USAGE_FILE
@@ -198,12 +199,7 @@ def _sisusub_ai_review_enabled() -> bool:
     The AI pass made one Gemini call per flagged cue and took ~12 minutes and ~$1.50 per
     episode; see sisusub's docs/pipeline-review-2026-10-23.md. The deterministic fixes still run.
     """
-    return (os.getenv("SISUSUB_AI_REVIEW") or "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    return env_bool("SISUSUB_AI_REVIEW", False)
 
 
 def _output_signature(path: Path) -> tuple[int, int] | None:
@@ -488,17 +484,13 @@ def _determine_gemini_rate_limit(model: str | None) -> float:
 def _parallel_batches(mode: TranslationMode) -> bool:
     """PARALLEL_BATCHES, else on for Gemini on Vertex. Workers do not share the RPM pacing
     of the API-key path, so a rate-limited Gemini API key stays sequential by default."""
-    value = os.getenv("PARALLEL_BATCHES")
-    if value is not None:
-        return value.lower() in {"1", "true", "yes", "on"}
-    return mode == TranslationMode.GEMINI and _using_vertex()
+    return env_bool(
+        "PARALLEL_BATCHES", mode == TranslationMode.GEMINI and _using_vertex()
+    )
 
 
 def _using_vertex() -> bool:
-    value = os.getenv("GEMINI_USE_VERTEX")
-    if value is None:
-        return True
-    return value.lower() in {"1", "true", "yes", "on"}
+    return env_bool("GEMINI_USE_VERTEX", True)
 
 
 def _detect_gcloud_project() -> str | None:
@@ -596,11 +588,7 @@ def translate_srt_file(
 
     # Check for large context mode
     # Default to True for Gemini, False for others, unless explicitly set
-    env_large_context = os.getenv("LARGE_CONTEXT_MODE")
-    if env_large_context is not None:
-        large_context_mode = env_large_context.lower() in ("true", "1", "yes")
-    else:
-        large_context_mode = mode == TranslationMode.GEMINI
+    large_context_mode = env_bool("LARGE_CONTEXT_MODE", mode == TranslationMode.GEMINI)
 
     if mode == TranslationMode.GEMINI:
         model = os.getenv("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
