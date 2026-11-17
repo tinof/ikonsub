@@ -25,6 +25,7 @@ commit trailers. A step without a gate, or with `Gate: TODO(owner)`, waits for t
 | `reassess` | A stop point: its outcome decides what follows, so the next run re-plans |
 | `live` | A paid provider run: needs credentials (probe `credentials`) and the media tools (probe `media-tools`). Always paired with `owner`: the owner runs it or approves its scope |
 | `api-key` | Needs a Gemini API key in the environment (probe `gemini-api-key`): the Developer API path, which Vertex runs do not exercise |
+| `batch` | Routed to an unattended `/ship:roadmap-batch` run; set by `/ship:roadmap-init` or `/ship:roadmap-assess` with the owner's yes |
 
 **How to update.** Format: `~/.claude/skills/ship/reference/roadmap-format.md`. This file holds open
 work only; closed steps, Done notes and measurements go to the log.
@@ -44,21 +45,17 @@ run re-check only what changed since that commit.
 
 Filled in by the first `/ship:roadmap-next` run.
 
+**Reassess:** owner-decision (steering 2026-11-17): Focus D1, F5.1, D4; D2.1 and E2.1 decided, D4.2
+is now desk work (`gpt-6-luna`), E5.13 dropped, nine steps tagged `[batch]`.
+
 ### Waiting for the owner
 
 Steps that need a decision, material or a test only the owner can provide. Other steps of the
 same item stay startable. `/ship:roadmap-next` reads this list; remove an entry when it is settled.
 
-- **D2.1: decide how boolean env vars parse.** Accepting `true` in the providers switches
-  `batch-translate` and `gemini-subtrans` to Vertex for anyone who followed `exsubs`' advice to export
-  `GEMINI_USE_VERTEX=true` (`scripts/exsubs.py:702`).
-- **D4.2: choose the OpenAI default model.** Moving `--mode chatgpt` from `gpt-4o-mini` to a GPT-5
-  model switches users to the reasoning client and changes cost and latency.
-- **E2.1: choose the first ikonsub version.** No tags exist, so the wheel says `0.0.1.devN` while
-  `PySubtrans/version.py` says `v1.5.6`.
 - **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2: paid live runs.** Run them, or approve a scope and a budget
   for an agent run; `/ship:roadmap-batch` never starts them.
-- **E2.3: tag the first release.** It pushes a tag and adds `## Release` to `.claude/workflow.md`.
+- **E2.3: tag the first release (`0.1.0`).** It pushes a tag and adds `## Release` to `.claude/workflow.md`.
 - **E3.1: name the reference episodes and where they live.** `AGENTS.md:177` asks for a comparison
   against "the kept baseline artifacts", but no path names them.
 
@@ -69,19 +66,30 @@ measurement every quality change needs, then configuration that drifts between e
 maintainability, then translation-quality features, then throughput and releases.
 
 1. **Run reliability** (D1, D3, F5). A transient provider error or an API change must not end a
-   run, and a failed run must not start over from zero. Gate: each item's tests, plus one live run per
+   run, and a failed run must not start over from zero. Outcome: A dropped connection or a provider
+   API change no longer ends a translation, and a failed run picks up where it stopped. Gate: each item's tests, plus one live run per
    provider path that D1 and D3 touch.
 2. **Quality baseline** (E3). A repeatable before/after comparison on named reference episodes.
-   Gate: `tools/` compares a new translation with the baseline in one command.
+   Outcome: Any prompt or batching change is judged in one command against the same reference
+   episodes. Gate: `tools/` compares a new translation with the baseline in one command.
 3. **Configuration consistency** (D2, D4). One parser for boolean env vars and one source for default
-   models. Gate: tests that every entry point reads the same value.
+   models. Outcome: Every command reads the same defaults, and an exported variable means the same
+   thing everywhere. Gate: tests that every entry point reads the same value.
 4. **Maintainability** (E1, E5, E4). One copy of the shared pipeline code, files and functions within
-   the size limits, no orphan TODOs. Gate: `make check` with PLR0915 on and no markers left.
+   the size limits, no orphan TODOs. Outcome: The pipeline code exists once, files and functions fit
+   the size limits, and no unexplained TODO remains. Gate: `make check` with PLR0915 on and no markers left.
 5. **Translation quality** (F1, F2, F3). Structured output, a global glossary and smarter batching,
-   each behind a setting until measured. Gate: `subtitle_metrics` on the E3 baseline no worse, and the
+   each behind a setting until measured. Outcome: Names stay spelled the same through an episode and
+   replies are read without regex guesswork, each change proven on the baseline before it becomes
+   the default. Gate: `subtitle_metrics` on the E3 baseline no worse, and the
    targeted metric better.
 6. **Throughput and release** (F4, E2). Parallel Gemini batches on an API key, and versioned
-   releases with a changelog. Gate: a measured default for F4, and a tagged release.
+   releases with a changelog. Outcome: An API-key user gets the fastest safe batch mode by default,
+   and installs a numbered release with a changelog. Gate: a measured default for F4, and a tagged release.
+
+**Focus (set 2026-11-17):** D1, F5.1, D4; retries and resume end the failures that stop a run, and
+the owner's `gpt-6-luna` default lands in one constant. D3.1 waits until a Gemini API key can run
+D3.2; priority 1's gate also needs live runs, so desk steps alone do not close it.
 
 ## Defects
 
@@ -92,7 +100,7 @@ maintainability, then translation-quality features, then throughput and releases
   retry (`PySubtrans/Providers/Clients/OpenAIClient.py:182`). A transport error mid-stream reaches its
   `except Exception` and becomes `TranslationImpossibleError`, which stops the run
   (`OpenAIClient.py:202`).
-- [D1.1][desk] Retry `APIConnectionError` and mid-stream transport errors in the OpenAI chat and
+- [D1.1][desk][batch] Retry `APIConnectionError` and mid-stream transport errors in the OpenAI chat and
   Responses clients with the existing backoff, resetting stream progress as `AnthropicClient` does.
   Gate: tests where a connection error before the response and a drop mid-stream are retried and the
   retry's text is used; `make check && make test`.
@@ -102,12 +110,12 @@ maintainability, then translation-quality features, then throughput and releases
 
 ### D2: Boolean env vars parse differently in scripts and providers
 
-- **Status:** Open; needs an owner decision first.
+- **Status:** Open; the owner decided the spellings (D2.1, in the log).
 - The scripts accept `1/true/yes/on` (`scripts/exsubs.py:536`, `scripts/transubs.py:492`), while
   `Provider_Gemini` accepts only the exact string `True` (`PySubtrans/Providers/Provider_Gemini.py:96`).
-- [D2.1][owner] Decide which spellings count as true everywhere, and whether the provider default may
-  change for existing setups. Gate: the decision recorded in `docs/ROADMAP_LOG.md`.
-- [D2.2][desk] One shared `env_bool` helper used by the scripts and the providers, per the decision.
+- **Decided 2026-11-17 (owner):** `1/true/yes/on`, case-insensitive, count as true in every script and
+  provider. A user who exported `GEMINI_USE_VERTEX=true` gets Vertex everywhere, as they asked.
+- [D2.2][desk][batch] One shared `env_bool` helper used by the scripts and the providers, per the decision.
   Gate: tests of each accepted spelling through both a script and a provider. Needs: D2.1.
 
 ### D3: Gemini API-key path uses v1alpha and a deprecated harm category
@@ -127,10 +135,13 @@ maintainability, then translation-quality features, then throughput and releases
 - **Status:** Open.
 - Defaults live in `scripts/exsubs.py:39,52`, `scripts/transubs.py:30,47`, `scripts/gpt_subtrans.py:22`,
   `scripts/gemini_subtrans.py:22` and `scripts/claude_subtrans.py:47`, and have drifted before.
-- [D4.1][desk] Move each provider's default model into one module that every script reads, values
-  unchanged. Gate: a test that each CLI's default equals the shared constant.
-- [D4.2][owner] Choose the OpenAI default model and set it in the shared constant. Gate: the decision
-  in the log and the test updated. Needs: D4.1.
+- **Decided 2026-11-17 (owner):** the OpenAI default becomes `gpt-6-luna`. D4.1 keeps today's
+  effective value `gpt-5-mini` and drops the unused `gpt-4o-mini` in `PySubtrans/MKV/Config.py:20`;
+  D4.2 then switches the constant.
+- [D4.1][desk][batch] Move each provider's default model into one module that every script reads,
+  values unchanged. Gate: a test that each CLI's default equals the shared constant.
+- [D4.2][desk][batch] Set the shared OpenAI default to `gpt-6-luna`. Gate: the D4.1 test expects
+  `gpt-6-luna` for every CLI, and a test that the model routes to `OpenAIReasoningClient`. Needs: D4.1.
 
 ## Features
 
@@ -177,7 +188,7 @@ maintainability, then translation-quality features, then throughput and releases
 - **Status:** Open; workers share RPM pacing since PR #5, but parallel stays Vertex-only.
 - The `_parallel_batches` docstring still says workers do not share the RPM pacing
   (`scripts/transubs.py:483`).
-- [F4.1][desk] Correct the docstring and the readme on parallel mode with an API key. Gate:
+- [F4.1][desk][batch] Correct the docstring and the readme on parallel mode with an API key. Gate:
   `make check`.
 - [F4.2][owner][live][api-key][reassess] Measure throughput and 429s for parallel and sequential runs on a Gemini API
   key, and set the default from the result. Gate: the measurement in the log. Needs: F4.1.
@@ -209,11 +220,11 @@ maintainability, then translation-quality features, then throughput and releases
 
 ### E2: Versioning and a changelog
 
-- **Status:** Open; needs the owner's version choice.
-- [E2.1][owner] Choose the first ikonsub version. Gate: the choice recorded in the log.
-- [E2.2][desk] Read `PySubtrans.__version__` from `importlib.metadata` and start `CHANGELOG.md`. Gate:
+- **Status:** Open; the first version is `0.1.0` (E2.1, in the log).
+- **Decided 2026-11-17 (owner):** the first ikonsub release is `0.1.0`.
+- [E2.2][desk][batch] Read `PySubtrans.__version__` from `importlib.metadata` and start `CHANGELOG.md`. Gate:
   a test that `__version__` equals `importlib.metadata.version("ikonsub")`. Needs: E2.1.
-- [E2.3][owner] Tag the chosen version and add a `## Release` section to `.claude/workflow.md`. Gate:
+- [E2.3][owner] Tag `0.1.0` and add a `## Release` section to `.claude/workflow.md`. Gate:
   `uv tool list` shows the tagged version. Needs: E2.2.
 
 ### E3: Translation-quality baseline
@@ -237,10 +248,9 @@ maintainability, then translation-quality features, then throughput and releases
 
 ### E5: Code size
 
-- **Status:** Open; 3 files over 800 lines, 8 functions over 50 statements, `AGENTS.md` over its
-  8,000-byte budget (scan of 2026-11-05).
+- **Status:** Open; 3 files over 800 lines, 8 functions over 50 statements (scan of 2026-11-05).
 - PLR0915 is not in ruff's `select` (`pyproject.toml`), so nothing stops new long functions.
-- [E5.1][desk] Add ruff `PLR0915` at `lint.pylint.max-statements = 50` and mark the 8 current
+- [E5.1][desk][batch] Add ruff `PLR0915` at `lint.pylint.max-statements = 50` and mark the 8 current
   violations with `# noqa: PLR0915 -- E5.<n>`, naming each one's split step. Gate: `make check` green,
   and a probe function with 51 statements makes it fail.
 - [E5.2][desk] Split `scripts/exsubs.py` (1476 lines, limit 800) by pure moves; the shared pipeline
@@ -254,9 +264,9 @@ maintainability, then translation-quality features, then throughput and releases
   `make check && make test`, behaviour unchanged. Needs: E5.3.
 - [E5.6][desk] Split `translate_subtitles` (125 statements, `scripts/exsubs.py:918`) by phase. Gate:
   `make check && make test`, behaviour unchanged. Needs: E5.2.
-- [E5.7][desk] Split `run_diagnostics` (81 statements, `PySubtrans/MKV/Diagnostics.py:8`) by phase.
+- [E5.7][desk][batch] Split `run_diagnostics` (81 statements, `PySubtrans/MKV/Diagnostics.py:8`) by phase.
   Gate: `make check && make test`, behaviour unchanged.
-- [E5.8][desk] Split `BatchProcessor.run` (72 statements, `scripts/batch_translate.py:122`) by phase.
+- [E5.8][desk][batch] Split `BatchProcessor.run` (72 statements, `scripts/batch_translate.py:122`) by phase.
   Gate: `make check && make test`, behaviour unchanged.
 - [E5.9][desk] Split `main` (68 statements, `scripts/exsubs.py:1264`) by phase. Gate: `make check &&
   make test`, behaviour unchanged. Needs: E5.2.
@@ -268,8 +278,6 @@ maintainability, then translation-quality features, then throughput and releases
 - [E5.12][desk] Split `OpenAIClient._try_send_messages` (52 statements,
   `PySubtrans/Providers/Clients/OpenAIClient.py:106`) by phase. Gate: `make check && make test`,
   behaviour unchanged. Needs: D1.1.
-- [E5.13][desk] Trim AGENTS.md (10615 bytes, budget 8000): move detail to its topic doc or the log.
-  Gate: `wc -c AGENTS.md` at most 8000, with every rule still in `AGENTS.md` or linked from it.
 - [E5.14][desk] Write `tools/check_pure_move.py`, the `move-gate` of `.claude/workflow.md`: for the
   changed Python files between `--base` and HEAD, the top-level functions, classes and assignments
   must match by AST before and after (only imports and `__all__` may change); it accepts and logs
