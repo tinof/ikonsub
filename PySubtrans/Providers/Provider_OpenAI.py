@@ -2,6 +2,7 @@ import importlib.util
 import logging
 import os
 
+from PySubtrans.MKV.Config import OPENAI_DEFAULT_MODEL
 from PySubtrans.Options import env_float
 from PySubtrans.SettingsType import SettingsType
 
@@ -39,7 +40,7 @@ else:
                                 "api_base", os.getenv("OPENAI_API_BASE")
                             ),
                             "model": settings.get_str(
-                                "model", os.getenv("OPENAI_MODEL", "gpt-5-mini")
+                                "model", os.getenv("OPENAI_MODEL", OPENAI_DEFAULT_MODEL)
                             ),
                             "temperature": settings.get_float(
                                 "temperature", env_float("OPENAI_TEMPERATURE", 0.0)

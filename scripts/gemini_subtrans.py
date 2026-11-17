@@ -2,7 +2,7 @@ import logging
 import os
 
 from PySubtrans import init_translator
-from PySubtrans.MKV.Config import gemini_thinking_level
+from PySubtrans.MKV.Config import GEMINI_DEFAULT_MODEL, gemini_thinking_level
 from PySubtrans.Options import Options
 from PySubtrans.SubtitleProject import SubtitleProject
 from scripts.check_imports import check_required_imports
@@ -20,7 +20,7 @@ def main() -> int:
 
     # Provider configuration
     provider = "Gemini"
-    default_model = os.getenv("GEMINI_MODEL") or "gemini-4-hydrogen"
+    default_model = os.getenv("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
 
     parser = CreateArgParser("Translates subtitles using a Google Gemini model")
     parser.add_argument(

@@ -2,6 +2,7 @@ import logging
 import os
 
 from PySubtrans import init_translator
+from PySubtrans.MKV.Config import CLAUDE_DEFAULT_MODEL
 from PySubtrans.Options import Options
 from PySubtrans.SubtitleProject import SubtitleProject
 from scripts.check_imports import check_required_imports
@@ -19,7 +20,7 @@ def main() -> int:
 
     # Provider configuration
     provider = "Claude"
-    default_model = os.getenv("CLAUDE_MODEL") or "claude-haiku-5-5"
+    default_model = os.getenv("CLAUDE_MODEL") or CLAUDE_DEFAULT_MODEL
 
     parser = CreateArgParser("Translates subtitles using Anthropic's Claude AI")
     parser.add_argument(

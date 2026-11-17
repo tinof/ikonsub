@@ -28,8 +28,10 @@ from PySubtrans.MKV import (
 )
 from PySubtrans.MKV.Config import (
     GEMINI_4_MODEL_PATTERN,
+    GEMINI_DEFAULT_MODEL,
     MODE_TO_DEFAULT_MODEL,
     MODE_TO_RATE_LIMIT,
+    OPENAI_DEFAULT_MODEL,
     MKVConfig,
     TranslationMode,
     claude_effort,
@@ -48,7 +50,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("transubs")
 
-GEMINI_DEFAULT_MODEL = "gemini-4-hydrogen"
 GEMINI_SCENE_THRESHOLD = 240.0
 GEMINI_MIN_BATCH_SIZE = 80
 GEMINI_MAX_BATCH_SIZE = 180
@@ -650,7 +651,7 @@ def translate_srt_file(
             rate_limit = _determine_gemini_rate_limit(model)
             os.environ.setdefault("GEMINI_RATE_LIMIT", str(int(rate_limit)))
     elif mode == TranslationMode.CHATGPT:
-        model = os.getenv("OPENAI_MODEL") or "gpt-5-mini"
+        model = os.getenv("OPENAI_MODEL") or OPENAI_DEFAULT_MODEL
         scene_threshold = float(os.getenv("SCENE_THRESHOLD") or 120.0)
         min_batch_size = int(os.getenv("MIN_BATCH_SIZE") or 30)
         max_batch_size = int(os.getenv("MAX_BATCH_SIZE") or 100)

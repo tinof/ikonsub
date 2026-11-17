@@ -59,7 +59,7 @@ from PySubtrans import (
     init_translator,
 )
 from PySubtrans.Helpers import GetOutputPath
-from PySubtrans.MKV.Config import gemini_thinking_level
+from PySubtrans.MKV.Config import GEMINI_DEFAULT_MODEL, gemini_thinking_level
 from PySubtrans.SettingsType import redact_sensitive_values
 
 # Default configuration options for batch processing.
@@ -73,7 +73,7 @@ DEFAULT_OPTIONS = SettingsType(
         "output_format": None,  # Optional format override, e.g. "srt". If not specified, inferred from source file.
         "provider": "Gemini",  # Translation provider to use: "Gemini", "OpenAI" or "Claude"
         "api_key": None,  # Your API key for the selected provider
-        "model": "gemini-4-hydrogen",  # Your preferred model name
+        "model": GEMINI_DEFAULT_MODEL,  # Your preferred model name
         "prompt": "Translate these subtitles into [target_language]",  # High level prompt template
         "instruction_file": "instructions.txt",  # Optional file containing detailed instructions for the translator
         "scene_threshold": 60.0,  # Scene detection threshold in seconds
