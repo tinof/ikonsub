@@ -231,8 +231,8 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 ### E5: Code size
 
-- **Status:** Open; ruff `PLR0915` now fails new functions over 50 statements (E5.1, in the log);
-  3 files over 800 lines and 10 marked functions over 50 statements remain.
+- **Status:** Open; ruff `PLR0915` fails new functions over 50 statements and two are split (E5.1,
+  E5.7, E5.8, in the log); 3 files over 800 lines and 8 marked functions remain.
 - [E5.2][desk] Split `scripts/exsubs.py` (1476 lines, limit 800) by pure moves; the shared pipeline
   helpers go into one module `scripts/transubs.py` can use. Gate: `make check && make test`, and
   `git diff --color-moved=dimmed-zebra` shows only moved blocks. Needs: E5.14.
@@ -244,10 +244,6 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
   `make check && make test`, behaviour unchanged. Needs: E5.3.
 - [E5.6][desk] Split `translate_subtitles` (132 statements, `scripts/exsubs.py:920`) by phase. Gate:
   `make check && make test`, behaviour unchanged. Needs: E5.2.
-- [E5.7][desk][batch] Split `run_diagnostics` (81 statements, `PySubtrans/MKV/Diagnostics.py:8`) by phase.
-  Gate: `make check && make test`, behaviour unchanged.
-- [E5.8][desk][batch] Split `BatchProcessor.run` (72 statements, `scripts/batch_translate.py:123`) by phase.
-  Gate: `make check && make test`, behaviour unchanged.
 - [E5.9][desk] Split `main` (68 statements, `scripts/exsubs.py:1277`) by phase. Gate: `make check &&
   make test`, behaviour unchanged. Needs: E5.2.
 - [E5.10][desk] Split `SubtitleTranslator._translate_parallel` (55 statements,

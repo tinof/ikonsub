@@ -3,6 +3,29 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-17: E5.7 Split run_diagnostics (PR #26)
+
+- [E5.7][desk][batch] Split `run_diagnostics` (81 statements, `PySubtrans/MKV/Diagnostics.py:8`) by phase.
+  Gate: `make check && make test`, behaviour unchanged.
+- Resolution: six private helpers (tools, disk test, filesystem, memory, I/O stats,
+  recommendations), the largest 24 statements; `run_diagnostics(console)` keeps its signature and the
+  `PLR0915` marker is gone.
+- Evidence: no test covered it, so `tests/PySubtransTests/test_Diagnostics.py` was added first and
+  pins the console output and commands in four cases; it passes on the pre-split and split code.
+  `make check && make test` 497 passed; CI on PR #26. Built and reviewed by `/ship:roadmap-batch`
+  (self mode, Claude cold review LGTM).
+
+## 2026-11-17: E5.8 Split BatchProcessor.run (PR #27)
+
+- [E5.8][desk][batch] Split `BatchProcessor.run` (72 statements, `scripts/batch_translate.py:123`) by phase.
+  Gate: `make check && make test`, behaviour unchanged.
+- Resolution: `run` resolves the directories, logs the settings and loops; private methods load,
+  resolve the destination, translate and save. Step order, log messages and error handling unchanged.
+- Evidence: no test exercised `run`, so `tests/PySubtransTests/test_BatchTranslate.py` was added
+  (translate, fail, skip, preview, no files, missing source, save failure); it passes 5/5 on the
+  pre-split code too. `make check && make test` 498 passed; CI on PR #27. Built and reviewed by
+  `/ship:roadmap-batch` (self mode, Claude cold review LGTM).
+
 ## 2026-11-17: E5.1 Lint functions over 50 statements (PR #24)
 
 - [E5.1][desk][batch] Add ruff `PLR0915` at `lint.pylint.max-statements = 50` and mark the 8 current
