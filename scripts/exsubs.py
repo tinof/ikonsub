@@ -47,6 +47,7 @@ from PySubtrans.MKV.Config import (
     claude_effort,
     gemini_thinking_level,
 )
+from PySubtrans.Options import env_bool
 from PySubtrans.SubtitleProject import SubtitleProject
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
 
@@ -184,12 +185,7 @@ def _sisusub_ai_review_enabled() -> bool:
     The pass makes one Gemini call per flagged cue: about 12 minutes and $1.50 an episode in the
     2026-10-23 pipeline review (sisusub docs/pipeline-review-2026-10-23.md). Same rule as transubs.
     """
-    return (os.getenv("SISUSUB_AI_REVIEW") or "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    return env_bool("SISUSUB_AI_REVIEW", False)
 
 
 def _output_signature(path: Path) -> tuple[int, int] | None:
@@ -543,11 +539,7 @@ def _resolve_batch_sizes(
 
 
 def _using_vertex() -> bool:
-    value = os.getenv("GEMINI_USE_VERTEX")
-    if value is None:
-        return True
-
-    return value.lower() in {"1", "true", "yes", "on"}
+    return env_bool("GEMINI_USE_VERTEX", True)
 
 
 def _detect_gcloud_project() -> str | None:
@@ -953,11 +945,7 @@ def translate_subtitles(
 
     # Check for large context mode
     # Default to True for Gemini, False for others, unless explicitly set
-    env_large_context = os.getenv("LARGE_CONTEXT_MODE")
-    if env_large_context is not None:
-        large_context_mode = env_large_context.lower() in ("true", "1", "yes")
-    else:
-        large_context_mode = mode == TranslationMode.GEMINI
+    large_context_mode = env_bool("LARGE_CONTEXT_MODE", mode == TranslationMode.GEMINI)
 
     if mode == TranslationMode.GEMINI:
         model = os.getenv("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
