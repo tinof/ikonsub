@@ -51,6 +51,7 @@ from PySubtrans import (
     SettingsType,
     SubtitleError,
     SubtitleFormatRegistry,
+    Subtitles,
     SubtitleTranslator,
     TranslationProvider,
     init_options,
@@ -120,45 +121,11 @@ class BatchProcessor:
         self.progress_display = ProgressDisplay()
         self.translation_provider = self._initialise_provider()
 
-    def run(self) -> BatchStatistics:  # noqa: PLR0915 -- E5.8
+    def run(self) -> BatchStatistics:
         """Execute the batch translation workflow."""
-        source_root = pathlib.Path(self.config.source_path).expanduser().resolve()
-        if not source_root.exists() or not source_root.is_dir():
-            raise SubtitleError(
-                f"Source path '{source_root}' does not exist or is not a directory"
-            )
-
-        destination_root = (
-            pathlib.Path(self.config.destination_path).expanduser().resolve()
-        )
-        destination_root.mkdir(parents=True, exist_ok=True)
-
-        self.logger.info("Starting batch translation from %s", source_root)
-        self.logger.info("Writing translated files to %s", destination_root)
-        self.logger.info(
-            "Using provider: %s with model: %s",
-            self.translation_provider.name,
-            self.translation_provider.selected_model or "default",
-        )
-        self.logger.info("Prompt: %s", self.config.prompt)
-
-        if self.config.instruction_file:
-            self.logger.info("Instructions file: %s", self.config.instruction_file)
-
-        if self.config.target_language:
-            self.logger.info("Target language: %s", self.config.target_language)
-
-        if self.config.output_format is not None:
-            self.logger.info("Output format: %s", self.config.output_format)
-
-        # Ask PySubtrans for the list of recognised subtitle formats so our
-        # discovery step only picks up files the library knows how to parse.
-        supported_extensions = {
-            ext.lower() for ext in SubtitleFormatRegistry.enumerate_formats()
-        }
-        self.logger.info(
-            "Supported subtitle formats: %s", ", ".join(sorted(supported_extensions))
-        )
+        source_root, destination_root = self._resolve_roots()
+        self._log_configuration(source_root, destination_root)
+        supported_extensions = self._supported_extensions()
 
         files = self._discover_files(
             source_root, supported_extensions, destination_root
@@ -181,105 +148,200 @@ class BatchProcessor:
             output_base = destination_root / relative_name
 
             self.logger.info("[%d/%d] Loading %s", index, len(files), source_file)
-
-            try:
-                # init_subtitles loads and batches the file using the Options we prepared earlier.
-                subtitles = init_subtitles(
-                    filepath=str(source_file), options=self.options
-                )
-
-            except SubtitleError as exc:
-                self.logger.error("Failed to load %s: %s", source_file, exc)
-                stats.failed_files += 1
-                continue
-
-            self.logger.debug("Detected format %s", subtitles.file_format or "unknown")
-
-            try:
-                # Determine the final output path so language suffixes and format overrides are applied consistently.
-                destination_file = self._prepare_destination(
-                    output_base, subtitles.file_format
-                )
-
-            except SubtitleError as exc:
-                self.logger.error(
-                    "Unable to determine output path for %s: %s", source_file, exc
-                )
-                stats.failed_files += 1
-                continue
-
-            if not self.options.get_bool("preview") and destination_file.exists():
-                self.logger.info(
-                    "Skipping %s because %s already exists",
-                    source_file,
-                    destination_file,
-                )
-                stats.skipped_files += 1
-                continue
-
-            try:
-                # init_translator builds a ready-to-use SubtitleTranslator
-                # configured with our provider and processing settings.
-                translator: SubtitleTranslator = init_translator(
-                    self.options, translation_provider=self.translation_provider
-                )
-
-                # Connect the batch script logger to translation events
-                translator.events.connect_logger(self.logger)
-
-            except SubtitleError as exc:
-                raise SubtitleError(f"Unable to initialise translator: {exc}") from exc
-
-            # ProgressDisplay.track hooks into SubtitleTranslator events to provide
-            # a concise console progress indicator while the batches are being processed.
-            with self.progress_display.track(
-                translator, source_file, translator.preview
-            ):
-                try:
-                    # TranslateSubtitles drives the end-to-end translation process,
-                    # raising SubtitleError if the provider reports a problem.
-                    translator.TranslateSubtitles(subtitles)
-
-                except SubtitleError as exc:
-                    self.logger.error("Translation failed for %s: %s", source_file, exc)
-                    stats.failed_files += 1
-                    continue
-                except Exception:
-                    self.logger.exception(
-                        "Unexpected error translating %s", source_file
-                    )
-                    stats.failed_files += 1
-                    continue
-
-            if translator.preview:
-                self.logger.info(
-                    "Preview mode enabled - skipping save for %s", source_file
-                )
-                stats.previewed_files += 1
-                continue
-
-            try:
-                # Save the translated subtitles. Format is deduced from the filename.
-                subtitles.SaveTranslation(str(destination_file))
-
-            except (SubtitleError, OSError) as exc:
-                # A failure to write the result should abort the batch
-                # to avoid incurring further costs if we cannot save the translations.
-                raise SubtitleError(
-                    f"Failed to save translation for {source_file}: {exc}"
-                ) from exc
-
-            if translator.errors:
-                self.logger.warning(
-                    "Translation completed with %d error(s) for %s",
-                    len(translator.errors),
-                    source_file,
-                )
-
-            stats.translated_files += 1
-            self.logger.info("Saved translation to %s", destination_file)
+            self._process_file(source_file, output_base, stats)
 
         return stats
+
+    def _resolve_roots(self) -> tuple[pathlib.Path, pathlib.Path]:
+        """Validate the source directory and create the destination directory."""
+        source_root = pathlib.Path(self.config.source_path).expanduser().resolve()
+        if not source_root.exists() or not source_root.is_dir():
+            raise SubtitleError(
+                f"Source path '{source_root}' does not exist or is not a directory"
+            )
+
+        destination_root = (
+            pathlib.Path(self.config.destination_path).expanduser().resolve()
+        )
+        destination_root.mkdir(parents=True, exist_ok=True)
+        return source_root, destination_root
+
+    def _log_configuration(
+        self, source_root: pathlib.Path, destination_root: pathlib.Path
+    ) -> None:
+        """Log the paths, provider and translation settings for this run."""
+        self.logger.info("Starting batch translation from %s", source_root)
+        self.logger.info("Writing translated files to %s", destination_root)
+        self.logger.info(
+            "Using provider: %s with model: %s",
+            self.translation_provider.name,
+            self.translation_provider.selected_model or "default",
+        )
+        self.logger.info("Prompt: %s", self.config.prompt)
+
+        if self.config.instruction_file:
+            self.logger.info("Instructions file: %s", self.config.instruction_file)
+
+        if self.config.target_language:
+            self.logger.info("Target language: %s", self.config.target_language)
+
+        if self.config.output_format is not None:
+            self.logger.info("Output format: %s", self.config.output_format)
+
+    def _supported_extensions(self) -> set[str]:
+        """Return the file extensions of the subtitle formats PySubtrans can parse."""
+        # Ask PySubtrans for the list of recognised subtitle formats so our
+        # discovery step only picks up files the library knows how to parse.
+        supported_extensions = {
+            ext.lower() for ext in SubtitleFormatRegistry.enumerate_formats()
+        }
+        self.logger.info(
+            "Supported subtitle formats: %s", ", ".join(sorted(supported_extensions))
+        )
+        return supported_extensions
+
+    def _process_file(
+        self,
+        source_file: pathlib.Path,
+        output_base: pathlib.Path,
+        stats: BatchStatistics,
+    ) -> None:
+        """Load, translate and save one subtitle file, updating *stats*."""
+        subtitles = self._load_subtitles(source_file, stats)
+        if subtitles is None:
+            return
+
+        destination_file = self._resolve_destination(
+            source_file, output_base, subtitles, stats
+        )
+        if destination_file is None:
+            return
+
+        if not self.options.get_bool("preview") and destination_file.exists():
+            self.logger.info(
+                "Skipping %s because %s already exists",
+                source_file,
+                destination_file,
+            )
+            stats.skipped_files += 1
+            return
+
+        translator = self._translate_subtitles(source_file, subtitles, stats)
+        if translator is None:
+            return
+
+        self._save_translation(
+            source_file, destination_file, subtitles, translator, stats
+        )
+
+    def _load_subtitles(
+        self, source_file: pathlib.Path, stats: BatchStatistics
+    ) -> Subtitles | None:
+        """Load and batch *source_file*, or count it as failed and return None."""
+        try:
+            # init_subtitles loads and batches the file using the Options we prepared earlier.
+            subtitles = init_subtitles(filepath=str(source_file), options=self.options)
+
+        except SubtitleError as exc:
+            self.logger.error("Failed to load %s: %s", source_file, exc)
+            stats.failed_files += 1
+            return None
+
+        self.logger.debug("Detected format %s", subtitles.file_format or "unknown")
+        return subtitles
+
+    def _resolve_destination(
+        self,
+        source_file: pathlib.Path,
+        output_base: pathlib.Path,
+        subtitles: Subtitles,
+        stats: BatchStatistics,
+    ) -> pathlib.Path | None:
+        """Return the output path for *source_file*, or count it as failed and return None."""
+        try:
+            # Determine the final output path so language suffixes and format overrides are applied consistently.
+            return self._prepare_destination(output_base, subtitles.file_format)
+
+        except SubtitleError as exc:
+            self.logger.error(
+                "Unable to determine output path for %s: %s", source_file, exc
+            )
+            stats.failed_files += 1
+            return None
+
+    def _translate_subtitles(
+        self,
+        source_file: pathlib.Path,
+        subtitles: Subtitles,
+        stats: BatchStatistics,
+    ) -> SubtitleTranslator | None:
+        """Translate *subtitles*, or count the file as failed and return None."""
+        try:
+            # init_translator builds a ready-to-use SubtitleTranslator
+            # configured with our provider and processing settings.
+            translator: SubtitleTranslator = init_translator(
+                self.options, translation_provider=self.translation_provider
+            )
+
+            # Connect the batch script logger to translation events
+            translator.events.connect_logger(self.logger)
+
+        except SubtitleError as exc:
+            raise SubtitleError(f"Unable to initialise translator: {exc}") from exc
+
+        # ProgressDisplay.track hooks into SubtitleTranslator events to provide
+        # a concise console progress indicator while the batches are being processed.
+        with self.progress_display.track(translator, source_file, translator.preview):
+            try:
+                # TranslateSubtitles drives the end-to-end translation process,
+                # raising SubtitleError if the provider reports a problem.
+                translator.TranslateSubtitles(subtitles)
+
+            except SubtitleError as exc:
+                self.logger.error("Translation failed for %s: %s", source_file, exc)
+                stats.failed_files += 1
+                return None
+            except Exception:
+                self.logger.exception("Unexpected error translating %s", source_file)
+                stats.failed_files += 1
+                return None
+
+        return translator
+
+    def _save_translation(
+        self,
+        source_file: pathlib.Path,
+        destination_file: pathlib.Path,
+        subtitles: Subtitles,
+        translator: SubtitleTranslator,
+        stats: BatchStatistics,
+    ) -> None:
+        """Save the translated *subtitles*, or count them as previewed in preview mode."""
+        if translator.preview:
+            self.logger.info("Preview mode enabled - skipping save for %s", source_file)
+            stats.previewed_files += 1
+            return
+
+        try:
+            # Save the translated subtitles. Format is deduced from the filename.
+            subtitles.SaveTranslation(str(destination_file))
+
+        except (SubtitleError, OSError) as exc:
+            # A failure to write the result should abort the batch
+            # to avoid incurring further costs if we cannot save the translations.
+            raise SubtitleError(
+                f"Failed to save translation for {source_file}: {exc}"
+            ) from exc
+
+        if translator.errors:
+            self.logger.warning(
+                "Translation completed with %d error(s) for %s",
+                len(translator.errors),
+                source_file,
+            )
+
+        stats.translated_files += 1
+        self.logger.info("Saved translation to %s", destination_file)
 
     def _discover_files(
         self,
