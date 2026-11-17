@@ -76,9 +76,12 @@ exclude = ["*.md"]
 [tool.ruff.lint]
 # Pinned: ruff 0.17 enables a much larger default set, so extend-select would drift with
 # every ruff upgrade
-select = ["E4", "E7", "E9", "F", "I", "UP", "B", "RUF100"]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "PLR0915", "RUF100"]
 # StrEnum changes str() and format() of members, which settings files and logs rely on
 ignore = ["UP042"]
+
+[tool.ruff.lint.pylint]
+max-statements = 50
 
 [tool.basedpyright]
 pythonVersion = "3.14"

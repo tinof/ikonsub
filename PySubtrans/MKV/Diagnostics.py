@@ -5,7 +5,7 @@ from pathlib import Path
 import regex as re
 
 
-def run_diagnostics(console):
+def run_diagnostics(console):  # noqa: PLR0915 -- E5.7
     """Run system diagnostics to identify potential bottlenecks"""
     console.print("\n[bold cyan]Running system diagnostics...[/bold cyan]")
 

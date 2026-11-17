@@ -101,7 +101,7 @@ class OpenAIClient(TranslationClient):
             self.client.close()
         return super()._abort()
 
-    def _try_send_messages(
+    def _try_send_messages(  # noqa: PLR0915 -- E5.12
         self, request: TranslationRequest, temperature: float
     ) -> dict[str, Any] | None:
         for retry in range(self.max_retries + 1):

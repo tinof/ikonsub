@@ -120,7 +120,7 @@ class BatchProcessor:
         self.progress_display = ProgressDisplay()
         self.translation_provider = self._initialise_provider()
 
-    def run(self) -> BatchStatistics:
+    def run(self) -> BatchStatistics:  # noqa: PLR0915 -- E5.8
         """Execute the batch translation workflow."""
         source_root = pathlib.Path(self.config.source_path).expanduser().resolve()
         if not source_root.exists() or not source_root.is_dir():
