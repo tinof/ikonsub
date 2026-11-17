@@ -117,6 +117,13 @@ class TestCliDefaultModels(LoggedTestCase):
             for cli, model in CaptureModels(mode, flag, module).items():
                 self.assertLoggedEqual(f"{cli} {mode.value} model", constant, model)
 
+    def test_cli_openai_default_is_gpt_6_luna(self):
+        for mode, flag, module, _env_var, _constant in CASES:
+            if mode != TranslationMode.CHATGPT:
+                continue
+            for cli, model in CaptureModels(mode, flag, module).items():
+                self.assertLoggedEqual(f"{cli} {mode.value} model", "gpt-6-luna", model)
+
     def test_model_env_var_wins(self):
         for mode, flag, module, env_var, _constant in CASES:
             env = {env_var: OVERRIDE_MODEL}

@@ -36,6 +36,14 @@ class TestOpenAiProviderClientSelection(LoggedTestCase):
         )
         self.assertLoggedIsInstance("reasoning client", client, OpenAIReasoningClient)
 
+    def test_default_model_uses_reasoning_client(self):
+        client = self._provider("gpt-6-luna").GetTranslationClient(
+            SettingsType({"instructions": "Translate."})
+        )
+        self.assertLoggedIsInstance(
+            "gpt-6-luna reasoning client", client, OpenAIReasoningClient
+        )
+
     def test_chat_model_uses_chat_client(self):
         client = self._provider("gpt-4o-mini").GetTranslationClient(
             SettingsType({"instructions": "Translate."})

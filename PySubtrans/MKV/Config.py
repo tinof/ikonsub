@@ -18,7 +18,7 @@ class TranslationMode(str, Enum):
 # The default model of each provider. Every script and the OpenAI and Claude provider
 # fallbacks read these, so change a default here only. OPENAI_MODEL, CLAUDE_MODEL and
 # GEMINI_MODEL override them.
-OPENAI_DEFAULT_MODEL = "gpt-5-mini"
+OPENAI_DEFAULT_MODEL = "gpt-6-luna"
 CLAUDE_DEFAULT_MODEL = "claude-haiku-5-5"
 GEMINI_DEFAULT_MODEL = "gemini-4-hydrogen"
 
