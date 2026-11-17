@@ -3,6 +3,41 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-17: D2.2 One env_bool for scripts and providers (PR #21)
+
+- [D2.2][desk][batch] One shared `env_bool` helper used by the scripts and the providers, per the decision.
+  Gate: tests of each accepted spelling through both a script and a provider. Needs: D2.1.
+- Resolution: `env_bool` in `PySubtrans/Options.py` (it already existed and accepted only
+  `true/yes/1`) now takes `1/true/yes/on` in any case, stripped; unset or empty returns the default.
+  The scripts (`_using_vertex`, `SISUSUB_AI_REVIEW`, `LARGE_CONTEXT_MODE`, transubs
+  `PARALLEL_BATCHES`), all ten `== "True"` checks in the OpenAI, Gemini and Claude providers, and the
+  `Options` flags read it; each variable keeps its default. `EXSUBS_FIXER_VERBOSE` stays a presence
+  flag.
+- Evidence: `tests/PySubtransTests/test_EnvBool.py` (every spelling through `env_bool`, exsubs,
+  transubs and `Provider_Gemini`; 9 tests fail on the old code); `make check && make test` 491 passed;
+  CI on PR #21. Built and reviewed by `/ship:roadmap-batch` (self mode, Claude cold review LGTM).
+
+### D2: Boolean env vars parse differently in scripts and providers (moved from the roadmap)
+
+- **Status:** Open; the owner decided the spellings (D2.1, in the log).
+- The scripts accept `1/true/yes/on` (`scripts/exsubs.py:536`, `scripts/transubs.py:492`), while
+  `Provider_Gemini` accepts only the exact string `True` (`PySubtrans/Providers/Provider_Gemini.py:96`).
+- **Decided 2026-11-17 (owner):** `1/true/yes/on`, case-insensitive, count as true in every script and
+  provider. A user who exported `GEMINI_USE_VERTEX=true` gets Vertex everywhere, as they asked.
+- [D2.2][desk][batch] One shared `env_bool` helper used by the scripts and the providers, per the decision.
+  Gate: tests of each accepted spelling through both a script and a provider. Needs: D2.1.
+
+## 2026-11-17: D4.2 Default OpenAI to gpt-6-luna (PR #22)
+
+- [D4.2][desk][batch] Set the shared OpenAI default to `gpt-6-luna`. Gate: the D4.1 test expects
+  `gpt-6-luna` for every CLI, and a test that the model routes to `OpenAIReasoningClient`. Needs: D4.1.
+- Resolution: `OPENAI_DEFAULT_MODEL = "gpt-6-luna"` in `PySubtrans/MKV/Config.py`; exsubs, transubs,
+  gpt-subtrans and the OpenAI provider use it when no model is given and `OPENAI_MODEL` is unset.
+- Evidence: `test_cli_openai_default_is_gpt_6_luna` (`test_CliDefaultModels.py`) and
+  `test_default_model_uses_reasoning_client` (`test_ProviderOpenAI.py`); `make check && make test`
+  484 passed; CI on PR #22. No live call to `gpt-6-luna` ran. Built and reviewed by
+  `/ship:roadmap-batch` (self mode, Claude cold review LGTM).
+
 ## 2026-11-17: D1.1 Retry dropped OpenAI connections (PR #18)
 
 - [D1.1][desk][batch] Retry `APIConnectionError` and mid-stream transport errors in the OpenAI chat and

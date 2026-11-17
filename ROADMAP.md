@@ -72,7 +72,7 @@ maintainability, then translation-quality features, then throughput and releases
 2. **Quality baseline** (E3). A repeatable before/after comparison on named reference episodes.
    Outcome: Any prompt or batching change is judged in one command against the same reference
    episodes. Gate: `tools/` compares a new translation with the baseline in one command.
-3. **Configuration consistency** (D2, D4). One parser for boolean env vars and one source for default
+3. **Configuration consistency** (D4). One parser for boolean env vars and one source for default
    models. Outcome: Every command reads the same defaults, and an exported variable means the same
    thing everywhere. Gate: tests that every entry point reads the same value.
 4. **Maintainability** (E1, E5, E4). One copy of the shared pipeline code, files and functions within
@@ -101,16 +101,6 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
   a dropped stream there too. Gate: a test of a mid-stream drop on the Gemini stream that retries and
   succeeds.
 
-### D2: Boolean env vars parse differently in scripts and providers
-
-- **Status:** Open; the owner decided the spellings (D2.1, in the log).
-- The scripts accept `1/true/yes/on` (`scripts/exsubs.py:536`, `scripts/transubs.py:492`), while
-  `Provider_Gemini` accepts only the exact string `True` (`PySubtrans/Providers/Provider_Gemini.py:96`).
-- **Decided 2026-11-17 (owner):** `1/true/yes/on`, case-insensitive, count as true in every script and
-  provider. A user who exported `GEMINI_USE_VERTEX=true` gets Vertex everywhere, as they asked.
-- [D2.2][desk][batch] One shared `env_bool` helper used by the scripts and the providers, per the decision.
-  Gate: tests of each accepted spelling through both a script and a provider. Needs: D2.1.
-
 ### D3: Gemini API-key path uses v1alpha and a deprecated harm category
 
 - **Status:** Open.
@@ -125,12 +115,9 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 ### D4: Default model names are spread over the entry points
 
-- **Status:** Partial; every CLI and the OpenAI and Claude providers read one default per provider
-  from `PySubtrans/MKV/Config.py` (D4.1, in the log); D4.2 switches the OpenAI constant.
-- **Decided 2026-11-17 (owner):** the OpenAI default becomes `gpt-6-luna`; D4.2 switches
-  `OPENAI_DEFAULT_MODEL` in `PySubtrans/MKV/Config.py`.
-- [D4.2][desk][batch] Set the shared OpenAI default to `gpt-6-luna`. Gate: the D4.1 test expects
-  `gpt-6-luna` for every CLI, and a test that the model routes to `OpenAIReasoningClient`. Needs: D4.1.
+- **Status:** Core complete; every entry point reads one default per provider from
+  `PySubtrans/MKV/Config.py`, and OpenAI defaults to `gpt-6-luna` (D4.1, D4.2, in the log). No step is
+  open; the item stays because priority 3 names it, and the owner decides whether that priority ends.
 
 ## Features
 
