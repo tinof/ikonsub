@@ -41,14 +41,14 @@ what it learned changes the plan, and `/ship:roadmap-next` confirms it instead o
 something changed. A **Checked** bullet (date, commit, `file:line`) on each examined item lets a later
 run re-check only what changed since that commit.
 
-### Next up
+### Next up (checked 2026-11-18 at main@999e6f9)
+<!-- roadmap-next: rev=7 scope=all config=4ea1c07a9b1a probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=8f531c06614c -->
 
-Filled in by the first `/ship:roadmap-next` run.
-
-**Reassess:** owner-decision (steering 2026-11-17): Focus D1, F5.1, D4; D2.1 and E2.1 decided, D4.2
-is now desk work (`gpt-6-luna`), E5.13 dropped, nine steps tagged `[batch]`.
-**Reassess:** new-defect (E5.1, PR #24): E5.15 splits two long test methods.
-**Reassess:** owner-decision (batch 2026-11-17): E2.2 pins the settings version; startable again.
+1. **F5.1 Resume a failed translation from its `.partial` file.** Gate: a run that failed after 2
+   of 4 batches resumes and sends only batches 3 and 4. Why: the other Focus step; Tier 2 (both
+   scripts). Branch: `feat/f5-1-resume-partial`.
+2. **E5.14 Write `tools/check_pure_move.py`.** Gate: a fixture pure move passes and a one-line edit
+   fails. Why: unblocks E5.2-E5.4 and the E1 chain. Branch: `chore/e5-14-check-pure-move`.
 
 ### Waiting for the owner
 
@@ -97,11 +97,8 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 ### D1: OpenAI connection drops end the run
 
-- **Status:** Partial; the OpenAI chat and Responses clients retry dropped connections (D1.1, in the
-  log); D1.2 checks the Gemini stream for the same gap.
-- [D1.2][desk] Check `GeminiClient._send_messages` (`GeminiClient.py:314`) for the same gap and retry
-  a dropped stream there too. Gate: a test of a mid-stream drop on the Gemini stream that retries and
-  succeeds.
+- **Status:** Core complete; OpenAI and Gemini retry dropped connections and streams (D1.1, D1.2, in
+  the log). No step is open; the item stays because priority 1's gate and the Focus line name it.
 
 ### D3: Gemini API-key path uses v1alpha and a deprecated harm category
 

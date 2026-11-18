@@ -484,6 +484,17 @@ class GeminiClient(TranslationClient):
             if chunk.prompt_feedback and first_prompt_feedback is None:
                 first_prompt_feedback = chunk.prompt_feedback
 
+        blocked = bool(first_prompt_feedback and first_prompt_feedback.block_reason)
+        if finish_reason is None and not blocked and not self.aborted:
+            # A dropped connection can end the stream without an error. Every finished
+            # stream carries a finish reason, so retry instead of keeping partial text.
+            USAGE_LEDGER.record(
+                model, location or self.vertex_location or "", last_usage
+            )
+            raise TranslationResponseError(
+                _("Gemini stream ended without a finish reason"), response=None
+            )
+
         # Build a synthetic response that keeps metadata but replaces content parts with accumulated text
         parts = [Part.from_text(text=request.accumulated_text)]
 

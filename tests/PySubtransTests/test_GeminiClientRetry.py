@@ -1,8 +1,17 @@
 from __future__ import annotations
 
-from unittest.mock import patch
+from collections.abc import Iterator
+from unittest.mock import MagicMock, patch
 
+import httpx2
 from google.genai import errors as genai_errors
+from google.genai.types import (
+    Candidate,
+    Content,
+    FinishReason,
+    GenerateContentResponse,
+    Part,
+)
 
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Providers.Clients.GeminiClient import GeminiClient
@@ -14,6 +23,26 @@ from PySubtrans.TranslationRequest import TranslationRequest
 
 def _api_error(code: int) -> genai_errors.APIError:
     return genai_errors.APIError(code, {"error": {"message": f"error {code}"}})
+
+
+def _chunk(
+    text: str, finish_reason: FinishReason | None = None
+) -> GenerateContentResponse:
+    content = Content(role="model", parts=[Part.from_text(text=text)])
+    return GenerateContentResponse(
+        candidates=[Candidate(content=content, finish_reason=finish_reason)]
+    )
+
+
+def _dropped_stream() -> Iterator[GenerateContentResponse]:
+    """A stream that yields part of a translation, then loses its connection."""
+    yield _chunk("#1\nHalf")
+    raise httpx2.RemoteProtocolError("peer closed connection")
+
+
+def _truncated_stream() -> Iterator[GenerateContentResponse]:
+    """A stream that ends without an error and without a finish reason."""
+    yield _chunk("#1\nHalf")
 
 
 class GeminiClientRetryTests(LoggedTestCase):
@@ -205,3 +234,51 @@ class GeminiClientRetryTests(LoggedTestCase):
             client._send_messages(self._make_request(), temperature=1.0)
 
         self.assertLoggedSequenceEqual("temperatures", [1.0, 1.0, None], temperatures)
+
+
+class GeminiStreamRetryTests(LoggedTestCase):
+    """Validate that a dropped Gemini stream is retried from a clean slate."""
+
+    def _send(self, *streams: Iterator[GenerateContentResponse]) -> tuple:
+        client = GeminiClient(
+            SettingsType(
+                {
+                    "instructions": "Verify stream retries.",
+                    "model": "gemini-3.1-flash-lite",
+                    "max_retries": 3,
+                    "backoff_time": 0.0,
+                    "stream_responses": True,
+                    "supports_streaming": True,
+                }
+            )
+        )
+        prompt = TranslationPrompt("Translate this", False)
+        prompt.content = "1. Hello"
+        request = TranslationRequest(prompt, lambda translation: None)
+        sdk = MagicMock()
+        sdk.models.generate_content_stream.side_effect = list(streams)
+        with (
+            patch.object(GeminiClient, "_get_client", return_value=sdk),
+            patch("PySubtrans.Providers.Clients.GeminiClient.time.sleep"),
+        ):
+            result = client._send_messages(request, temperature=1.0)
+        return result, sdk.models.generate_content_stream.call_count
+
+    def test_mid_stream_drop_is_retried(self) -> None:
+        """A stream dropped part way is retried and only the retry's text is kept."""
+        complete = iter([_chunk("#1\nHei maailma", FinishReason.STOP)])
+        result, calls = self._send(_dropped_stream(), complete)
+
+        assert result is not None
+        self.assertLoggedEqual("stream calls", 2, calls)
+        self.assertLoggedEqual("text", "#1\nHei maailma", result["text"])
+        self.assertLoggedEqual("finish_reason", "complete", result["finish_reason"])
+
+    def test_stream_without_finish_reason_is_retried(self) -> None:
+        """A stream that ends silently without a finish reason is not a translation."""
+        complete = iter([_chunk("#1\nHei maailma", FinishReason.STOP)])
+        result, calls = self._send(_truncated_stream(), complete)
+
+        assert result is not None
+        self.assertLoggedEqual("stream calls", 2, calls)
+        self.assertLoggedEqual("text", "#1\nHei maailma", result["text"])

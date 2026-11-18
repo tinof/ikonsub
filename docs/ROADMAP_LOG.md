@@ -3,6 +3,21 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-18: D1.2 Retry a dropped Gemini stream (PR #31)
+
+- [D1.2][desk] Check `GeminiClient._send_messages` (`GeminiClient.py:334`) for the same gap and retry
+  a dropped stream there too. Gate: a test of a mid-stream drop on the Gemini stream that retries and
+  succeeds.
+- Before: a raw `httpx` error during stream iteration was already retried by `_send_messages`, and
+  `ResetStreamingProgress()` cleared the failed attempt. A connection that closed cleanly ended the
+  stream with no `finish_reason`, and `_process_gemini_response` returned the partial text as success.
+- Resolution: `_get_gemini_response` raises a retryable `TranslationResponseError` when a stream ends
+  without a finish reason and without a prompt block; the usage is still recorded.
+- Decided 2026-11-18 (agent, recommended; owner may override): the check covers the stream path
+  only; not taken: the same check for non-streaming responses, which cannot end part way.
+- Evidence: `tests/PySubtransTests/test_GeminiClientRetry.py::GeminiStreamRetryTests` (each test fails
+  with its fix reverted); `make check && make test` 504 passed; CI on PR #31. Gemini cold review LGTM.
+
 ## 2026-11-17: E5.7 Split run_diagnostics (PR #26)
 
 - [E5.7][desk][batch] Split `run_diagnostics` (81 statements, `PySubtrans/MKV/Diagnostics.py:8`) by phase.
