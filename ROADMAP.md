@@ -109,6 +109,9 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
   so `_send_messages` (`GeminiClient.py:369`) retries it, and `ResetStreamingProgress` (`:445`) clears
   the failed attempt's text. The gap: a stream that ends with no `finish_reason` falls to the `else`
   branch of `_process_gemini_response` (`:588`) and returns its partial text as a success.
+- **Decided 2026-11-18 (agent, recommended; owner may override):** a stream with no finish reason
+  (and no prompt block) raises a retryable `TranslationResponseError`, in the stream path only; not
+  taken: the same check for non-streaming responses, which cannot end part way.
 
 ### D3: Gemini API-key path uses v1alpha and a deprecated harm category
 
