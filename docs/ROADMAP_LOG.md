@@ -52,6 +52,8 @@ evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
   `PARALLEL_BATCHES`), all ten `== "True"` checks in the OpenAI, Gemini and Claude providers, and the
   `Options` flags read it; each variable keeps its default. `EXSUBS_FIXER_VERBOSE` stays a presence
   flag.
+- **Decided 2026-11-18 (owner):** an empty variable (for example `GEMINI_USE_VERTEX=`) means "use
+  the default", as `env_bool` does since PR #21. Not taken: empty means false, as the scripts did before.
 - Evidence: `tests/PySubtransTests/test_EnvBool.py` (every spelling through `env_bool`, exsubs,
   transubs and `Provider_Gemini`; 9 tests fail on the old code); `make check && make test` 491 passed;
   CI on PR #21. Built and reviewed by `/ship:roadmap-batch` (self mode, Claude cold review LGTM).
