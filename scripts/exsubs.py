@@ -50,6 +50,7 @@ from PySubtrans.MKV.Config import (
 from PySubtrans.Options import env_bool
 from PySubtrans.SubtitleProject import SubtitleProject
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
+from PySubtrans.TranslationResume import PARTIAL_OUTPUT_SUFFIX, TranslationResume
 
 # Configure rich console and logging
 console = Console()
@@ -95,10 +96,6 @@ FINNISH_FIXER_WIDTH_LIMIT = 42
 FINNISH_FIXER_MAX_CPS = 17.0
 FINNISH_FIXER_TARGET_CPS = 15.0
 FINNISH_FIXER_COMMAND = "fix-finnish-subs"
-
-# A partial translation is moved to "<name>.fi.srt.partial": no run treats it as a subtitle,
-# so the next run translates the episode again instead of skipping it.
-PARTIAL_OUTPUT_SUFFIX = ".partial"
 
 
 class IncompleteTranslationError(Exception):
@@ -1138,6 +1135,8 @@ def translate_subtitles(  # noqa: PLR0915 -- E5.6
         min_batch_size=min_batch_size,
         max_batch_size=max_batch_size,
     )
+    resume = TranslationResume(options, out_file)
+    restored_batches = resume.Restore(project.subtitles)
 
     total_batches = (
         sum(len(scene.batches) for scene in project.subtitles.scenes)
@@ -1145,9 +1144,15 @@ def translate_subtitles(  # noqa: PLR0915 -- E5.6
         else 0
     )
     total_lines = project.subtitles.linecount if project.subtitles else 0
+    if restored_batches:
+        console.print(
+            f"  [cyan]Resuming:[/cyan] {restored_batches} of {total_batches} batches "
+            f"reused from {resume.partial_path.name}"
+        )
 
     # Translate
     translator = init_translator(options)
+    resume.Attach(translator)
     metrics = (
         TranslationMetrics()
         if (show_metrics and mode == TranslationMode.GEMINI)
@@ -1179,6 +1184,7 @@ def translate_subtitles(  # noqa: PLR0915 -- E5.6
             or _output_signature(partial_path) != output_before
         ):
             _set_aside_partial_output(partial_path)
+        resume.Save(project.subtitles)
         raise
     finally:
         if progress:
@@ -1187,6 +1193,7 @@ def translate_subtitles(  # noqa: PLR0915 -- E5.6
             metrics.detach(translator)
             elapsed = time.perf_counter() - start_time
             metrics.render(elapsed, total_lines, total_batches, rate_limit)
+    resume.Clear()
 
 
 def process_directory(

@@ -3,6 +3,25 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-18: F5.1 Resume a failed translation from its finished batches (PR #32)
+
+- [F5.1][desk] Reuse the translated lines of a `.partial` file (or a persistent project) so a re-run
+  translates only the missing batches. Gate: a test where a run that failed after 2 of 4 batches
+  resumes and sends only batches 3 and 4 to the provider.
+- Resolution: `PySubtrans/TranslationResume.py` saves the finished batches of a failed run to
+  `<name>.<lang>.srt.resume.json` beside the `.partial`. The next run batches the source as usual and
+  grafts them back only when every batch's originals and a settings fingerprint match, then skips
+  them through `SubtitleTranslator.resume`. A successful run removes both files; fix-finnish-subs
+  still runs once on the complete output. Same five call sites in `exsubs.py` and `transubs.py`.
+- Decided 2026-11-18 (owner): a sidecar, not parsing the `.partial` (it renumbers cues and loses
+  `[MERGED]` lines and summaries); deleting the `.partial` cancels the resume; a successful run
+  removes both files; a changed model, provider, language or instructions starts over with a warning.
+- Evidence: `tests/PySubtransTests/test_TranslationResume.py` (gate for both scripts, resumed prompts
+  and output byte-equal to an uninterrupted run, a source transubs already prepped in place,
+  multi-scene, large context, parallel, stale settings and source, corrupt state); five mutations of
+  the module each fail it. `make check && make test` 523 passed; CI on PR #32. Gemini cold review
+  LGTM. Not run: a live failed-then-resumed run on a real episode.
+
 ## 2026-11-18: D1.2 Retry a dropped Gemini stream (PR #31)
 
 - [D1.2][desk] Check `GeminiClient._send_messages` (`GeminiClient.py:334`) for the same gap and retry
