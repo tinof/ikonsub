@@ -147,15 +147,15 @@ class TranslationResume:
         with self._lock:
             finished = set(self._finished)
 
+        # Nothing new to keep: leave an earlier state file alone. It is reused only when the
+        # source and settings match again, and a successful run removes it.
         if not subtitles or not finished or not self.partial_path.exists():
-            self._remove(self.state_path)
             return
 
         scenes = [_scene_state(scene, finished) for scene in subtitles.scenes]
         if not any(
             batch["translated"] for scene in scenes for batch in scene["batches"]
         ):
-            self._remove(self.state_path)
             return
 
         payload = {

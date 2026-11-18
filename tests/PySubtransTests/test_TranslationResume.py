@@ -53,8 +53,27 @@ def _source_srt(
     return "\n".join(blocks)
 
 
-def _timestamp(seconds: int) -> str:
-    return f"00:{seconds // 60:02d}:{seconds % 60:02d},000"
+def _timestamp(seconds: float) -> str:
+    millis = round(seconds * 1000)
+    return f"00:{millis // 60000:02d}:{millis // 1000 % 60:02d},{millis % 1000:03d}"
+
+
+def _realistic_srt() -> str:
+    """Cues the source prep and the continuation pre-merge rewrite: odd milliseconds, a
+    trailing space, a rapid-fire continuation pair and a sound description."""
+    cues: list[tuple[float, float, str]] = []
+    for number in range(1, 11):
+        start = (number - 1) * 3 + 0.25
+        cues.append((start, start + 2.1, f"Line number {number} is spoken here."))
+    cues[2] = (cues[2][0], cues[2][1], "Line number 3 is spoken here. ")
+    cues.append((11.4, 11.8, "And this sentence is"))
+    cues.append((11.85, 12.2, "split in two."))
+    cues.append((23.4, 24.1, "[MUSIC PLAYING]"))
+    blocks = [
+        f"{index}\n{_timestamp(start)} --> {_timestamp(end)}\n{text}\n"
+        for index, (start, end, text) in enumerate(sorted(cues), start=1)
+    ]
+    return "\n".join(blocks)
 
 
 class Recorder:
@@ -171,10 +190,17 @@ class ResumeTestBase(LoggedTestCase):
             # transubs runs Gemini on Vertex in parallel by default; keep request order fixed
             "PARALLEL_BATCHES": "0",
         }
+        self.written_source: tuple[bool, dict[str, Any]] | None = None
 
-    def WriteSource(self, name: str, **kwargs: Any) -> Path:
+    def WriteSource(self, name: str, realistic: bool = False, **kwargs: Any) -> Path:
+        """Write the source once: transubs preps it in place, and a re-run must resume
+        from the prepped file. A different fixture rewrites it."""
         source = self.directory / name
-        source.write_text(_source_srt(**kwargs), encoding="utf-8")
+        wanted = (realistic, kwargs)
+        if not source.exists() or self.written_source != wanted:
+            text = _realistic_srt() if realistic else _source_srt(**kwargs)
+            source.write_text(text, encoding="utf-8")
+            self.written_source = wanted
         return source
 
     def RunExsubs(
@@ -260,7 +286,8 @@ class TestResumeGate(ResumeTestBase):
     def _check_gate(self, run: Any, fail_on: int = 3, **kwargs: Any) -> list[str]:
         clean = Recorder()
         out_file = run(clean, **kwargs)
-        self.assertLoggedEqual("clean run requests", BATCHES, clean.requests)
+        if not kwargs.get("realistic"):
+            self.assertLoggedEqual("clean run requests", BATCHES, clean.requests)
         clean_output = out_file.read_text(encoding="utf-8")
         self.assertLoggedIn("merge applied", "Rivit 1 ja 2", clean_output)
         out_file.unlink()
@@ -278,7 +305,9 @@ class TestResumeGate(ResumeTestBase):
             run(resumed, **kwargs)
             exsubs.logging.warning("end of resumed run")
         missing = fail_on - 1
-        self.assertLoggedEqual("resumed requests", BATCHES[missing:], resumed.requests)
+        self.assertLoggedEqual(
+            "resumed requests", clean.requests[missing:], resumed.requests
+        )
         self.assertLoggedEqual(
             "resumed prompts", clean.prompts[missing:], resumed.prompts
         )
@@ -300,6 +329,12 @@ class TestResumeGate(ResumeTestBase):
 
     def test_exsubs_large_context_resumes_missing_batches(self):
         self._check_gate(self.RunExsubs, env={"LARGE_CONTEXT_MODE": "true"})
+
+    def test_transubs_resumes_from_prepped_source(self):
+        """transubs rewrites its source in place; the re-run preps it a second time."""
+        self._check_gate(self.RunTransubs, realistic=True)
+        source = (self.directory / "Show.S01E01.srt").read_text(encoding="utf-8")
+        self.assertLoggedFalse("trailing space removed", "here. \n" in source)
 
     def test_transubs_resumes_across_scenes(self):
         self.env["SCENE_THRESHOLD"] = "10"
