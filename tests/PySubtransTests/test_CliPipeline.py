@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.MKV import MKVExtractor
 from PySubtrans.MKV.Config import MKVConfig, TranslationMode
+from PySubtrans.TranslationEvents import TranslationEvents
 from scripts import exsubs, transubs
 
 # Every test runs with exactly this environment plus its own overrides, so a developer's
@@ -304,7 +305,7 @@ class FakeProject:
 
 
 def _fake_translator(aborted: bool = False) -> SimpleNamespace:
-    return SimpleNamespace(aborted=aborted, errors=[])
+    return SimpleNamespace(aborted=aborted, errors=[], events=TranslationEvents())
 
 
 def _pipeline_patches(module: Any, project: FakeProject, translator: SimpleNamespace):
@@ -647,6 +648,7 @@ class TestTransubsExitCodes(LoggedTestCase):
         )
         (directory / "Show.S01E02.fi.srt").write_text("")
         (directory / "Show.S01E03.fi.srt.partial").write_text("x")
+        (directory / "Show.S01E03.fi.srt.resume.json").write_text("{}")
         self.enterContext(_chdir(directory))
         with (
             patch.dict(os.environ, BASE_ENV, clear=True),

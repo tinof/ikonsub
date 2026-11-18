@@ -40,6 +40,7 @@ from PySubtrans.MKV.Config import (
 from PySubtrans.Options import env_bool
 from PySubtrans.SubtitleProject import SubtitleProject
 from PySubtrans.SubtitleTranslator import SubtitleTranslator
+from PySubtrans.TranslationResume import PARTIAL_OUTPUT_SUFFIX, TranslationResume
 from PySubtrans.UsageLedger import USAGE_FILE
 
 # Configure rich console and logging
@@ -82,10 +83,6 @@ FINNISH_FIXER_WIDTH_LIMIT = 42
 FINNISH_FIXER_MAX_CPS = 17.0
 FINNISH_FIXER_TARGET_CPS = 15.0
 FINNISH_FIXER_COMMAND = "fix-finnish-subs"
-
-# A partial translation is moved to "<name>.fi.srt.partial". The extension is not in
-# SUBTITLE_EXTENSIONS, so no run treats it as a source or as a finished translation.
-PARTIAL_OUTPUT_SUFFIX = ".partial"
 
 SEASON_EPISODE_PATTERN = regex.compile(
     r"S(\d{1,2})E(\d{1,3})"  # S01E02
@@ -826,6 +823,8 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
             min_batch_size=min_batch_size,
             max_batch_size=max_batch_size,
         )
+    resume = TranslationResume(options, desired_path)
+    restored_batches = resume.Restore(project.subtitles)
 
     total_batches = (
         sum(len(scene.batches) for scene in project.subtitles.scenes)
@@ -833,8 +832,14 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
         else 0
     )
     total_lines = project.subtitles.linecount if project.subtitles else 0
+    if restored_batches:
+        console.print(
+            f"  [cyan]Resuming:[/cyan] {restored_batches} of {total_batches} batches "
+            f"reused from {resume.partial_path.name}"
+        )
 
     translator = init_translator(options)
+    resume.Attach(translator)
     metrics = (
         TranslationMetrics()
         if (show_metrics and mode == TranslationMode.GEMINI)
@@ -866,6 +871,7 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
             or _output_signature(partial_path) != output_before
         ):
             _set_aside_partial_output(partial_path)
+        resume.Save(project.subtitles)
         raise
     finally:
         if progress:
@@ -875,6 +881,7 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
             metrics.render(
                 time.perf_counter() - start, total_lines, total_batches, rate_limit
             )
+    resume.Clear()
     # Normalise the file name, then run fix-finnish-subs once
     normalised = _normalise_translated_output(
         sub_file, desired_path, target_language, lang_code

@@ -177,6 +177,9 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 - [F5.1][desk] Reuse the translated lines of a `.partial` file (or a persistent project) so a re-run
   translates only the missing batches. Gate: a test where a run that failed after 2 of 4 batches
   resumes and sends only batches 3 and 4 to the provider.
+- **Decided 2026-11-18 (owner):** progress is kept in a `<name>.<lang>.srt.resume.json` sidecar,
+  not parsed from the `.partial`; deleting the `.partial` cancels the resume; a successful run
+  removes both files; a changed model, provider, language or instructions starts over with a warning.
 
 ## Engineering backlog
 
