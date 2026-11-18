@@ -42,13 +42,13 @@ something changed. A **Checked** bullet (date, commit, `file:line`) on each exam
 run re-check only what changed since that commit.
 
 ### Next up (checked 2026-11-18 at main@999e6f9)
-<!-- roadmap-next: rev=7 scope=all config=4ea1c07a9b1a probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=8f531c06614c -->
+<!-- roadmap-next: rev=7 scope=all config=4ea1c07a9b1a probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=b00b1cd5cea7 -->
 
-1. **F5.1 Resume a failed translation from its `.partial` file.** Gate: a run that failed after 2
-   of 4 batches resumes and sends only batches 3 and 4. Why: the other Focus step; Tier 2 (both
-   scripts). Branch: `feat/f5-1-resume-partial`.
-2. **E5.14 Write `tools/check_pure_move.py`.** Gate: a fixture pure move passes and a one-line edit
+1. **E5.14 Write `tools/check_pure_move.py`.** Gate: a fixture pure move passes and a one-line edit
    fails. Why: unblocks E5.2-E5.4 and the E1 chain. Branch: `chore/e5-14-check-pure-move`.
+
+**Reassess:** owner-decision (F5.1, PR #32): the owner set the resume behaviour (sidecar state,
+full run on changed settings, cleanup on success); no Focus step is open now.
 
 ### Waiting for the owner
 
@@ -170,16 +170,8 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 ### F5: Resume a failed translation
 
-- **Status:** Open.
-- A failed run moves its output to `<name>.fi.srt.partial` (PR #7), but the next run translates every
-  line again; both scripts create `SubtitleProject(persistent=False)` (`scripts/exsubs.py:1112`,
-  `scripts/transubs.py:773`).
-- [F5.1][desk] Reuse the translated lines of a `.partial` file (or a persistent project) so a re-run
-  translates only the missing batches. Gate: a test where a run that failed after 2 of 4 batches
-  resumes and sends only batches 3 and 4 to the provider.
-- **Decided 2026-11-18 (owner):** progress is kept in a `<name>.<lang>.srt.resume.json` sidecar,
-  not parsed from the `.partial`; deleting the `.partial` cancels the resume; a successful run
-  removes both files; a changed model, provider, language or instructions starts over with a warning.
+- **Status:** Core complete; a failed run resumes from its finished batches (F5.1, in the log). No
+  step is open; the item stays because the Focus line names F5.1.
 
 ## Engineering backlog
 
