@@ -198,10 +198,16 @@ def remove_caps_sound_lines(sub_file: Path) -> int:
         else:
             cues.append((lines[: timing_index + 1], lines[timing_index + 1 :]))
 
-    text_lines = [line for _, text in cues for line in text if line.strip()]
-    sound_lines = [line for line in text_lines if _is_caps_sound_line(line)]
-    mixed_case = sum(1 for line in text_lines if re.search(r"\p{Ll}", line))
-    if len(sound_lines) < CAPS_SOUND_MIN_LINES or mixed_case < len(text_lines) / 2:
+    # Judge the case of what a viewer sees: the "i" of <i> and the "an" of {\an8} are markup
+    visible_lines = [
+        visible
+        for _, text in cues
+        for line in text
+        if (visible := MARKUP_PATTERN.sub("", line).strip())
+    ]
+    sound_lines = [line for line in visible_lines if _is_caps_sound_line(line)]
+    mixed_case = sum(1 for line in visible_lines if re.search(r"\p{Ll}", line))
+    if len(sound_lines) < CAPS_SOUND_MIN_LINES or mixed_case < len(visible_lines) / 2:
         return 0
 
     rebuilt = []

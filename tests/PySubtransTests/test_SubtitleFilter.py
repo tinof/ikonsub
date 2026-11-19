@@ -130,6 +130,17 @@ class TestRemoveCapsSoundLines(LoggedTestCase):
 
         self.assertLoggedEqual("lines removed", 0, removed)
 
+    def test_markup_letters_do_not_make_an_all_caps_file_mixed_case(self):
+        removed, result = self._run(
+            "<i>WE NEED MORE RESOURCES</i>",
+            "<i>WHY THERE WAS A CAR</i>",
+            "{\\an8}TOOK OFF FAST",
+            "<i>THEY SAW US</i>",
+        )
+
+        self.assertLoggedEqual("lines removed", 0, removed)
+        self.assertLoggedIn("dialogue kept", "WE NEED MORE RESOURCES", result)
+
     def test_leaves_a_file_with_one_or_two_caps_lines_alone(self):
         removed, _ = self._run("GUNSHOTS", "Shots fired.", "Get down.")
 
