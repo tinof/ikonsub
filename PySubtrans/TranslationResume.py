@@ -45,6 +45,8 @@ FINGERPRINT_KEYS = (
     "parallel_batches",
     "large_context_mode",
     "max_context_summaries",
+    "context_lines",
+    "lookahead_lines",
     "include_line_timings",
     "target_cps",
     "max_translation_cps",

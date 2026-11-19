@@ -6,7 +6,23 @@ from PySubtrans.Helpers.Parse import ParseNames
 from PySubtrans.SubtitleError import SubtitleError
 
 if TYPE_CHECKING:
+    from PySubtrans.SubtitleBatch import SubtitleBatch
+    from PySubtrans.SubtitleLine import SubtitleLine
     from PySubtrans.Subtitles import Subtitles
+
+# Notes that open the two context blocks. The lines carry no "#N" or "Translation>": every
+# parser pattern starts at "#<number>", so a block can never be read back as a translation.
+PREVIOUS_LINES_NOTE = (
+    "Earlier lines with the translation already delivered. Context only: stay consistent "
+    "with their names, terms and register. Do not translate them again."
+)
+UPCOMING_LINES_NOTE = (
+    "The lines that follow this batch. Context only: do not translate them."
+)
+
+# The source and translation pairs behind "previous_lines", kept so a split batch can add
+# its first half's pairs for the second half. Not a prompt tag: it is never rendered.
+PREVIOUS_PAIRS_KEY = "previous_line_pairs"
 
 
 def GetBatchContext(
@@ -14,6 +30,9 @@ def GetBatchContext(
     scene_number: int,
     batch_number: int,
     max_lines: int | None = None,
+    *,
+    context_lines: int = 0,
+    lookahead_lines: int = 0,
 ) -> dict[str, Any]:
     """
     Get context for a batch of subtitles, by extracting summaries from previous scenes and batches
@@ -65,7 +84,125 @@ def GetBatchContext(
         if history_lines:
             context["history"] = history_lines
 
+        if context_lines > 0:
+            earlier = _BatchesBefore(subtitles, scene_number, batch_number)
+            context = WithPreviousLines(context, earlier, context_lines)
+
+        if lookahead_lines > 0:
+            following = [
+                line
+                for later in scene.batches
+                if later.number > batch_number
+                for line in later.originals
+            ]
+            context = WithUpcomingLines(context, following, lookahead_lines)
+
     return context
+
+
+def _BatchesBefore(
+    subtitles: Subtitles, scene_number: int, batch_number: int
+) -> list[SubtitleBatch]:
+    """Every batch before the given one, across scene boundaries, in order"""
+    return [
+        batch
+        for scene in subtitles.scenes
+        if scene.number <= scene_number
+        for batch in scene.batches
+        if scene.number < scene_number or batch.number < batch_number
+    ]
+
+
+def _OneLine(text: str | None) -> str:
+    return " ".join((text or "").split())
+
+
+def CollectLinePairs(batches: list[SubtitleBatch]) -> list[tuple[str, str]]:
+    """
+    Source and translation pairs of translated batches, in order.
+
+    The translation is the delivered text of `batch.translated`, never `line.translation`,
+    which can hold "[MERGED]" or a "#Fuzzy" marker. A source line with no translation of its
+    own (the second line of a [MERGE N+M]) joins the previous pair's source.
+    """
+    pairs: list[tuple[str, str]] = []
+    for batch in batches:
+        if not batch.translated:
+            continue
+        translations = {line.number: line.text for line in batch.translated}
+        for original in batch.originals:
+            source = _OneLine(original.text)
+            if not source:
+                continue
+            translated = _OneLine(translations.get(original.number))
+            if translated:
+                pairs.append((source, translated))
+            elif pairs:
+                last_source, last_translation = pairs[-1]
+                pairs[-1] = (f"{last_source} {source}", last_translation)
+    return pairs
+
+
+def FormatPreviousLines(pairs: list[tuple[str, str]], max_lines: int) -> str | None:
+    """Render the last `max_lines` pairs as the <previous_lines> block, or None"""
+    if max_lines <= 0 or not pairs:
+        return None
+    blocks = [
+        f"Source: {source}\nTranslated: {translated}"
+        for source, translated in pairs[-max_lines:]
+    ]
+    return "\n" + PREVIOUS_LINES_NOTE + "\n" + "\n\n".join(blocks) + "\n"
+
+
+def FormatUpcomingLines(lines: list[SubtitleLine], max_lines: int) -> str | None:
+    """Render the next `max_lines` source lines as the <upcoming_lines> block, or None"""
+    if max_lines <= 0:
+        return None
+    texts = [text for line in lines if (text := _OneLine(line.text))][:max_lines]
+    if not texts:
+        return None
+    return "\n" + UPCOMING_LINES_NOTE + "\n" + "\n".join(texts) + "\n"
+
+
+def WithPreviousLines(
+    context: dict[str, Any], batches: list[SubtitleBatch], max_lines: int
+) -> dict[str, Any]:
+    """
+    A copy of the context whose previous lines also hold the pairs of `batches`.
+
+    Returns the context unchanged when `max_lines` is 0.
+    """
+    if max_lines <= 0:
+        return context
+    pairs = list(context.get(PREVIOUS_PAIRS_KEY) or []) + CollectLinePairs(batches)
+    pairs = pairs[-max_lines:]
+    updated = dict(context)
+    updated[PREVIOUS_PAIRS_KEY] = pairs
+    rendered = FormatPreviousLines(pairs, max_lines)
+    if rendered:
+        updated["previous_lines"] = rendered
+    else:
+        updated.pop("previous_lines", None)
+    return updated
+
+
+def WithUpcomingLines(
+    context: dict[str, Any], lines: list[SubtitleLine], max_lines: int
+) -> dict[str, Any]:
+    """
+    A copy of the context whose upcoming lines are the first of `lines`.
+
+    Returns the context unchanged when `max_lines` is 0.
+    """
+    if max_lines <= 0:
+        return context
+    updated = dict(context)
+    rendered = FormatUpcomingLines(lines, max_lines)
+    if rendered:
+        updated["upcoming_lines"] = rendered
+    else:
+        updated.pop("upcoming_lines", None)
+    return updated
 
 
 def GetHistory(

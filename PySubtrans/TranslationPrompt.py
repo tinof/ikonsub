@@ -17,6 +17,8 @@ default_context_tags: list[str] = [
     "scene",
     "summary",
     "batch",
+    "previous_lines",
+    "upcoming_lines",
 ]
 
 

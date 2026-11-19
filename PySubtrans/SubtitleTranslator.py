@@ -8,6 +8,8 @@ from PySubtrans.Helpers import FormatErrorMessages
 from PySubtrans.Helpers.ContextHelpers import (
     GetBatchContext,
     PrecomputeAllBatchContexts,
+    WithPreviousLines,
+    WithUpcomingLines,
 )
 from PySubtrans.Helpers.Localization import _
 from PySubtrans.Helpers.SubtitleHelpers import MergeTranslations
@@ -62,6 +64,8 @@ class SubtitleTranslator:
 
         self.max_lines = settings.get_int("max_lines")
         self.max_history = settings.get_int("max_context_summaries")
+        self.context_lines = settings.get_int("context_lines") or 0
+        self.lookahead_lines = settings.get_int("lookahead_lines") or 0
         self.stop_on_error = settings.get_bool("stop_on_error")
         self.retry_on_error = settings.get_bool("retry_on_error")
         # self.split_on_error = options.get('autosplit_incomplete')
@@ -422,7 +426,12 @@ class SubtitleTranslator:
 
             for batch in batches:
                 context = GetBatchContext(
-                    subtitles, scene.number, batch.number, self.max_history
+                    subtitles,
+                    scene.number,
+                    batch.number,
+                    self.max_history,
+                    context_lines=self.context_lines,
+                    lookahead_lines=self.lookahead_lines,
                 )
 
                 try:
@@ -842,8 +851,10 @@ class SubtitleTranslator:
         batch_a = SubtitleBatch(
             {"scene": batch.scene, "number": batch.number, "originals": first_half}
         )
+        # The lines after the first half are the second half's, not the whole batch's
+        context_a = WithUpcomingLines(context, second_half, self.lookahead_lines)
         batch_a.prompt = self.client.BuildTranslationPrompt(
-            self.user_prompt, instructions, first_half, context
+            self.user_prompt, instructions, first_half, context_a
         )
         cb_a = (
             self._create_streaming_callback(batch_a, line_numbers)
@@ -866,10 +877,10 @@ class SubtitleTranslator:
             )
 
         self.ProcessBatchTranslation(batch_a, translation_a, line_numbers)
-        self._retry_split_half(batch_a, line_numbers, context)
+        self._retry_split_half(batch_a, line_numbers, context_a)
 
         # --- Build context from first half for second half ---
-        context_b = dict(context)
+        context_b = WithPreviousLines(context, [batch_a], self.context_lines)
         if translation_a.summary:
             context_b["summary"] = translation_a.summary
         if translation_a.scene:
