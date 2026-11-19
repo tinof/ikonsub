@@ -4,6 +4,7 @@ from pathlib import Path
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.MKV.SubtitleFilter import (
     detect_and_convert_encoding,
+    remove_caps_sound_lines,
     remove_markup_only_cues,
 )
 
@@ -69,3 +70,67 @@ class TestDetectAndConvertEncoding(LoggedTestCase):
 
             self.assertLoggedTrue("conversion succeeds", result)
             path.read_text(encoding="utf-8")
+
+
+class TestRemoveCapsSoundLines(LoggedTestCase):
+    """
+    Tests for dropping BBC-style all-caps sound descriptions ("GUNSHOTS")
+    """
+
+    def _run(self, *texts: str) -> tuple[int, str]:
+        content = "\n\n".join(
+            f"{n}\n00:00:{n:02d},000 --> 00:00:{n:02d},900\n{text}"
+            for n, text in enumerate(texts, start=1)
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "source.srt"
+            path.write_text(content + "\n", encoding="utf-8")
+            removed = remove_caps_sound_lines(path)
+            return removed, path.read_text(encoding="utf-8")
+
+    def test_removes_sound_lines_and_keeps_dialogue(self):
+        removed, result = self._run(
+            "No, no, no!\nGUNSHOTS",
+            "SIREN WAILS",
+            "Shots fired.",
+            "SHE GASPS, SHRIEKS",
+            "Annie?!",
+        )
+
+        self.assertLoggedEqual("lines removed", 3, removed)
+        self.assertLoggedIn("dialogue kept", "No, no, no!", result)
+        self.assertLoggedNotIn("sound removed", "GUNSHOTS", result)
+        self.assertLoggedNotIn("sound removed", "SHRIEKS", result)
+
+    def test_keeps_shouts_acronyms_and_short_words(self):
+        removed, result = self._run(
+            "GUNSHOTS",
+            "SIREN WAILS",
+            "DOOR SLAMS",
+            "STOP RIGHT THERE!",
+            "FBI",
+            "OK.",
+            "Get down.",
+            "Where is she?",
+            "Over there.",
+            "Go, go.",
+            "Now!",
+            "Stay with me.",
+            "I'm here.",
+        )
+
+        self.assertLoggedEqual("lines removed", 3, removed)
+        for kept in ("STOP RIGHT THERE!", "FBI", "OK."):
+            self.assertLoggedIn("kept", kept, result)
+
+    def test_leaves_an_all_caps_file_alone(self):
+        removed, _ = self._run(
+            "WE NEED MORE RESOURCES", "WHY THERE WAS A CAR", "TOOK OFF"
+        )
+
+        self.assertLoggedEqual("lines removed", 0, removed)
+
+    def test_leaves_a_file_with_one_or_two_caps_lines_alone(self):
+        removed, _ = self._run("GUNSHOTS", "Shots fired.", "Get down.")
+
+        self.assertLoggedEqual("lines removed", 0, removed)
