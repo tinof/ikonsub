@@ -74,6 +74,10 @@ default_settings = {
     "min_batch_size": env_int("MIN_BATCH_SIZE", 10),
     "max_batch_size": env_int("MAX_BATCH_SIZE", 30),
     "max_context_summaries": env_int("MAX_CONTEXT_SUMMARIES", 10),
+    # Sequential batches: the last N source lines with their translations, and the next M
+    # source lines, as context (0 = off)
+    "context_lines": env_int("CONTEXT_LINES", 0),
+    "lookahead_lines": env_int("LOOKAHEAD_LINES", 0),
     "max_characters": env_int("MAX_CHARACTERS", 120),
     "max_newlines": env_int("MAX_NEWLINES", 2),
     "max_single_line_length": env_int("MAX_SINGLE_LINE_LENGTH", 44),
