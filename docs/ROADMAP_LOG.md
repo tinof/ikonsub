@@ -3,6 +3,21 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-19: F6.1 Previous and upcoming lines in sequential prompts (PR #34)
+
+- [F6.1][desk] Sequential batches can show the last N source lines with their translations and the
+  next M source lines, behind `context_lines` and `lookahead_lines` (default 0). Gate: `make check &&
+  make test`; tests show default prompts carry only the old tags and the parallel path unchanged.
+- Resolution: `PySubtrans/Helpers/ContextHelpers.py` builds `<previous_lines>` (source with its
+  delivered translation, merged lines joined) and `<upcoming_lines>` (the next source lines of the
+  scene) from `context_lines` and `lookahead_lines`; `SubtitleTranslator` passes them on the
+  sequential path and gives each half of a split batch the other half's lines. Parallel context and
+  default prompts are unchanged; both keys are in the resume fingerprint.
+- Evidence: `tests/PySubtransTests/test_ContextLines.py` (11 tests: old tags only at 0/0, pairs in
+  order and capped, scene edges, merges, parser finds nothing in a block, split halves, retry keeps
+  the context, settings and fingerprint); four mutations each fail it. `make check && make test` 539
+  passed. Gemini cold review LGTM. Not run: a live translation with the settings on (F6.3).
+
 ## 2026-11-19: D5.1 Drop all-caps sound descriptions (PR #33)
 
 - [D5.1][desk] `filter_subtitles` drops all-caps sound lines from mixed-case files and keeps shouts,
