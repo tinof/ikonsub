@@ -70,7 +70,7 @@ def CaptureExsubsSettings(
 
 
 def CaptureTransubsSettings(
-    provider_flag: str, env: dict[str, str] | None = None
+    provider_flag: str, env: dict[str, str] | None = None, **kwargs: Any
 ) -> dict[str, Any]:
     """Run transubs.translate_srt_file up to init_options and return the settings it gets."""
     captured: dict[str, Any] = {}
@@ -90,6 +90,7 @@ def CaptureTransubsSettings(
                 provider_flag,
                 show_progress=False,
                 show_metrics=False,
+                **kwargs,
             )
         except _SettingsCaptured:
             return captured
@@ -241,6 +242,72 @@ class TestFinnishPipelineSettings(LoggedTestCase):
         self.assertLoggedEqual("vertex max batch", 150, vertex["max_batch_size"])
         self.assertLoggedFalse("api key runs sequential", api_key["parallel_batches"])
         self.assertLoggedEqual("api key max batch", 600, api_key["max_batch_size"])
+
+
+class TestTransubsTitleAndDescription(LoggedTestCase):
+    """--title and --description reach the project settings of a single-file run."""
+
+    def test_flags_land_as_movie_name_and_description(self):
+        settings = CaptureTransubsSettings(
+            "claude",
+            title="Blue Lights S04E05",
+            description="Poliisidraamaa Belfastista.",
+        )
+        self.assertLoggedEqual(
+            "title", "Blue Lights S04E05", settings.get("movie_name")
+        )
+        self.assertLoggedEqual(
+            "description", "Poliisidraamaa Belfastista.", settings.get("description")
+        )
+
+    def test_without_flags_the_settings_are_unchanged(self):
+        for provider in ("claude", "gemini"):
+            plain = CaptureTransubsSettings(provider)
+            empty = CaptureTransubsSettings(provider, title=None, description="")
+            self.assertLoggedNotIn("no movie_name", "movie_name", plain)
+            self.assertLoggedNotIn("no description", "description", plain)
+            self.assertLoggedEqual("same settings", plain, empty)
+
+    def _main(self, *argv: str) -> int:
+        with (
+            patch.dict(os.environ, BASE_ENV, clear=True),
+            patch("sys.argv", ["transubs", *argv]),
+            patch.object(transubs, "load_dotenv"),
+        ):
+            return transubs.main()
+
+    def test_title_without_a_file_is_a_usage_error(self):
+        with self.assertRaises(SystemExit) as raised:
+            self._main("--title=Blue Lights")
+        self.assertLoggedEqual("exit code", 2, raised.exception.code)
+
+    def test_a_title_that_starts_with_a_dash_is_a_value(self):
+        with (
+            patch.object(transubs, "translate_srt_file", return_value=True) as run,
+            patch.object(
+                transubs.shutil, "which", return_value="/usr/bin/fix-finnish-subs"
+            ),
+            tempfile.TemporaryDirectory() as directory,
+        ):
+            source = Path(directory) / "episode.srt"
+            source.write_text(
+                "1\n00:00:01,000 --> 00:00:02,000\nHi.\n", encoding="utf-8"
+            )
+            code = self._main(
+                "--title=-30- S01E01", "--description=-alku-", str(source)
+            )
+        self.assertLoggedEqual("exit code", 0, code)
+        self.assertLoggedEqual("title", "-30- S01E01", run.call_args.kwargs["title"])
+        self.assertLoggedEqual(
+            "description", "-alku-", run.call_args.kwargs["description"]
+        )
+
+    def test_help_lists_both_flags(self):
+        with self.assertRaises(SystemExit), patch("sys.stdout") as stdout:
+            self._main("--help")
+        printed = "".join(call.args[0] for call in stdout.write.call_args_list)
+        self.assertLoggedIn("title flag", "--title", printed)
+        self.assertLoggedIn("description flag", "--description", printed)
 
 
 class TestOutputPaths(LoggedTestCase):

@@ -548,6 +548,8 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
     show_metrics: bool = True,
     proofread: bool = False,
     filter_subs: bool = True,
+    title: str | None = None,
+    description: str | None = None,
 ) -> bool:
     """Translate one subtitle file. Return False if fix-finnish-subs failed.
 
@@ -741,6 +743,10 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
     settings.update(settings_vertex)
     if thinking_level:
         settings["thinking_level"] = thinking_level
+    # The title fills the prompt's "[ for movie]"; the description becomes <description>
+    settings.update(
+        {k: v for k, v in (("movie_name", title), ("description", description)) if v}
+    )
 
     # Resolve instruction file (same logic as exsubs via MKVConfig)
     if config.instruction_file:
@@ -984,6 +990,26 @@ def process_directory(
     return 1 if stats["failed"] else 0
 
 
+def _add_context_arguments(parser: argparse.ArgumentParser) -> None:
+    """--title and --description, context for the model about what is translated."""
+    # One token each (--title=<value>): a separate value that starts with "-" reads as an option
+    parser.add_argument(
+        "--title",
+        help="Title of the film or episode, for the prompt (single file only)",
+    )
+    parser.add_argument(
+        "--description",
+        help="Short description of the film or episode, sent as context (single file only)",
+    )
+
+
+def _check_context_arguments(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    if args.file is None and (args.title or args.description):
+        parser.error("--title and --description need a subtitle file")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Translate subtitle files using tuned exsubs defaults. "
@@ -1041,8 +1067,10 @@ def main() -> int:
         help="Write the token usage of the run to PATH (Gemini per model and location, "
         "Claude per serving model), also when the run fails",
     )
+    _add_context_arguments(parser)
 
     args = parser.parse_args()
+    _check_context_arguments(parser, args)
 
     load_dotenv()
 
@@ -1114,6 +1142,8 @@ def main() -> int:
             show_metrics=not args.no_metrics,
             proofread=args.proofread,
             filter_subs=not args.no_filter,
+            title=args.title,
+            description=args.description,
         )
         return 0 if succeeded else 1
     except IncompleteTranslationError as e:
