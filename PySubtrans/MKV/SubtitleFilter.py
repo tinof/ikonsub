@@ -12,6 +12,12 @@ logger = logging.getLogger("exsubs")
 MARKUP_PATTERN = markup_pattern
 CUE_SEPARATOR_PATTERN = re.compile(r"\n\s*\n")
 
+# A sound description in the capitals style of BBC and other UK hearing-impaired tracks:
+# "GUNSHOTS", "SIREN WAILS", "SHE GASPS, SHRIEKS". No lowercase letter, and no sentence or
+# question mark at the end, which an all-caps shout ("STOP!") has.
+CAPS_SOUND_LINE_PATTERN = re.compile(r"^[\p{Lu}\p{N}\s,'’&/-]+$")
+CAPS_SOUND_MIN_LINES = 3
+
 
 def detect_and_convert_encoding(sub_file: Path) -> bool:
     """Detect file encoding and convert to UTF-8 if needed"""
@@ -153,10 +159,64 @@ def filter_subtitles(sub_file: Path):
             rm_style=True,
         )
         subs.save()  # Overwrites original file
+        remove_caps_sound_lines(sub_file)
         remove_markup_only_cues(sub_file)
     except Exception as e:
         logger.error(f"Filtering failed: {e}")
         raise
+
+
+def _is_caps_sound_line(line: str) -> bool:
+    visible = MARKUP_PATTERN.sub("", line).strip()
+    if not CAPS_SOUND_LINE_PATTERN.match(visible):
+        return False
+    words = re.findall(r"\p{Lu}+", visible)
+    # One short word is more likely an acronym or a name ("FBI", "NO") than a sound
+    return len(words) >= 2 or (len(words) == 1 and len(words[0]) >= 5)
+
+
+def remove_caps_sound_lines(sub_file: Path) -> int:
+    """Drop all-caps sound descriptions from a mixed-case subtitle file.
+
+    subtitle_filter removes "[gunshots]" and "(gunshots)" but not the capitals style
+    ("GUNSHOTS"). Left in, the line is merged into the dialogue around it, translated as
+    speech and then sentence-cased downstream ("Ei, ei, ei! LAUKAUKSIA Laukauksia!").
+    A file is only treated as having this style when it has a few such lines and is
+    otherwise mixed case, so an all-caps source keeps its text. Returns the lines removed.
+    """
+    content = sub_file.read_text(encoding="utf-8")
+    blocks = [
+        block for block in CUE_SEPARATOR_PATTERN.split(content.strip()) if block.strip()
+    ]
+
+    cues: list[tuple[list[str], list[str]]] = []
+    for block in blocks:
+        lines = block.split("\n")
+        timing_index = next((i for i, line in enumerate(lines) if "-->" in line), None)
+        if timing_index is None:
+            cues.append((lines, []))
+        else:
+            cues.append((lines[: timing_index + 1], lines[timing_index + 1 :]))
+
+    # Judge the case of what a viewer sees: the "i" of <i> and the "an" of {\an8} are markup
+    visible_lines = [
+        visible
+        for _, text in cues
+        for line in text
+        if (visible := MARKUP_PATTERN.sub("", line).strip())
+    ]
+    sound_lines = [line for line in visible_lines if _is_caps_sound_line(line)]
+    mixed_case = sum(1 for line in visible_lines if re.search(r"\p{Ll}", line))
+    if len(sound_lines) < CAPS_SOUND_MIN_LINES or mixed_case < len(visible_lines) / 2:
+        return 0
+
+    rebuilt = []
+    for head, text in cues:
+        kept = [line for line in text if not _is_caps_sound_line(line)]
+        rebuilt.append("\n".join(head + kept))
+    sub_file.write_text("\n\n".join(rebuilt) + "\n", encoding="utf-8")
+    logger.info(f"Removed {len(sound_lines)} all-caps sound description line(s)")
+    return len(sound_lines)
 
 
 def remove_markup_only_cues(sub_file: Path) -> int:
