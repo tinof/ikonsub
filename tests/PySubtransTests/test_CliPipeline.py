@@ -310,6 +310,58 @@ class TestTransubsTitleAndDescription(LoggedTestCase):
         self.assertLoggedIn("description flag", "--description", printed)
 
 
+class TestPromptLine(LoggedTestCase):
+    """The prompt line names the title and the language instead of "[movie]" and "[language]"."""
+
+    def _options(self, instruction_file: str, **settings: Any):
+        from PySubtrans import init_options
+
+        with patch.dict(os.environ, BASE_ENV, clear=True):
+            return init_options(instruction_file=instruction_file, **settings)
+
+    def test_finnish_prompt_line_substitutes_title_and_language(self):
+        with_title = self._options(
+            "instructions/instructions_fi.txt",
+            target_language="Finnish",
+            movie_name="Blue Lights S04E05",
+        )
+        without = self._options(
+            "instructions/instructions_fi.txt", target_language="Finnish"
+        )
+        self.assertLoggedEqual(
+            "with title",
+            "Translate the following English subtitles for Blue Lights S04E05 into "
+            "high-quality, readable Finnish.",
+            with_title.BuildUserPrompt(),
+        )
+        self.assertLoggedEqual(
+            "without title",
+            "Translate the following English subtitles into high-quality, readable Finnish.",
+            without.BuildUserPrompt(),
+        )
+
+    def test_the_cached_system_prompt_does_not_vary_per_episode(self):
+        plain = self._options(
+            "instructions/instructions_fi.txt", target_language="Finnish"
+        )
+        episode = self._options(
+            "instructions/instructions_fi.txt",
+            target_language="Finnish",
+            movie_name="Blue Lights S04E05",
+            description="Kolme putkipommia.",
+        )
+        self.assertLoggedEqual(
+            "instructions", plain.get("instructions"), episode.get("instructions")
+        )
+
+    def test_greek_prompt_line_has_no_raw_placeholders(self):
+        prompt = self._options(
+            "instructions/instructions_el.txt", target_language="Greek"
+        ).BuildUserPrompt()
+        self.assertLoggedNotIn("no [movie]", "[movie]", prompt)
+        self.assertLoggedNotIn("no [language]", "[language]", prompt)
+
+
 class TestOutputPaths(LoggedTestCase):
     def test_build_translated_output_path_replaces_language_suffix(self):
         for module in (exsubs, transubs):

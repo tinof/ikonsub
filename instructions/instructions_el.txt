@@ -1,5 +1,5 @@
 ### prompt
-Translate the following English subtitles for [movie] into high-quality, readable [language].
+Translate the following English subtitles[ for movie] into high-quality, readable [target_language].
 
 ### instructions
 Είσαι επαγγελματίας μεταφραστής υποτίτλων για τηλεοπτικές σειρές και ταινίες. Στόχος σου είναι να μεταφράσεις τους αγγλικούς υπότιτλους στα Ελληνικά, ώστε το αποτέλεσμα να είναι φυσικό, περιεκτικό και ευανάγνωστο. Μην κάνεις κατά λέξη μετάφραση.
