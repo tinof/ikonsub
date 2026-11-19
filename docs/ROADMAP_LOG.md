@@ -3,6 +3,29 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-19: D5.1 Drop all-caps sound descriptions (PR #33)
+
+- [D5.1][desk] `filter_subtitles` drops all-caps sound lines from mixed-case files and keeps shouts,
+  acronyms and all-caps sources. Gate: `SubtitleFilter` tests; `make check && make test`.
+- Resolution: `PySubtrans/MKV/SubtitleFilter.py:remove_caps_sound_lines` runs in `filter_subtitles`
+  after `subtitle_filter` and before `remove_markup_only_cues`. It drops lines with no lowercase
+  letter and no end punctuation (two or more words, or one word of five letters or more) when a file
+  has at least three such lines and at least half its visible lines are mixed case; markup is ignored.
+- Evidence: `tests/PySubtransTests/test_SubtitleFilter.py::TestRemoveCapsSoundLines` (sound lines,
+  shouts and acronyms, all-caps files with and without markup, too few caps lines). On the Blue
+  Lights S04E05 English SDH track, 65 distinct sound lines go (959 cues to 890) and no dialogue line.
+  `make check && make test` 528 passed. Gemini cold review: one P1 (markup letters counted as
+  lowercase), fixed with a red-then-green test. Not run: a live translation with the filter.
+
+### D5: All-caps sound descriptions reach the model (moved from the roadmap)
+
+- **Status:** Open; found in a Sonnet 5.5 translation review on 2026-11-19.
+- BBC hearing-impaired tracks write sounds in capitals ("GUNSHOTS", "SIREN WAILS"). `subtitle_filter`
+  removes bracketed sounds only, so the continuation merge glued them into dialogue ("No, no, no!
+  GUNSHOTS Shots fired.") and the model translated them as speech, in capitals with spelling errors.
+- [D5.1][desk] `filter_subtitles` drops all-caps sound lines from mixed-case files and keeps shouts,
+  acronyms and all-caps sources. Gate: `SubtitleFilter` tests; `make check && make test`.
+
 ## 2026-11-18: F5.1 Resume a failed translation from its finished batches (PR #32)
 
 - [F5.1][desk] Reuse the translated lines of a `.partial` file (or a persistent project) so a re-run

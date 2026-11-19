@@ -118,15 +118,6 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
   `PySubtrans/MKV/Config.py`, and OpenAI defaults to `gpt-6-luna` (D4.1, D4.2, in the log). No step is
   open; the item stays because priority 3 names it, and the owner decides whether that priority ends.
 
-### D5: All-caps sound descriptions reach the model
-
-- **Status:** Open; found in a Sonnet 5.5 translation review on 2026-11-19.
-- BBC hearing-impaired tracks write sounds in capitals ("GUNSHOTS", "SIREN WAILS"). `subtitle_filter`
-  removes bracketed sounds only, so the continuation merge glued them into dialogue ("No, no, no!
-  GUNSHOTS Shots fired.") and the model translated them as speech, in capitals with spelling errors.
-- [D5.1][desk] `filter_subtitles` drops all-caps sound lines from mixed-case files and keeps shouts,
-  acronyms and all-caps sources. Gate: `SubtitleFilter` tests; `make check && make test`.
-
 ## Features
 
 ### F1: Structured output instead of regex parsing
