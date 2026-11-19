@@ -3,6 +3,19 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-19: F6.2 transubs takes a title and a description (PR #35)
+
+- [F6.2][desk] `transubs --title` and `--description` put the title and a description into the
+  project settings of a single-file run. Gate: `make check && make test`; a run without the flags
+  sends the same settings as before.
+- Resolution: `scripts/transubs.py` takes `--title=` and `--description=` for a single file and sets
+  `movie_name` and `description` in the settings it hands the project; without them nothing
+  changes, and with no file they are a usage error. SRT output ignores the title (only the SSA
+  handler writes one). The flags are added in two helpers so `main()` stays at 50 statements.
+- Evidence: `tests/PySubtransTests/test_CliPipeline.py::TestTransubsTitleAndDescription` (flags land,
+  settings unchanged without them, usage error, a value starting with "-", `--help` lists both).
+  `make check && make test` 544 passed. Gemini cold review LGTM.
+
 ## 2026-11-19: F6.1 Previous and upcoming lines in sequential prompts (PR #34)
 
 - [F6.1][desk] Sequential batches can show the last N source lines with their translations and the
