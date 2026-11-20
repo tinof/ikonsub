@@ -173,21 +173,6 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 - **Status:** Core complete; a failed run resumes from its finished batches (F5.1, in the log). No
   step is open; the item stays because the Focus line names F5.1.
 
-### F6: Claude batches translate without the lines around them
-
-- **Status:** Partial; prompts can carry previous and upcoming lines (F6.1) and transubs takes a title
-  and a description (F6.2), both in the log. Open: the measured Claude defaults (F6.3).
-- A Claude batch sees one-line summaries of earlier batches only: not its own earlier Finnish, not
-  the next lines, not the title. Sentences cut at a batch edge lose their start, a reply is
-  translated without its question ("Nah, I'm telling ya" -> "En vaadi, vaan kerron"), and register
-  drifts. The prompt line says `for [movie] into ... [language]` literally. The owner chose a
-  context block in each prompt over a cached conversation (2026-11-19: about +3% per episode
-  against +24-35%).
-- [F6.3][owner][live][reassess] Claude runs default to `context_lines` 20, `lookahead_lines` 5 and
-  larger batches, and the prompt line substitutes title and language. Gate: `make check && make
-  test`; `subtitle_metrics` before and after on Blue Lights S04E05 no worse, the probe's named lines
-  read correct, cost per episode in the log. Needs: F6.1, F6.2.
-
 ## Engineering backlog
 
 ### E1: One copy of the exsubs/transubs pipeline code
