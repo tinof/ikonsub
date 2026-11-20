@@ -3,6 +3,32 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-20: F7.1 Plain Finnish instructions (PR #37)
+
+- [F7.1][owner][live] Rewrite `instructions_fi.txt` in plain Finnish: one priority order, the context
+  tags explained, idiom and register guidance, the same format, budget, line and dash rules. Gate:
+  `make check && make test`; `subtitle_metrics` before and after on a real episode no worse, and every
+  reply line keeps its `Translation>` marker.
+- Resolution: `instructions/instructions_fi.txt` rewritten: one priority order, the context tags
+  explained, idiom and register guidance, an explicit `#N` / `Translation>` reply format; the budget,
+  two-line, 42-character, dash and `[MERGE]` rules (now rule 5) unchanged in substance.
+- Evidence (Sonnet 5.5 low, title and description passed): Cupertino S01E04 before $0.535, > 17 cps
+  26.6%, > 20 cps 17.6%; after $0.467, 24.2%, 16.6%; 841 of 841 reply lines with `Translation>`. An
+  earlier draft without the format rule dropped the markers (read only by `fallback_patterns[5]`)
+  and read faster on Cupertino (31.3%). A blind Opus judge of 80 lines on that draft: accuracy 4.65
+  against 4.53 for the old instructions, 25 errors against 32. `make check && make test` 547 passed.
+  Gemini cold review LGTM. Not run: the final wording on Blue Lights S04E05.
+
+### F7: The Finnish instructions are written for older models (moved from the roadmap)
+
+- **Status:** Open; from the 2026-11-19 Sonnet 5.5 review.
+- `instructions/instructions_fi.txt` claimed the model had "a wide history of earlier translations"
+  (it had one-line summaries), named two rules "the most important", shouted in capitals, and asked
+  for a per-line think-aloud procedure. Current Claude models follow plain instructions literally.
+- [F7.1][owner][live] Rewrite `instructions_fi.txt` in plain Finnish: one priority order, the context
+  tags explained, idiom and register guidance, the same format, budget, line and dash rules. Gate:
+  `make check && make test`; `subtitle_metrics` before and after on a real episode no worse, and every
+  reply line keeps its `Translation>` marker.
 ## 2026-11-20: F6.3 Name the title and language in the prompt (PR #36)
 
 - [F6.3][owner][live][reassess] The prompt line substitutes title and language instead of the literal

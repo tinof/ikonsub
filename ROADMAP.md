@@ -173,17 +173,6 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 - **Status:** Core complete; a failed run resumes from its finished batches (F5.1, in the log). No
   step is open; the item stays because the Focus line names F5.1.
 
-### F7: The Finnish instructions are written for older models
-
-- **Status:** Open; from the 2026-11-19 Sonnet 5.5 review.
-- `instructions/instructions_fi.txt` claimed the model had "a wide history of earlier translations"
-  (it had one-line summaries), named two rules "the most important", shouted in capitals, and asked
-  for a per-line think-aloud procedure. Current Claude models follow plain instructions literally.
-- [F7.1][owner][live] Rewrite `instructions_fi.txt` in plain Finnish: one priority order, the context
-  tags explained, idiom and register guidance, the same format, budget, line and dash rules. Gate:
-  `make check && make test`; `subtitle_metrics` before and after on a real episode no worse, and every
-  reply line keeps its `Translation>` marker.
-
 ## Engineering backlog
 
 ### E1: One copy of the exsubs/transubs pipeline code
