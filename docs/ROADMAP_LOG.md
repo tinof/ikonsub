@@ -3,6 +3,42 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-20: F6.3 Name the title and language in the prompt (PR #36)
+
+- [F6.3][owner][live][reassess] The prompt line substitutes title and language instead of the literal
+  `for [movie] ... [language]`; Claude keeps `context_lines` and `lookahead_lines` at 0 and its
+  60/10/50 batches (owner, 2026-11-19, after three measured runs). Gate: `make check && make test`;
+  `subtitle_metrics` before and after on Blue Lights S04E05 no worse. Needs: F6.1, F6.2.
+- Resolution: `instructions_fi.txt` and `instructions_el.txt` use `[ for movie]` and
+  `[target_language]`, so the line reads "...subtitles for Blue Lights S04E05 into ... Finnish." with
+  a title and drops the clause without one; the cached system prompt is the same for every episode.
+  The Claude context defaults were not adopted (owner, 2026-11-19).
+- Measurement behind the decision (Blue Lights S04E05, 958 cues, Sonnet 5.5 low, one run each): main
+  defaults $0.51, cues > 17 cps 14.9%; context 20/5 at 60/10/50 $0.52, 16.4%; context with 120/30/80
+  $0.41, 17.4% (fewer output tokens, probably less thinking). Raw replies over budget 29%, 36%, 35%.
+  Neither context arm fixed the probe's sense errors, which change from run to run at low effort, and
+  the batcher splits at long pauses, so few sentences cross a batch edge.
+- Evidence: `TestPromptLine` (title and no title, system prompt unchanged, no raw placeholders in the
+  Greek line). Readiness run: before 804 cues, > 17 cps 14.9%, > 20 cps 6.6%; after 803 cues, 16.6%,
+  6.8%, within the 1.5 to 2.1 points two near-identical runs varied by; the owner accepted it as met
+  (2026-11-20). `make check && make test` 547 passed. Gemini cold review LGTM; CI on PR #36.
+- Same session (owner, 2026-11-20): a blind judge of 80 lines across Blue Lights S04E05 and Cupertino
+  S01E04 found no gain from Sonnet medium over low (+11-20% cost), so Claude stays at low.
+
+### F6: Claude batches translate without the lines around them (moved from the roadmap)
+
+- **Status:** Partial; prompts can carry previous and upcoming lines (F6.1) and transubs takes a title
+  and a description (F6.2), both in the log. Open: the prompt-line fix (F6.3).
+- A Claude batch sees one-line summaries of earlier batches only: not its own earlier Finnish, not
+  the next lines, not the title. Sentences cut at a batch edge lose their start, a reply is
+  translated without its question ("Nah, I'm telling ya" -> "En vaadi, vaan kerron"; that pair was
+  in a batch's first lines, so context could not have caught it), and register drifts. The prompt
+  line says `for [movie] into ... [language]` literally. The owner chose a context block in each
+  prompt over a cached conversation (2026-11-19: about +3% per episode against +24-35%).
+- [F6.3][owner][live][reassess] The prompt line substitutes title and language instead of the literal
+  `for [movie] ... [language]`; Claude keeps `context_lines` and `lookahead_lines` at 0 and its
+  60/10/50 batches (owner, 2026-11-19, after three measured runs). Gate: `make check && make test`;
+  `subtitle_metrics` before and after on Blue Lights S04E05 no worse. Needs: F6.1, F6.2.
 ## 2026-11-19: F6.2 transubs takes a title and a description (PR #35)
 
 - [F6.2][desk] `transubs --title` and `--description` put the title and a description into the
