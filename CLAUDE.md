@@ -155,7 +155,7 @@ these contracts intact:
 - **Line correspondence is a hard invariant.** In fast-paced scenes the model
   used to condense across lines and silently shift content onto earlier cue
   numbers, desyncing text from audio by up to ~35 s. Three guards keep it
-  aligned — keep all three intact: (1) `instructions_fi.txt` rule 6b mandates
+  aligned — keep all three intact: (1) `instructions_fi.txt` rule 5 mandates
   explicit `[MERGE N+M]` (handled by `TranslationParser.MatchTranslations`,
   which extends the cue's end time) and forbids moving content between
   numbers; (2) `merge_continuation_duration`/`merge_continuation_gap`
