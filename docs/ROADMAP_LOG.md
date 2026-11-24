@@ -44,6 +44,57 @@ evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
   parallel tests fail on the pre-fix code); `make check && make test` 550 passed; CI on PR #45.
   CodeRabbit cold review LGTM. Not run: a live parallel Gemini run.
 
+## 2026-11-24: D6.2 What the working guard costs (PR #39)
+
+- [D6.2][owner][live][reassess] One Opus 5.5 low run of Blue Lights S04E05 before and after D6.1:
+  batches retried, cost, wall-clock, cues over 25 cps and `subtitle_metrics`. Gate: the numbers in
+  the log. Needs: D6.1 (code).
+- Resolution: measured on `main@f3c1b18` (arm A0) against the D6.1 branch at `163d8e5` (arms A and
+  A2, the same settings twice), sequential, 60/10/50, title and description passed. The table is
+  under F8.1 below.
+- Evidence: without the fix no batch was retried (29 requests, $0.88, 336 s). With it, 3 and 2 of 29
+  batches were retried and every retry passed (32 and 31 requests, $1.06 and $0.97, 402 and 371 s):
+  10 to 20% more cost and time. Cues over 25 cps in the final file: 3 before, 5 and 2 after; over
+  17 cps 13.2% before, 12.3% and 12.0% after. The blind judge scored the three arms level (accuracy
+  4.70, 4.75, 4.70). Each retry was caused by one or two single lines (`#68`, `#315`, `#530`,
+  `#534`, `#544`, `#574`), never by a run of lines, so this episode showed no drift for the guard to
+  catch, and a whole batch was regenerated for each line. That is the case F9.1 is for.
+
+## 2026-11-24: F8.1 measurements (owner's choice pending)
+
+Opus 5.5, Blue Lights S04E05 (958 source cues), one run per arm, inside the add-on container; code
+is the D6.1 branch at `163d8e5` except A0. Parallel arms: `PARALLEL_BATCHES=1 MAX_PARALLEL_WORKERS=4
+MAX_CONTEXT_HISTORY_TOKENS=1500`. Cost at $4/$20 per MTok, cache reads $0.20, cache writes $5.
+
+| Arm | Seconds | Requests | Guard retries | Output tokens | Cost | Cues | > 17 cps | > 20 cps | > 25 cps | Judge accuracy | Judge fluency |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A0 `main`, sequential 60/10/50, low | 336 | 29 | 0 | 29,109 | $0.88 | 810 | 13.2% | 4.7% | 3 | 4.70 | 4.76 |
+| A sequential 60/10/50, low | 402 | 32 | 3 | 36,186 | $1.06 | 810 | 12.3% | 5.1% | 5 | 4.75 | 4.81 |
+| A2 the same again | 371 | 31 | 2 | 33,213 | $0.97 | 809 | 12.0% | 4.0% | 2 | 4.70 | 4.84 |
+| B parallel 60/10/50, low | 115 | 33 | 4 | 36,092 | $1.25 | 809 | 11.6% | 4.3% | 4 | 4.75 | 4.69 |
+| C parallel 120/30/80, low | 110 | 21 | 3 | 36,092 | $1.12 | 807 | 10.8% | 3.7% | 3 | 4.71 | 4.71 |
+| D parallel 120/30/80, medium | 250 | 18 | 0 | 89,514 | $2.11 | 797 | 0.5% | 0.0% | 0 | 4.58 | 4.74 |
+
+- Speed: four workers finish in 110 to 115 s against 371 to 402 s, about 3.4 times faster. No 429
+  and no pacing wait beyond the 0.1 s request spacing. The account's output-token limit is not
+  recorded yet (it is on the Console's limits page); four low-effort streams produce about 20,000
+  output tokens a minute.
+- Cost: parallel costs 10 to 25% more than sequential, all of it uncached input. A request carries
+  3,800 (B) or 4,600 (C) uncached input tokens against 2,300 sequential: the 1,500-token source
+  history replaces one-line summaries. The cache was warm from the run before, so the cost of a cold
+  first wave was not measured.
+- Quality at low effort: B and C are level with A and A2 on reading speed and on the judge, within
+  the spread of the two equal runs (0.3 points over 17 cps, 0.05 judge accuracy).
+- Effort medium (D): 4 cues over 17 cps instead of 87, and no guard retry, for 2.5 times the output
+  tokens, twice the cost and twice the time of C. It gets there by condensing harder: the judge gave
+  it accuracy 4.58 with 7 lines at 3 or below (3 to 4 in the other arms), for example "a murder
+  trial" became "the case" and "for a day or two" was dropped. Requests reached 7,928 output tokens,
+  half of `DEFAULT_MAX_TOKENS`, so larger batches at medium would be cut off.
+- Judge: one Opus 5.5 low agent, 80 seeded lines with one cue per arm, letters shuffled per item,
+  accuracy and fluency 1 to 5. One judge run on one episode.
+- Material: `/home/ubuntu/Github/ikonsub-reference/runs-2026-11-24-f81/` (outputs, logs, usage,
+  `run_f81.sh`), and `run_arm.py`, `summarize_runs.py` and `build_judge.py` beside it.
+
 ## 2026-11-24: E3.1 Name the reference episodes (owner decision)
 
 - [E3.1][owner] Name two or three reference episodes, their sources and baseline translations, and

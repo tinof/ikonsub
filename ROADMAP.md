@@ -59,8 +59,8 @@ same item stay startable. `/ship:roadmap-next` reads this list; remove an entry 
 
 - **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2, F7.2, F8.5, F9.2: paid live runs.** Run them, or approve a
   scope and a budget for an agent run; `/ship:roadmap-batch` never starts them.
-- **D6.2, F8.1: approved 2026-11-24** as an agent run on Opus 5.5 low, Blue Lights S04E05, about $5
-  in all. F8.1 ends with the owner's choice of the Claude default.
+- **F8.1: choose the Claude default.** The six arms are measured (in the log; $7.39 of runs). Open:
+  the arm that becomes the default, and the account's output-token limit from the Console.
 - **E2.3: tag the first release (`0.1.0`).** It pushes a tag and adds `## Release` to `.claude/workflow.md`.
 
 ## Priorities
@@ -112,7 +112,8 @@ waits until a Gemini API key can run D3.2.
 ### D6: The 25 cps reading-speed guard never fires
 
 - **Status:** Open; found 2026-11-24 in a Gemini review and reproduced: a 77-character line on a
-  1-second cue passes validation.
+  1-second cue passes validation. Measured (D6.2, in the log): the working guard retries 2 to 4 of
+  29 batches for single lines, 10 to 20% more cost, no drift in that episode.
 - `TranslationParser.ProcessTranslation` validates (`PySubtrans/TranslationParser.py:136`) before
   `MatchTranslations` sets start and end (`:241-244`). Every line has duration 0 then, so
   `PySubtrans/SubtitleValidator.py:92` skips the check. Guard 3 of the line-correspondence invariant
@@ -121,9 +122,6 @@ waits until a Gemini API key can run D3.2.
   `SubtitleTranslator.ProcessBatchTranslation`. Gate: a test through `ProcessBatchTranslation` where a
   line over 25 cps raises `ReadingSpeedError` and a `[MERGE]` cue within its extended time does not;
   `make check && make test`.
-- [D6.2][owner][live][reassess] One Opus 5.5 low run of Blue Lights S04E05 before and after D6.1:
-  batches retried, cost, wall-clock, cues over 25 cps and `subtitle_metrics`. Gate: the numbers in
-  the log. Needs: D6.1 (code).
 
 ## Features
 
