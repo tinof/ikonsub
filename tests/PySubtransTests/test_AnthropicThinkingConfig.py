@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from anthropic import omit
 
 from PySubtrans.Helpers.TestCases import LoggedTestCase
 from PySubtrans.Helpers.Tests import skip_if_debugger_attached
-from PySubtrans.MKV.Config import CLAUDE_DEFAULT_EFFORT
+from PySubtrans.MKV.Config import CLAUDE_DEFAULT_EFFORT, claude_speed
 from PySubtrans.Providers.Clients.AnthropicClient import (
     DEFAULT_EFFORT,
     FALLBACK_BETA,
@@ -246,3 +246,46 @@ class AnthropicRequestTests(LoggedTestCase):
         )
         translation, _ = _send(_client("claude-haiku-5-5"), message)
         self.assertLoggedIsNone("no reasoning", translation.reasoning)
+
+
+class AnthropicFastModeTests(LoggedTestCase):
+    """Fast mode is opt-in and reaches only a model that has it."""
+
+    def test_speed_is_omitted_by_default(self) -> None:
+        client = _client("claude-opus-5-5")
+        self.assertLoggedTrue("omitted", client.speed is omit)
+        _, sdk = _send(client, _message([_block("text", text="Hei")]))
+        kwargs = sdk.beta.messages.stream.call_args.kwargs
+        self.assertLoggedTrue("not sent", kwargs["speed"] is omit)
+
+    def test_fast_is_sent_to_opus_5_5(self) -> None:
+        """With and without the refusal fallback, which use different endpoints."""
+        client = _client("claude-opus-5-5", speed="fast")
+        _, sdk = _send(client, _message([_block("text", text="Hei")]))
+        kwargs = sdk.beta.messages.stream.call_args.kwargs
+        self.assertLoggedEqual("beta endpoint", "fast", kwargs["speed"])
+        self.assertLoggedEqual("fallbacks kept", "default", kwargs["fallbacks"])
+
+        client = _client("claude-opus-5-5", speed=" Fast ", fallbacks=False)
+        _, sdk = _send(client, _message([_block("text", text="Hei")]))
+        kwargs = sdk.messages.stream.call_args.kwargs
+        self.assertLoggedEqual("plain endpoint", "fast", kwargs["speed"])
+        self.assertLoggedIn("described", "fast mode", client._describe_config())
+
+    def test_fast_is_dropped_for_other_models(self) -> None:
+        for model in ("claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-5"):
+            client = _client(model, speed="fast")
+            self.assertLoggedTrue(f"{model} omits speed", client.speed is omit)
+            self.assertLoggedNotIn(model, "fast mode", client._describe_config())
+
+    def test_standard_and_unknown_values_send_nothing(self) -> None:
+        for value in ("standard", "turbo", ""):
+            client = _client("claude-opus-5-5", speed=value)
+            self.assertLoggedTrue(f"'{value}' omits speed", client.speed is omit)
+
+    def test_scripts_show_fast_only_when_it_applies(self) -> None:
+        with patch.dict("os.environ", {"CLAUDE_SPEED": "fast"}):
+            self.assertLoggedEqual("opus", "fast", claude_speed("claude-opus-5-5"))
+            self.assertLoggedIsNone("sonnet", claude_speed("claude-sonnet-5-5"))
+        with patch.dict("os.environ", {"CLAUDE_SPEED": ""}):
+            self.assertLoggedIsNone("unset", claude_speed("claude-opus-5-5"))

@@ -35,6 +35,7 @@ from PySubtrans.MKV.Config import (
     MKVConfig,
     TranslationMode,
     claude_effort,
+    claude_speed,
     gemini_thinking_level,
 )
 from PySubtrans.Options import env_bool
@@ -761,6 +762,8 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
     if mode == TranslationMode.CLAUDE:
         # The Claude API rejects temperature; effort is the setting that matters
         console.print(f"  Effort: {claude_effort()}")
+        if claude_speed(model):
+            console.print("  Speed: fast (twice the token price)")
     elif GEMINI_4_MODEL_PATTERN.search(model or ""):
         console.print(f"  Temperature: {temperature} (ignored by Gemini 4)")
     else:

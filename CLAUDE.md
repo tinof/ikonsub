@@ -180,6 +180,10 @@ these contracts intact:
   (default `medium`, pinned for the run because changing it breaks the prompt
   cache). The Claude system prompt carries the only cache breakpoint: keep
   per-batch content out of it.
+  `CLAUDE_SPEED=fast` opts `claude-opus-5-5` into fast mode (up to 2.5× the
+  output speed at twice the token price; default off, ignored on other
+  models). Fast and standard requests share no cache, so it is also fixed
+  for the run, and the usage file marks such rows `"speed": "fast"`.
 - **Measure, don't eyeball:** `tools/subtitle_metrics.py` reports raw-character
   line lengths, CPS, display times, dialogue-dash counts, and cue-count delta
   vs the source. Run it before/after on a real episode for any change touching

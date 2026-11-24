@@ -71,6 +71,33 @@ class ClaudeUsageLedgerTests(LoggedTestCase):
             ledger.snapshot(),
         )
 
+    def test_fast_mode_tokens_get_their_own_row(self) -> None:
+        """Fast mode costs twice as much, so its tokens are not mixed with standard."""
+        ledger = ClaudeUsageLedger()
+        fast = _usage(100, 50, 3000, 0)
+        fast.speed = "fast"
+        standard = _usage(10, 5)
+        standard.speed = "standard"
+        ledger.record("claude-opus-5-5", "claude-opus-5-5", fast)
+        ledger.record("claude-opus-5-5", "claude-opus-5-5", fast)
+        ledger.record("claude-opus-5-5", "claude-opus-5-5", standard)
+        rows = ledger.snapshot()
+        self.assertLoggedEqual(
+            "fast row",
+            {
+                "model": "claude-opus-5-5",
+                "speed": "fast",
+                "requests": 2,
+                "input_tokens": 200,
+                "cache_read_tokens": 6000,
+                "cache_write_tokens": 0,
+                "output_tokens": 100,
+            },
+            rows[0],
+        )
+        self.assertLoggedEqual("standard row has no speed", False, "speed" in rows[1])
+        self.assertLoggedEqual("standard requests", 1, rows[1]["requests"])
+
     def test_fallback_hops_are_billed_to_each_model(self) -> None:
         """A declined hop counts for the requested model, the rescue for the fallback."""
         ledger = ClaudeUsageLedger()
