@@ -59,8 +59,6 @@ same item stay startable. `/ship:roadmap-next` reads this list; remove an entry 
 
 - **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2, F7.2, F8.5, F9.2: paid live runs.** Run them, or approve a
   scope and a budget for an agent run; `/ship:roadmap-batch` never starts them.
-- **F8.1: choose the Claude default.** The six arms are measured (in the log; $7.39 of runs). Open:
-  the arm that becomes the default, and the account's output-token limit from the Console.
 - **E2.3: tag the first release (`0.1.0`).** It pushes a tag and adds `## Release` to `.claude/workflow.md`.
 
 ## Priorities
@@ -190,19 +188,16 @@ waits until a Gemini API key can run D3.2.
 
 ### F8: Claude batches run one at a time
 
-- **Status:** Open; from the 2026-11-24 review of a 20-minute Opus run.
+- **Status:** Open; measured and decided (F8.1, in the log): parallel with 4 workers and 120/30/80
+  batches becomes the Claude default, 3.4 times faster at level quality. Building it is F8.2.
 - A Claude run streams about 92 output tokens a second through one connection: 105 requests and
   112,240 output tokens took 20 minutes. Batch size does not change that; concurrency does.
 - `PARALLEL_BATCHES=1` works for Claude today with three flaws: up to 10,000 uncached history tokens
   per batch (`PySubtrans/Helpers/ContextHelpers.py:340`), a cache write by every first-wave worker,
   and `instructions/instructions_fi.txt:11` calling `<history>` summaries while parallel mode fills
   it with source lines (Gemini's parallel runs carry that label too).
-- [F8.1][owner][live][reassess] A/B by environment variables on Blue Lights S04E05, Opus 5.5:
-  sequential twice (the noise floor), parallel with 4 workers and a 1,500-token history at 60/10/50,
-  the same at 120/30/80, and the better one at effort medium. Gate: wall-clock, cost, 429s,
-  `subtitle_metrics`, a blind 80-line judge and the account's output-token limit in the log, and
-  the owner's choice of the Claude default. Needs: D6.1 (code).
-- [F8.2][desk] Claude parallel defaults in both scripts from the arm F8.1 chose, a `parallel_warmup`
+- [F8.2][desk] Claude parallel defaults in both scripts (4 workers, 120/30/80, a 1,500-token
+  history), a `parallel_warmup`
   setting that runs the first batch alone so later ones read the cache, and a `<history>` description
   in `instructions_fi.txt` that fits both modes. Gate: `test_CliPipeline` (Claude settings, env
   overrides, Gemini unchanged), a test that batch 1 ends before batch 2 starts, `make check && make

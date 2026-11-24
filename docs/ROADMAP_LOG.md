@@ -60,7 +60,19 @@ evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
   `#534`, `#544`, `#574`), never by a run of lines, so this episode showed no drift for the guard to
   catch, and a whole batch was regenerated for each line. That is the case F9.1 is for.
 
-## 2026-11-24: F8.1 measurements (owner's choice pending)
+## 2026-11-24: F8.1 Claude parallel A/B (PR #39)
+
+- [F8.1][owner][live][reassess] A/B by environment variables on Blue Lights S04E05, Opus 5.5:
+  sequential twice (the noise floor), parallel with 4 workers and a 1,500-token history at 60/10/50,
+  the same at 120/30/80, and the better one at effort medium. Gate: wall-clock, cost, 429s,
+  `subtitle_metrics`, a blind 80-line judge and the account's output-token limit in the log, and
+  the owner's choice of the Claude default. Needs: D6.1 (code).
+- Resolution (owner, 2026-11-24): arm C becomes the Claude default: parallel, 4 workers, batches
+  120/30/80, a 1,500-token source history. Workers stay at the measured 4; the account's
+  output-token limit was not looked up, so a higher count is unmeasured. Effort is unchanged: the
+  owner wants F9's condensing pass compared with effort medium before any default moves. Not taken:
+  arm B (the 2026-11-19 batch size, 12% dearer at the same speed) and staying sequential.
+
 
 Opus 5.5, Blue Lights S04E05 (958 source cues), one run per arm, inside the add-on container; code
 is the D6.1 branch at `163d8e5` except A0. Parallel arms: `PARALLEL_BATCHES=1 MAX_PARALLEL_WORKERS=4
