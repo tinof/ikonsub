@@ -198,9 +198,10 @@ waits until a Gemini API key can run D3.2.
   it with source lines (Gemini's parallel runs carry that label too).
 - [F8.2][desk] Claude parallel defaults in both scripts (4 workers, 120/30/80, a 1,500-token
   history), a `parallel_warmup`
-  setting that runs the first batch alone so later ones read the cache, and a `<history>` description
+  setting that sends the first batch ahead so later ones read the cache, and a `<history>` description
   in `instructions_fi.txt` that fits both modes. Gate: `test_CliPipeline` (Claude settings, env
-  overrides, Gemini unchanged), a test that batch 1 ends before batch 2 starts, `make check && make
+  overrides, Gemini unchanged), a test that batch 2 is sent only after batch 1's response has
+  started, `make check && make
   test`; one live Claude run with a single cache write, and `subtitle_metrics` before and after on
   one Gemini run. Needs: F8.1.
 - [F8.3][desk] `CLAUDE_SPEED=fast` sends `speed="fast"` on `claude-opus-5-5` (twice the price, up to
