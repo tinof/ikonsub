@@ -6,6 +6,8 @@ from pathlib import Path
 
 import regex
 
+from PySubtrans.Options import env_bool, env_int
+
 
 class TranslationMode(str, Enum):
     """Supported translation modes"""
@@ -48,6 +50,34 @@ CLAUDE_DEFAULT_EFFORT = "medium"
 def claude_effort() -> str:
     """The Claude effort level the provider will use (CLAUDE_EFFORT or the default)"""
     return os.getenv("CLAUDE_EFFORT") or CLAUDE_DEFAULT_EFFORT
+
+
+# Claude batches run in parallel by default in exsubs and transubs. Measured 2026-11-24
+# (F8.1: Opus 5.5 low, Blue Lights S04E05): 4 workers at 120/30/80 took 110 s against
+# 371-402 s sequential at 60/10/50, with reading speed and a blind judge level. More
+# workers are unmeasured against the account's output-token limit, and a 429 that
+# outlasts its retries ends a parallel run.
+CLAUDE_PARALLEL_WORKERS = 4
+CLAUDE_PARALLEL_SCENE_THRESHOLD = 120.0
+CLAUDE_PARALLEL_MIN_BATCH_SIZE = 30
+CLAUDE_PARALLEL_MAX_BATCH_SIZE = 80
+# Source lines of earlier batches shown to a parallel Claude batch, in tokens. They are
+# uncached input on every request, so the general 10,000 default would cost more than
+# the translation itself.
+CLAUDE_PARALLEL_HISTORY_TOKENS = 1500
+
+
+def claude_parallel_settings() -> dict[str, int | bool]:
+    """Settings a parallel Claude run adds: a short source history, and the first batch
+    sent ahead of the others so they read the cached system prompt instead of each
+    writing it. MAX_CONTEXT_HISTORY_TOKENS and PARALLEL_WARMUP override them."""
+    return {
+        "max_context_history_tokens": env_int(
+            "MAX_CONTEXT_HISTORY_TOKENS", CLAUDE_PARALLEL_HISTORY_TOKENS
+        )
+        or CLAUDE_PARALLEL_HISTORY_TOKENS,
+        "parallel_warmup": env_bool("PARALLEL_WARMUP", True),
+    }
 
 
 # exsubs and transubs request thinking level low on Gemini 4 unless GEMINI_THINKING_LEVEL

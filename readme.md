@@ -10,7 +10,7 @@ ikonsub is derived from [LLM-Subtrans](https://github.com/machinewrapped/llm-sub
 
 - **Smart Line Merging (`[MERGE]` tag):** The upstream engine strictly enforces a 1:1 translation ratio per line. This fork allows the AI to merge fragmented source lines into a single fluent line—critical for agglutinative languages (like Finnish, Turkish, or Japanese) where word order completely changes.
 - **All-in-One MKV Pipeline (`exsubs`):** Bypasses the need for external tools. Automatically extracts subtitle tracks directly from `.mkv` files, filters them, translates them, and saves the output.
-- **Parallel Translation:** `--parallel` mode translates multiple subtitle batches simultaneously via `ThreadPoolExecutor` (auto-enabled with 8 workers for modern Gemini models), making large jobs up to 8x faster.
+- **Parallel Translation:** `--parallel` mode translates multiple subtitle batches simultaneously via `ThreadPoolExecutor` (on by default for Gemini on Vertex with 8 workers and for Claude with 4), making large jobs several times faster.
 - **Large Context Mode:** Built to utilize the massive context windows of modern models (like Gemini 2.5/3.x). It feeds the AI thousands of tokens of story history to drastically improve character consistency and tone over long movies.
 - **Resilient API Handling:** Transient provider errors (429/5xx) are retried with jittered exponential backoff; on Vertex AI (dynamic shared quota) no artificial client-side RPM limit is applied.
 - **Readability-Aware Translation:** Each line in the prompt carries its display time and a character budget (`#123 [2.4s, max 36 chars]`, derived from a 15 CPS target), so the model condenses lines that would be unreadable instead of translating word-for-word. The Finnish instructions also have the model infer dialogue dashes for two-speaker cues.
@@ -75,9 +75,9 @@ uv run python tools/subtitle_metrics.py translated.fi.srt --source english.srt
 | `--no-filter`         | Preserve music cues, fonts, effects, etc. (disabled by default)                |
 | `--no-progress`       | Hide progress bars                                                             |
 | `--no-metrics`        | Don't print translation statistics at the end                                  |
-| `--parallel`          | Enable parallel batch translation (auto-enabled for Gemini Flash/Pro)          |
+| `--parallel`          | Enable parallel batch translation (on by default for Gemini on Vertex and Claude) |
 | `--no-parallel`       | Force sequential translation                                                   |
-| `--parallel-workers`  | Number of parallel workers (default: 4, or 8 for modern Gemini)                |
+| `--parallel-workers`  | Number of parallel workers (default: 8 for Gemini, 4 for Claude and others)    |
 | `--max-batch-size`    | Max lines per batch (default: 600 for Gemini, 200 for parallel)                |
 | `--min-batch-size`    | Min lines per batch                                                            |
 | `--copy-local`        | Copy MKV to local temp before processing (useful for network mounts)           |
@@ -136,8 +136,8 @@ export GEMINI_THINKING_LEVEL=low          # Thinking level (default low on Gemin
 export SCENE_THRESHOLD=300                # Start a new scene when the gap between lines exceeds 300s (large context)
 export MAX_BATCH_SIZE=600                 # Max lines per batch
 export MAX_RETRIES=5                      # Retries for transient API errors (default: 5)
-export PARALLEL_BATCHES=false             # transubs: Gemini batches run concurrently by default (150 lines each)
-export MAX_PARALLEL_WORKERS=8             # Concurrent batch requests in parallel mode
+export PARALLEL_BATCHES=false             # transubs: Gemini (150-line) and Claude (80-line) batches run concurrently by default
+export MAX_PARALLEL_WORKERS=8             # Concurrent batch requests in parallel mode (default 8 for Gemini, 4 for Claude)
 export GEMINI_REQUEST_TIMEOUT=180         # Seconds a request may wait (streamed: between chunks) before it is retried
 export GEMINI_FALLBACKS=gemini-4-argon@us,gemini-3.8-flash@us  # model@location tried in order after repeated failures
 export GEMINI_ATTEMPTS_PER_TARGET=2       # Failed attempts before moving to the next fallback

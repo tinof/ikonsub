@@ -165,6 +165,13 @@ these contracts intact:
   `SubtitleValidator` raise `ReadingSpeedError` so over-budget lines (the
   drift signature) trigger a batch retry. Lines of ≤16 raw chars are exempt,
   matching the prompt annotation's budget floor.
+- **Claude runs parallel batches by default** (F8.1, measured 2026-11-24):
+  4 workers, batches 120/30/80, a 1,500-token source history, and the first
+  batch sent ahead so the others read the cached system prompt
+  (`parallel_warmup`). The values live once in `PySubtrans/MKV/Config.py`.
+  `PARALLEL_BATCHES=0` or `--no-parallel` returns to sequential 60/10/50. A
+  parallel batch gets source lines in `<history>`, a sequential one gets
+  summaries; `instructions_fi.txt` describes both, so keep that sentence.
 - **Run `fix-finnish-subs` exactly once** — its fixer chain is not idempotent
   (merges chain further, gap fixing re-shifts timings). Do not reintroduce a
   retry loop.

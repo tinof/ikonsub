@@ -369,6 +369,8 @@ class AnthropicClient(TranslationClient):
 
                 with self._open_stream(client, prompt) as stream:
                     for text in stream.text_stream:
+                        # The cache entry this request wrote can be read from now on
+                        self.response_started.set()
                         if self.aborted:
                             return None
                         if forward_text:

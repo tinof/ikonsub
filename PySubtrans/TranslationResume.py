@@ -45,6 +45,7 @@ FINGERPRINT_KEYS = (
     "parallel_batches",
     "large_context_mode",
     "max_context_summaries",
+    "max_context_history_tokens",
     "context_lines",
     "lookahead_lines",
     "include_line_timings",
