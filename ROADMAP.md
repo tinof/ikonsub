@@ -55,7 +55,7 @@ full run on changed settings, cleanup on success); no Focus step is open now.
 Steps that need a decision, material or a test only the owner can provide. Other steps of the
 same item stay startable. `/ship:roadmap-next` reads this list; remove an entry when it is settled.
 
-- **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2: paid live runs.** Run them, or approve a scope and a budget
+- **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2, F7.2: paid live runs.** Run them, or approve a scope and a budget
   for an agent run; `/ship:roadmap-batch` never starts them.
 - **E2.3: tag the first release (`0.1.0`).** It pushes a tag and adds `## Release` to `.claude/workflow.md`.
 - **E3.1: name the reference episodes and where they live.** `AGENTS.md:177` asks for a comparison
@@ -187,10 +187,10 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 - Rule 4 (`instructions/instructions_fi.txt:26`) keeps names "samalla tavalla kuin
   `<previous_lines>`-lohkossa", but `context_lines` defaults to 0 and parallel batches never send
   that block, so in a default run the rule points at nothing.
-- [F7.2][desk] Rule 4 points at the earlier context the prompt does carry (`<history>`, the names
+- [F7.2][owner][live] Rule 4 points at the earlier context the prompt does carry (`<history>`, the names
   list, `<previous_lines>` when present). Gate: rule 4 names `<previous_lines>` only as optional and
   the `**KONTEKSTI**` list is unchanged, so the system prompt stays the same for every batch;
-  `make check && make test`. Measured with the next live Gemini run.
+  `make check && make test`; `subtitle_metrics` before and after on one live Gemini run no worse.
 
 ## Engineering backlog
 
