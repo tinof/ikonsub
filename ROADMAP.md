@@ -57,11 +57,11 @@ run re-check only what changed since that commit.
 Steps that need a decision, material or a test only the owner can provide. Other steps of the
 same item stay startable. `/ship:roadmap-next` reads this list; remove an entry when it is settled.
 
-- **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2, F7.2: paid live runs.** Run them, or approve a scope and a budget
-  for an agent run; `/ship:roadmap-batch` never starts them.
+- **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2, F7.2, F8.5, F9.2: paid live runs.** Run them, or approve a
+  scope and a budget for an agent run; `/ship:roadmap-batch` never starts them.
+- **D6.2, F8.1: approved 2026-11-24** as an agent run on Opus 5.5 low, Blue Lights S04E05, about $5
+  in all. F8.1 ends with the owner's choice of the Claude default.
 - **E2.3: tag the first release (`0.1.0`).** It pushes a tag and adds `## Release` to `.claude/workflow.md`.
-- **E3.1: name the reference episodes and where they live.** `AGENTS.md:177` asks for a comparison
-  against "the kept baseline artifacts", but no path names them.
 
 ## Priorities
 
@@ -70,7 +70,7 @@ measurement every quality change needs, then maintainability, then translation-q
 then throughput and releases. Configuration consistency (D4) ended on 2026-11-27 (owner): one
 default per provider and one boolean parser shipped (in the log).
 
-1. **Run reliability** (D3). A transient provider error or an API change must not end a
+1. **Run reliability** (D3, D6). A transient provider error or an API change must not end a
    run, and a failed run must not start over from zero. Outcome: A dropped connection or a provider
    API change no longer ends a translation, and a failed run picks up where it stopped. Gate: each item's tests, plus one live run per
    provider path that D1 and D3 touch.
@@ -80,12 +80,12 @@ default per provider and one boolean parser shipped (in the log).
 3. **Maintainability** (E1, E5, E4). One copy of the shared pipeline code, files and functions within
    the size limits, no orphan TODOs. Outcome: The pipeline code exists once, files and functions fit
    the size limits, and no unexplained TODO remains. Gate: `make check` with PLR0915 on and no markers left.
-4. **Translation quality** (F1, F2, F3). Structured output, a global glossary and smarter batching,
+4. **Translation quality** (F1, F2, F3, F9). Structured output, a global glossary and smarter batching,
    each behind a setting until measured. Outcome: Names stay spelled the same through an episode and
    replies are read without regex guesswork, each change proven on the baseline before it becomes
    the default. Gate: `subtitle_metrics` on the E3 baseline no worse, and the
    targeted metric better.
-5. **Throughput and release** (F4, E2). Parallel Gemini batches on an API key, and versioned
+5. **Throughput and release** (F4, F8, E2). Parallel Gemini batches on an API key, and versioned
    releases with a changelog. Outcome: An API-key user gets the fastest safe batch mode by default,
    and installs a numbered release with a changelog. Gate: a measured default for F4, and a tagged release.
 
@@ -108,6 +108,22 @@ waits until a Gemini API key can run D3.2.
   setting; `make check && make test`.
 - [D3.2][owner][live][api-key] One live API-key run with `thinking_level` set that translates a batch
   on `v1beta`; revert D3.1 if it fails. Gate: the run's result in the log. Needs: D3.1.
+
+### D6: The 25 cps reading-speed guard never fires
+
+- **Status:** Open; found 2026-11-24 in a Gemini review and reproduced: a 77-character line on a
+  1-second cue passes validation.
+- `TranslationParser.ProcessTranslation` validates (`PySubtrans/TranslationParser.py:136`) before
+  `MatchTranslations` sets start and end (`:241-244`). Every line has duration 0 then, so
+  `PySubtrans/SubtitleValidator.py:92` skips the check. Guard 3 of the line-correspondence invariant
+  (`AGENTS.md`) has never run, and every earlier measurement was taken without it.
+- [D6.1][desk] Validate `batch.translated` after `MatchTranslations` and the post-processor in
+  `SubtitleTranslator.ProcessBatchTranslation`. Gate: a test through `ProcessBatchTranslation` where a
+  line over 25 cps raises `ReadingSpeedError` and a `[MERGE]` cue within its extended time does not;
+  `make check && make test`.
+- [D6.2][owner][live][reassess] One Opus 5.5 low run of Blue Lights S04E05 before and after D6.1:
+  batches retried, cost, wall-clock, cues over 25 cps and `subtitle_metrics`. Gate: the numbers in
+  the log. Needs: D6.1 (code).
 
 ## Features
 
@@ -136,7 +152,8 @@ waits until a Gemini API key can run D3.2.
 
 - **Status:** Open; from `development-ideas.md` idea 3.
 - The context window carries names from the previous batch only; a name from batch 1 can be spelled
-  differently in batch 4.
+  differently in batch 4. Parallel batches (F8) see none of each other's Finnish, so the glossary
+  matters more there; on Claude it can sit with the description in a second cached system block.
 - [F2.1][desk] A pre-pass with a cheap model extracts names and terms from the whole file into the
   existing `names` setting, behind a `glossary_prepass` setting (default off). Gate: `DummyProvider`
   tests showing the glossary reaches every batch prompt.
@@ -172,6 +189,51 @@ waits until a Gemini API key can run D3.2.
   list, `<previous_lines>` when present). Gate: rule 4 names `<previous_lines>` only as optional and
   the `**KONTEKSTI**` list is unchanged, so the system prompt stays the same for every batch;
   `make check && make test`; `subtitle_metrics` before and after on one live Gemini run no worse.
+
+### F8: Claude batches run one at a time
+
+- **Status:** Open; from the 2026-11-24 review of a 20-minute Opus run.
+- A Claude run streams about 92 output tokens a second through one connection: 105 requests and
+  112,240 output tokens took 20 minutes. Batch size does not change that; concurrency does.
+- `PARALLEL_BATCHES=1` works for Claude today with three flaws: up to 10,000 uncached history tokens
+  per batch (`PySubtrans/Helpers/ContextHelpers.py:340`), a cache write by every first-wave worker,
+  and `instructions/instructions_fi.txt:11` calling `<history>` summaries while parallel mode fills
+  it with source lines (Gemini's parallel runs carry that label too).
+- [F8.1][owner][live][reassess] A/B by environment variables on Blue Lights S04E05, Opus 5.5:
+  sequential twice (the noise floor), parallel with 4 workers and a 1,500-token history at 60/10/50,
+  the same at 120/30/80, and the better one at effort medium. Gate: wall-clock, cost, 429s,
+  `subtitle_metrics`, a blind 80-line judge and the account's output-token limit in the log, and
+  the owner's choice of the Claude default. Needs: D6.1 (code).
+- [F8.2][desk] Claude parallel defaults in both scripts from the arm F8.1 chose, a `parallel_warmup`
+  setting that runs the first batch alone so later ones read the cache, and a `<history>` description
+  in `instructions_fi.txt` that fits both modes. Gate: `test_CliPipeline` (Claude settings, env
+  overrides, Gemini unchanged), a test that batch 1 ends before batch 2 starts, `make check && make
+  test`; one live Claude run with a single cache write, and `subtitle_metrics` before and after on
+  one Gemini run. Needs: F8.1.
+- [F8.3][desk] `CLAUDE_SPEED=fast` sends `speed="fast"` on `claude-opus-5-5` (twice the price, up to
+  2.5 times the output speed) and the usage ledger prices such runs; default off (owner,
+  2026-11-24). Gate: tests with a mocked client (sent only for Opus 5.5 with the variable set, the
+  ledger price); `make check && make test`.
+- [F8.4][desk] Parallel context from the last N and the next M source lines across scene edges,
+  behind two settings whose default keeps today's history. Gate: `DummyProvider` tests for both
+  settings and unchanged default prompts; `make check && make test`.
+- [F8.5][owner][live][reassess] Measure F8.4 on Claude and on Gemini (input tokens,
+  `subtitle_metrics`, judge) and set each default. Gate: the measurement in the log. Needs: F8.4.
+
+### F9: One failed line regenerates its whole batch
+
+- **Status:** Open; matters once D6.1 makes the reading-speed guard work.
+- `RequestRetranslation` takes `line_numbers` and ignores it (`PySubtrans/SubtitleTranslator.py:752`).
+  29 to 36% of raw replies exceed the 15 cps budget (F6.3, in the log) and are left to
+  `fix-finnish-subs`.
+- [F9.1][desk] Behind a `repair_lines` setting (default off): when at most 8 lines or a quarter of a
+  batch fail validation, retranslate only those lines, each with two neighbours as read-only context;
+  otherwise keep the whole-batch retry, since many fast lines in a row is the drift signature. Gate:
+  `DummyProvider` tests for both paths and for a repaired `[MERGE]` cue; `make check && make test`.
+  Needs: D6.1.
+- [F9.2][owner][live][reassess] Measure F9.1 against D6.2 (requests, cost, cues over 17 and 25 cps,
+  judge), and decide the default and whether a condensing pass for lines between 15 and 25 cps
+  follows. Gate: the measurement and the decision in the log. Needs: F9.1, D6.2.
 
 ## Engineering backlog
 
@@ -210,13 +272,15 @@ waits until a Gemini API key can run D3.2.
 
 ### E3: Translation-quality baseline
 
-- **Status:** Open; `tools/subtitle_metrics.py` exists, the reference set does not.
-- [E3.1][owner] Name two or three reference episodes, their sources and baseline translations, and
-  where they live on the host; they become `## Material` in `.claude/workflow.md`. Gate: the paths in
-  the contract and `test -e` passing on each.
+- **Status:** Partial; the reference set is Blue Lights S04E05 and Cupertino S01E04 (E3.1, in the
+  log; paths under `## Material` in `.claude/workflow.md`). The comparison commands are open.
 - [E3.2][desk] Add a `tools/` command that runs `subtitle_metrics` on a new translation and its
   baseline and prints the deltas. Gate: a unit test on fixture files, and one run on a reference
   episode. Needs: E3.1.
+- [E3.3][desk] `tools/judge_translation.py`: a blind paired judge over a seeded sample of lines from
+  two translations of one source, with a fixed rubric (meaning, register, idiom, fits the budget) and
+  a selectable judge model, so a Claude run can be scored by another family. Gate: a unit test with
+  a mocked client, and one run on a reference episode. Needs: E3.1.
 
 ### E4: Orphan TODOs
 

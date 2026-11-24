@@ -44,6 +44,18 @@ evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
   parallel tests fail on the pre-fix code); `make check && make test` 550 passed; CI on PR #45.
   CodeRabbit cold review LGTM. Not run: a live parallel Gemini run.
 
+## 2026-11-24: E3.1 Name the reference episodes (owner decision)
+
+- [E3.1][owner] Name two or three reference episodes, their sources and baseline translations, and
+  where they live on the host; they become `## Material` in `.claude/workflow.md`. Gate: the paths in
+  the contract and `test -e` passing on each.
+- Resolution (owner, 2026-11-24): Blue Lights S04E05 (958 cues) and Cupertino S01E04 (927 cues), the
+  two episodes F6.3 and F7.1 were measured on. Sources, baselines and the title and description of
+  each are in `/home/ubuntu/Github/ikonsub-reference/`, outside the repository. The baselines are
+  the F7.1 "after" runs (Sonnet 5.5 low, 2026-11-20), taken before D6.1, so without a working 25 cps
+  guard. `judge-2026-11-20/` keeps that session's judge items and scripts.
+- Evidence: `test -e` passes on the five `## Material` paths.
+
 ## 2026-11-20: F7.1 Plain Finnish instructions (PR #37)
 
 - [F7.1][owner][live] Rewrite `instructions_fi.txt` in plain Finnish: one priority order, the context
