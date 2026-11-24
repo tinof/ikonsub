@@ -746,6 +746,10 @@ class SubtitleTranslator:
                 )
             )
 
+        # The parser validated these lines before MatchTranslations gave them the source
+        # timings, so reading speed is checked here, on the text that will be delivered
+        batch.errors.extend(self.validator.ValidateReadingSpeed(batch.translated or []))
+
         if translation.summary and translation.summary.strip():
             self._emit_info(_("Summary: {summary}").format(summary=translation.summary))
 
