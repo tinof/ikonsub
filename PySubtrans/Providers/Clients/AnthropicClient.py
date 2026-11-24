@@ -2,7 +2,7 @@ import logging
 import threading
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
-from typing import Any
+from typing import Any, Literal
 
 import anthropic
 import httpx2
@@ -11,6 +11,7 @@ from anthropic import Omit, omit
 
 from PySubtrans.Helpers import FormatMessages
 from PySubtrans.Helpers.Localization import _
+from PySubtrans.MKV.Config import CLAUDE_FAST_MODEL_PATTERN
 from PySubtrans.Options import SettingsType
 from PySubtrans.SubtitleError import TranslationError, TranslationImpossibleError
 from PySubtrans.Translation import Translation
@@ -30,6 +31,9 @@ DEFAULT_MAX_TOKENS = 16000
 # between requests invalidates the prompt cache.
 DEFAULT_EFFORT = "medium"
 EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
+
+# Values of the speed setting. "fast" is sent only to CLAUDE_FAST_MODEL_PATTERN models.
+SPEED_VALUES = ("", "standard", "fast")
 
 # Connection and stream timeouts. read is the longest gap between two stream events, so a
 # stalled stream fails in minutes instead of hanging for the SDK default of 10 minutes.
@@ -155,6 +159,22 @@ class AnthropicClient(TranslationClient):
         return value
 
     @property
+    def configured_speed(self) -> str:
+        return (self.settings.get_str("speed") or "").strip().lower()
+
+    @property
+    def speed(self) -> Literal["fast"] | Omit:
+        """
+        Fast mode, sent only when asked for and only to a model that has it. Any other
+        model rejects the parameter, so it is dropped (with a warning at startup).
+        """
+        if self.configured_speed == "fast" and CLAUDE_FAST_MODEL_PATTERN.match(
+            self.model or ""
+        ):
+            return "fast"
+        return omit
+
+    @property
     def uses_fallbacks(self) -> bool:
         return self.settings.get_bool("fallbacks", True) and bool(
             FALLBACK_MODEL_PATTERN.match(self.model or "")
@@ -215,6 +235,18 @@ class AnthropicClient(TranslationClient):
                 ).format(model=model, configured=configured, effort=effort)
             )
 
+        speed = self.configured_speed
+        if speed not in SPEED_VALUES:
+            self._emit_warning(
+                _("Unknown speed '{speed}' ignored, expected standard or fast").format(
+                    speed=speed
+                )
+            )
+        elif speed == "fast" and self.speed is omit:
+            self._emit_warning(
+                _("{model} has no fast mode, using standard speed").format(model=model)
+            )
+
         parts: list[str] = []
         if self.allow_thinking or ALWAYS_THINKING_MODEL_PATTERN.match(model):
             parts.append(_("adaptive thinking"))
@@ -223,6 +255,9 @@ class AnthropicClient(TranslationClient):
 
         if isinstance(self.output_config, dict):
             parts.append(_("effort {effort}").format(effort=effort))
+
+        if self.speed == "fast":
+            parts.append(_("fast mode"))
 
         if self.uses_fallbacks:
             parts.append(_("refusal fallback on"))
@@ -466,6 +501,7 @@ class AnthropicClient(TranslationClient):
                 messages=prompt.content,  # type: ignore[arg-type]
                 thinking=self.thinking,  # type: ignore[arg-type]
                 output_config=self.output_config,  # type: ignore[arg-type]
+                speed=self.speed,
                 fallbacks="default",
                 betas=[FALLBACK_BETA],
             )
@@ -477,6 +513,7 @@ class AnthropicClient(TranslationClient):
             messages=prompt.content,  # type: ignore[arg-type]
             thinking=self.thinking,
             output_config=self.output_config,
+            speed=self.speed,
         )
 
     def _wait_before_retry(

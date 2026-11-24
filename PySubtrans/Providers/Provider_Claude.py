@@ -53,6 +53,9 @@ else:
                             # thinking off: low, medium, high, xhigh, max or "default"
                             "effort": settings.get_str("effort")
                             or os.getenv("CLAUDE_EFFORT", DEFAULT_EFFORT),
+                            # "fast" opts in to fast mode (twice the token price)
+                            "speed": settings.get_str("speed")
+                            or os.getenv("CLAUDE_SPEED"),
                             # Server-side refusal fallback on models that support it
                             "fallbacks": settings.get_bool(
                                 "fallbacks",

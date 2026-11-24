@@ -50,6 +50,21 @@ def claude_effort() -> str:
     return os.getenv("CLAUDE_EFFORT") or CLAUDE_DEFAULT_EFFORT
 
 
+# Fast mode: the same model at up to 2.5 times the output speed and twice the token
+# price. Opt-in through CLAUDE_SPEED=fast, and only on the models listed here; the
+# client sends nothing for any other model. Fast and standard requests share no prompt
+# cache, so the speed is fixed for a run.
+CLAUDE_FAST_MODEL_PATTERN = regex.compile(r"^claude-opus-5-5$", regex.IGNORECASE)
+
+
+def claude_speed(model: str | None) -> str | None:
+    """Return "fast" when CLAUDE_SPEED asks for it and the model has fast mode"""
+    requested = (os.getenv("CLAUDE_SPEED") or "").strip().lower()
+    if requested == "fast" and CLAUDE_FAST_MODEL_PATTERN.match(model or ""):
+        return "fast"
+    return None
+
+
 # exsubs and transubs request thinking level low on Gemini 4 unless GEMINI_THINKING_LEVEL
 # is set (kept here so the scripts can use it without importing the google-genai SDK)
 GEMINI_4_MODEL_PATTERN = regex.compile(r"gemini-[4-9]", regex.IGNORECASE)

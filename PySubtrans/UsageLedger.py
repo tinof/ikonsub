@@ -119,7 +119,9 @@ class ClaudeUsageLedger:
     Every response that came back counts, including retried batches and refusals.
     With a server-side refusal fallback, usage.iterations splits the tokens per hop and
     each hop is counted against the model that ran it. output_tokens includes thinking.
-    Only 5-minute cache writes are used, so cache writes are one field.
+    Only 5-minute cache writes are used, so cache writes are one field. Fast-mode
+    responses (usage.speed "fast") are billed at another rate, so they are counted in
+    rows of their own, marked "speed": "fast".
     """
 
     _FIELDS = (
@@ -131,7 +133,7 @@ class ClaudeUsageLedger:
 
     def __init__(self, usage_file: UsageFile | None = None) -> None:
         self._lock = threading.Lock()
-        self._rows: dict[str, dict[str, int]] = {}
+        self._rows: dict[tuple[str, bool], dict[str, int]] = {}
         self._file = usage_file or UsageFile()
         self._file.register("claude", self.snapshot)
 
@@ -182,13 +184,20 @@ class ClaudeUsageLedger:
             hops = [(served_model or requested_model, usage)]
 
         declined = list(declined_categories or [])
+        # A hop entry may omit its speed: the response's own then applies
+        response_fast = getattr(usage, "speed", None) == "fast"
+
+        def is_fast(hop: Any) -> bool:
+            speed = getattr(hop, "speed", None)
+            return speed == "fast" if isinstance(speed, str) else response_fast
 
         with self._lock:
             # One request per response, against the model that served it
-            served = served_model or hops[-1][0]
+            served = (served_model or hops[-1][0], is_fast(hops[-1][1]))
             for index, (model, hop) in enumerate(hops):
                 row = self._rows.setdefault(
-                    model, {"requests": 0, **{f: 0 for f in self._FIELDS}}
+                    (model, is_fast(hop)),
+                    {"requests": 0, **{f: 0 for f in self._FIELDS}},
                 )
                 if index < len(hops) - 1:
                     hop_refused = True
@@ -218,7 +227,10 @@ class ClaudeUsageLedger:
 
     def snapshot(self) -> list[dict[str, Any]]:
         with self._lock:
-            return [{"model": model, **row} for model, row in self._rows.items()]
+            return [
+                {"model": model, **({"speed": "fast"} if fast else {}), **row}
+                for (model, fast), row in self._rows.items()
+            ]
 
     def reset(self) -> None:
         with self._lock:
