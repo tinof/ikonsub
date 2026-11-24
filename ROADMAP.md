@@ -188,9 +188,9 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
   `<previous_lines>`-lohkossa", but `context_lines` defaults to 0 and parallel batches never send
   that block, so in a default run the rule points at nothing.
 - [F7.2][desk] Rule 4 points at the earlier context the prompt does carry (`<history>`, the names
-  list, `<previous_lines>` when present). Gate: `make check && make test`; the prompt of a default
-  sequential and a default parallel run names only blocks it contains. Measured with the next live
-  Gemini run.
+  list, `<previous_lines>` when present). Gate: rule 4 names `<previous_lines>` only as optional and
+  the `**KONTEKSTI**` list is unchanged, so the system prompt stays the same for every batch;
+  `make check && make test`. Measured with the next live Gemini run.
 
 ## Engineering backlog
 
