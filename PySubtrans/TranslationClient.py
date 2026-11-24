@@ -39,6 +39,10 @@ class TranslationClient:
         self._rate_limit_lock = threading.RLock()
         self._next_request_time: float | None = None
         self._abort_event = threading.Event()
+        # Set once a response has started to arrive: early by a streaming client, else
+        # when the first request returns. A provider's prompt cache can be read from
+        # then on, so the parallel warm-up waits for it before sending the other batches.
+        self.response_started = threading.Event()
 
         if not self.instructions:
             raise TranslationError("No instructions provided for the translator")
@@ -140,7 +144,10 @@ class TranslationClient:
         request = TranslationRequest(prompt, streaming_callback)
 
         # Perform the translation
-        translation = self._request_translation(request, temperature)
+        try:
+            translation = self._request_translation(request, temperature)
+        finally:
+            self.response_started.set()
 
         if self.aborted or translation is None:
             return None

@@ -244,6 +244,110 @@ class TestFinnishPipelineSettings(LoggedTestCase):
         self.assertLoggedEqual("api key max batch", 600, api_key["max_batch_size"])
 
 
+class TestClaudeParallelDefaults(LoggedTestCase):
+    """Claude runs parallel batches by default (F8.1), with its own measured sizes."""
+
+    def _assert_parallel(self, label: str, settings: dict[str, Any]) -> None:
+        self.assertLoggedTrue(f"{label} parallel", settings["parallel_batches"])
+        self.assertLoggedEqual(f"{label} batch sizes", (80, 30), _batch_sizes(settings))
+        self.assertLoggedEqual(f"{label} scenes", 120.0, settings["scene_threshold"])
+        self.assertLoggedEqual(f"{label} workers", 4, settings["max_parallel_workers"])
+        self.assertLoggedEqual(
+            f"{label} history", 1500, settings["max_context_history_tokens"]
+        )
+        self.assertLoggedTrue(f"{label} warm-up", settings["parallel_warmup"])
+
+    def _assert_sequential(self, label: str, settings: dict[str, Any]) -> None:
+        self.assertLoggedFalse(f"{label} sequential", settings["parallel_batches"])
+        self.assertLoggedEqual(f"{label} batch sizes", (50, 10), _batch_sizes(settings))
+        self.assertLoggedEqual(f"{label} scenes", 60.0, settings["scene_threshold"])
+        self.assertLoggedNotIn(f"{label} warm-up", "parallel_warmup", settings)
+        self.assertLoggedNotIn(
+            f"{label} history", "max_context_history_tokens", settings
+        )
+
+    def test_transubs_claude_is_parallel(self):
+        self._assert_parallel("transubs", CaptureTransubsSettings("claude"))
+
+    def test_transubs_claude_sequential_keeps_the_old_sizes(self):
+        self._assert_sequential(
+            "transubs", CaptureTransubsSettings("claude", {"PARALLEL_BATCHES": "0"})
+        )
+
+    def test_transubs_env_overrides_win(self):
+        settings = CaptureTransubsSettings(
+            "claude",
+            {
+                "SCENE_THRESHOLD": "200",
+                "MIN_BATCH_SIZE": "5",
+                "MAX_BATCH_SIZE": "40",
+                "MAX_PARALLEL_WORKERS": "2",
+                "MAX_CONTEXT_HISTORY_TOKENS": "500",
+                "PARALLEL_WARMUP": "0",
+            },
+        )
+        self.assertLoggedEqual("batch sizes", (40, 5), _batch_sizes(settings))
+        self.assertLoggedEqual("scenes", 200.0, settings["scene_threshold"])
+        self.assertLoggedEqual("workers", 2, settings["max_parallel_workers"])
+        self.assertLoggedEqual("history", 500, settings["max_context_history_tokens"])
+        self.assertLoggedFalse("warm-up off", settings["parallel_warmup"])
+
+    def test_transubs_max_batch_size_alone_lowers_the_minimum(self):
+        """The mode's minimum must not exceed an explicit MAX_BATCH_SIZE."""
+        for flag, env in (
+            ("claude", {"MAX_BATCH_SIZE": "20"}),
+            ("gpt", {"MAX_BATCH_SIZE": "20"}),
+            ("gemini", {"MAX_BATCH_SIZE": "20", **SMALL_BATCHES}),
+        ):
+            settings = CaptureTransubsSettings(flag, env)
+            self.assertLoggedEqual(f"{flag} sizes", (20, 20), _batch_sizes(settings))
+        explicit = CaptureTransubsSettings(
+            "claude", {"MAX_BATCH_SIZE": "20", "MIN_BATCH_SIZE": "25"}
+        )
+        self.assertLoggedEqual(
+            "explicit minimum kept", (20, 25), _batch_sizes(explicit)
+        )
+
+    def test_exsubs_claude_parallel_and_sequential(self):
+        self._assert_parallel(
+            "exsubs",
+            CaptureExsubsSettings(
+                TranslationMode.CLAUDE, parallel_batches=True, parallel_workers=4
+            ),
+        )
+        self._assert_sequential("exsubs", CaptureExsubsSettings(TranslationMode.CLAUDE))
+
+    def test_exsubs_explicit_sizes_win(self):
+        settings = CaptureExsubsSettings(
+            TranslationMode.CLAUDE,
+            {"MAX_BATCH_SIZE": "60"},
+            parallel_batches=True,
+            max_batch_size_arg=40,
+            min_batch_size_arg=5,
+        )
+        self.assertLoggedEqual("args win", (40, 5), _batch_sizes(settings))
+        from_env = CaptureExsubsSettings(
+            TranslationMode.CLAUDE, {"MAX_BATCH_SIZE": "60"}, parallel_batches=True
+        )
+        self.assertLoggedEqual("env wins", (60, 30), _batch_sizes(from_env))
+
+    def test_other_providers_are_unchanged(self):
+        gemini = CaptureTransubsSettings("gemini")
+        self.assertLoggedEqual("gemini workers", 8, gemini["max_parallel_workers"])
+        self.assertLoggedEqual("gemini max batch", 150, gemini["max_batch_size"])
+        self.assertLoggedNotIn("gemini warm-up", "parallel_warmup", gemini)
+        self.assertLoggedNotIn("gemini history", "max_context_history_tokens", gemini)
+        openai = CaptureTransubsSettings("gpt")
+        self.assertLoggedFalse("openai sequential", openai["parallel_batches"])
+        self.assertLoggedEqual("openai sizes", (100, 30), _batch_sizes(openai))
+        exsubs_gemini = CaptureExsubsSettings(
+            TranslationMode.GEMINI, parallel_batches=True
+        )
+        self.assertLoggedNotIn(
+            "exsubs gemini warm-up", "parallel_warmup", exsubs_gemini
+        )
+
+
 class TestTransubsTitleAndDescription(LoggedTestCase):
     """--title and --description reach the project settings of a single-file run."""
 
@@ -691,6 +795,27 @@ class TestExsubsExitCodes(LoggedTestCase):
         self.assertLoggedFalse(
             "--no-metrics reaches directory mode",
             process_directory.call_args.kwargs["show_metrics"],
+        )
+
+    def test_main_runs_claude_in_parallel_with_four_workers(self):
+        process = MagicMock(return_value=True)
+        self._run_main(["--claude", "x.mkv"], process_video_file=process)
+        kwargs = process.call_args.kwargs
+        self.assertLoggedTrue("claude default is parallel", kwargs["parallel_batches"])
+        self.assertLoggedEqual("claude workers", 4, kwargs["parallel_workers"])
+
+        process = MagicMock(return_value=True)
+        self._run_main(
+            ["--claude", "--no-parallel", "x.mkv"], process_video_file=process
+        )
+        self.assertLoggedFalse(
+            "--no-parallel wins", process.call_args.kwargs["parallel_batches"]
+        )
+
+        process = MagicMock(return_value=True)
+        self._run_main(["x.mkv"], process_video_file=process)
+        self.assertLoggedEqual(
+            "gemini workers", 8, process.call_args.kwargs["parallel_workers"]
         )
 
     def test_main_leaves_parallel_batch_size_to_translate_subtitles(self):

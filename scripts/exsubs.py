@@ -37,6 +37,10 @@ from PySubtrans.MKV import (
     select_track_interactively,
 )
 from PySubtrans.MKV.Config import (
+    CLAUDE_PARALLEL_MAX_BATCH_SIZE,
+    CLAUDE_PARALLEL_MIN_BATCH_SIZE,
+    CLAUDE_PARALLEL_SCENE_THRESHOLD,
+    CLAUDE_PARALLEL_WORKERS,
     GEMINI_4_MODEL_PATTERN,
     GEMINI_DEFAULT_MODEL,
     MODE_TO_ALT_ENV,
@@ -46,6 +50,7 @@ from PySubtrans.MKV.Config import (
     OPENAI_DEFAULT_MODEL,
     claude_effort,
     gemini_thinking_level,
+    parallel_claude_settings,
 )
 from PySubtrans.Options import env_bool
 from PySubtrans.SubtitleProject import SubtitleProject
@@ -512,6 +517,10 @@ def _resolve_batch_sizes(
             max_batch_size = GEMINI_MAX_BATCH_SIZE
     elif mode == TranslationMode.CHATGPT:
         scene_threshold, min_batch_size, max_batch_size = 120.0, 30, 100
+    elif mode == TranslationMode.CLAUDE and parallel_batches:
+        scene_threshold = CLAUDE_PARALLEL_SCENE_THRESHOLD
+        min_batch_size = CLAUDE_PARALLEL_MIN_BATCH_SIZE
+        max_batch_size = CLAUDE_PARALLEL_MAX_BATCH_SIZE
     else:
         scene_threshold, min_batch_size, max_batch_size = 60.0, 10, 50
 
@@ -519,8 +528,13 @@ def _resolve_batch_sizes(
     min_batch_size = int(os.getenv("MIN_BATCH_SIZE") or min_batch_size)
     max_batch_size = int(os.getenv("MAX_BATCH_SIZE") or max_batch_size)
 
-    if parallel_batches and not os.getenv("MAX_BATCH_SIZE"):
-        # Smaller batches keep the parallel workers busy
+    if (
+        parallel_batches
+        and mode != TranslationMode.CLAUDE
+        and not os.getenv("MAX_BATCH_SIZE")
+    ):
+        # Smaller batches keep the parallel workers busy. Claude has its own measured
+        # parallel sizes above.
         max_batch_size = PARALLEL_MAX_BATCH_SIZE
 
     if max_batch_size_arg:
@@ -1063,6 +1077,8 @@ def translate_subtitles(  # noqa: PLR0915 -- E5.6
         "parallel_batches": parallel_batches,
         "max_parallel_workers": parallel_workers,
     }
+    if mode == TranslationMode.CLAUDE and parallel_batches:
+        settings.update(parallel_claude_settings())
 
     if rate_limit:
         settings["rate_limit"] = rate_limit
@@ -1409,16 +1425,22 @@ def main():  # noqa: PLR0915 -- E5.9
     env_mode = _env_default_mode()
     mode = args.mode or env_mode or config.default_translation_mode
 
-    # Gemini on Vertex runs parallel batches by default, as in transubs. Vertex has no RPM
-    # limit to pace; a Gemini API key keeps sequential mode unless --parallel is given.
-    if mode == TranslationMode.GEMINI and not args.no_parallel and _using_vertex():
+    # Gemini on Vertex and Claude run parallel batches by default, as in transubs. Vertex
+    # has no RPM limit to pace; a Gemini API key keeps sequential mode unless --parallel
+    # is given.
+    parallel_default = mode == TranslationMode.CLAUDE or (
+        mode == TranslationMode.GEMINI and _using_vertex()
+    )
+    if parallel_default and not args.no_parallel:
         args.parallel = True
 
-    # Set defaults for parallel mode if enabled. The 150-line parallel batch default is
-    # applied in translate_subtitles, below explicit --max-batch-size and MAX_BATCH_SIZE.
+    # Set defaults for parallel mode if enabled. The parallel batch sizes are applied in
+    # translate_subtitles, below explicit --max-batch-size and MAX_BATCH_SIZE.
     if args.parallel and args.parallel_workers is None:
-        # Optimize for high-concurrency models (Gemini 3)
-        args.parallel_workers = 8
+        # Claude: the measured count (F8.1). Others: high-concurrency models (Gemini 3)
+        args.parallel_workers = (
+            CLAUDE_PARALLEL_WORKERS if mode == TranslationMode.CLAUDE else 8
+        )
 
     # Fallback default for workers if not parallel or not set
     if args.parallel_workers is None:

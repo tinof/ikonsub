@@ -168,6 +168,13 @@ these contracts intact:
 - **Run `fix-finnish-subs` exactly once** — its fixer chain is not idempotent
   (merges chain further, gap fixing re-shifts timings). Do not reintroduce a
   retry loop.
+- **Claude runs parallel batches by default** (F8.1, measured 2026-11-24):
+  4 workers, batches 120/30/80, a 1,500-token source history, and the first
+  batch sent ahead so the others read the cached system prompt
+  (`parallel_warmup`). The values live once in `PySubtrans/MKV/Config.py`.
+  `PARALLEL_BATCHES=0` or `--no-parallel` returns to sequential 60/10/50. A
+  parallel batch gets source lines in `<history>`, a sequential one gets
+  summaries; `instructions_fi.txt` describes both, so keep that sentence.
 - **Temperature policy:** Gemini 3.x stays at 1.0 (documented repetition-loop
   risk when lowered); OpenAI defaults to 0.3. Gemini 4 ignores temperature;
   its knob is thinking, which the scripts set to `low` on Gemini 4 through

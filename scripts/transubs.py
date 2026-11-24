@@ -27,6 +27,10 @@ from PySubtrans.MKV import (
     preprocess_timecodes,
 )
 from PySubtrans.MKV.Config import (
+    CLAUDE_PARALLEL_MAX_BATCH_SIZE,
+    CLAUDE_PARALLEL_MIN_BATCH_SIZE,
+    CLAUDE_PARALLEL_SCENE_THRESHOLD,
+    CLAUDE_PARALLEL_WORKERS,
     GEMINI_4_MODEL_PATTERN,
     GEMINI_DEFAULT_MODEL,
     MODE_TO_DEFAULT_MODEL,
@@ -36,6 +40,7 @@ from PySubtrans.MKV.Config import (
     TranslationMode,
     claude_effort,
     gemini_thinking_level,
+    parallel_claude_settings,
 )
 from PySubtrans.Options import env_bool
 from PySubtrans.SubtitleProject import SubtitleProject
@@ -479,11 +484,12 @@ def _determine_gemini_rate_limit(model: str | None) -> float:
 
 
 def _parallel_batches(mode: TranslationMode) -> bool:
-    """PARALLEL_BATCHES, else on for Gemini on Vertex. Workers do not share the RPM pacing
-    of the API-key path, so a rate-limited Gemini API key stays sequential by default."""
-    return env_bool(
-        "PARALLEL_BATCHES", mode == TranslationMode.GEMINI and _using_vertex()
+    """PARALLEL_BATCHES, else on for Gemini on Vertex and for Claude. Workers share the
+    RPM pacing of an API key; a Gemini API key stays sequential until F4.2 measures it."""
+    default = mode == TranslationMode.CLAUDE or (
+        mode == TranslationMode.GEMINI and _using_vertex()
     )
+    return env_bool("PARALLEL_BATCHES", default)
 
 
 def _using_vertex() -> bool:
@@ -653,6 +659,16 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
     else:
         if mode == TranslationMode.CLAUDE:
             model = os.getenv("CLAUDE_MODEL") or model
+            if _parallel_batches(mode):
+                scene_threshold = float(
+                    os.getenv("SCENE_THRESHOLD") or CLAUDE_PARALLEL_SCENE_THRESHOLD
+                )
+                min_batch_size = int(
+                    os.getenv("MIN_BATCH_SIZE") or CLAUDE_PARALLEL_MIN_BATCH_SIZE
+                )
+                max_batch_size = int(
+                    os.getenv("MAX_BATCH_SIZE") or CLAUDE_PARALLEL_MAX_BATCH_SIZE
+                )
         rate_value = (
             mode == TranslationMode.CLAUDE and os.getenv("CLAUDE_RATE_LIMIT")
         ) or MODE_TO_RATE_LIMIT.get(mode)
@@ -661,6 +677,10 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
                 rate_limit = float(rate_value)
             except ValueError:
                 rate_limit = None
+
+    if min_batch_size > max_batch_size and not os.getenv("MIN_BATCH_SIZE"):
+        # SubtitleBatcher rejects min > max; MAX_BATCH_SIZE alone must stay usable
+        min_batch_size = max_batch_size
 
     # Vertex settings
     settings_vertex: dict[str, str | bool] = {}
@@ -735,9 +755,16 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
         # translated summaries of earlier batches (SubtitleTranslator._translate_parallel).
         "parallel_batches": _parallel_batches(mode),
         "max_parallel_workers": int(
-            os.getenv("MAX_PARALLEL_WORKERS") or GEMINI_PARALLEL_WORKERS
+            os.getenv("MAX_PARALLEL_WORKERS")
+            or (
+                CLAUDE_PARALLEL_WORKERS
+                if mode == TranslationMode.CLAUDE
+                else GEMINI_PARALLEL_WORKERS
+            )
         ),
     }
+    if mode == TranslationMode.CLAUDE and settings["parallel_batches"]:
+        settings.update(parallel_claude_settings())
     if rate_limit:
         settings["rate_limit"] = rate_limit
     settings.update(settings_vertex)

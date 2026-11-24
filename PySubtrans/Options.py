@@ -120,6 +120,8 @@ default_settings = {
     "write_backup": env_bool("WRITE_BACKUP_FILE", True),
     "large_context_mode": env_bool("LARGE_CONTEXT_MODE", False),
     "max_context_history_tokens": env_int("MAX_CONTEXT_HISTORY_TOKENS", 10000),
+    # Parallel mode: send the first batch ahead of the others (prompt-cache warm-up)
+    "parallel_warmup": env_bool("PARALLEL_WARMUP"),
 }
 
 

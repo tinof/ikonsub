@@ -1,6 +1,6 @@
 import logging
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from os import linesep
 from typing import Any
 
@@ -78,6 +78,7 @@ class SubtitleTranslator:
         # Parallel batch translation settings
         self.parallel_batches = settings.get_bool("parallel_batches", False)
         self.max_parallel_workers = settings.get_int("max_parallel_workers", 4)
+        self.parallel_warmup = settings.get_bool("parallel_warmup", False)
 
         settings = Options(settings)
 
@@ -278,14 +279,9 @@ class SubtitleTranslator:
         # returning a partial translation.
         impossible: TranslationImpossibleError | None = None
         with ThreadPoolExecutor(max_workers=self.max_parallel_workers) as executor:
-            # Submit all translation tasks
-            future_to_batch = {
-                executor.submit(self._translate_single_batch, batch, context): (
-                    scene,
-                    batch,
-                )
-                for scene, batch, context in batches_to_translate
-            }
+            future_to_batch = self._submit_parallel_batches(
+                executor, batches_to_translate
+            )
 
             def cancel_pending() -> None:
                 # Future.cancel, not shutdown(cancel_futures=True): a future removed from
@@ -344,6 +340,43 @@ class SubtitleTranslator:
             if scene.number not in translated_scenes:
                 self.events.scene_translated.send(self, scene=scene)
                 translated_scenes.add(scene.number)
+
+    def _submit_parallel_batches(
+        self,
+        executor: ThreadPoolExecutor,
+        batches: list[tuple[SubtitleScene, SubtitleBatch, dict[str, Any]]],
+    ) -> dict[Future[None], tuple[SubtitleScene, SubtitleBatch]]:
+        """
+        Queue every batch for translation.
+
+        With parallel_warmup the first batch is sent alone, and the others follow once
+        its response has started. Requests sent together cannot read each other's
+        prompt-cache entry, so without it every worker of the first wave pays for a
+        cache write.
+        """
+
+        def submit(
+            item: tuple[SubtitleScene, SubtitleBatch, dict[str, Any]],
+        ) -> tuple[Future[None], tuple[SubtitleScene, SubtitleBatch]]:
+            scene, batch, context = item
+            future = executor.submit(self._translate_single_batch, batch, context)
+            return future, (scene, batch)
+
+        first, owner = submit(batches[0])
+        futures = {first: owner}
+
+        if self.parallel_warmup and len(batches) > 1:
+            started = self.client.response_started
+            while not (first.done() or self.aborted or started.wait(0.05)):
+                pass
+            if first.done() and isinstance(
+                first.exception(), TranslationImpossibleError
+            ):
+                # The provider refused or cannot be reached: the caller ends the run
+                return futures
+
+        futures.update(submit(item) for item in batches[1:])
+        return futures
 
     def _translate_single_batch(self, batch: SubtitleBatch, context: dict[str, Any]):
         """
