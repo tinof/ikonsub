@@ -59,6 +59,8 @@ same item stay startable. `/ship:roadmap-next` reads this list; remove an entry 
 
 - **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2, F7.2, F8.5, F9.2: paid live runs.** Run them, or approve a
   scope and a budget for an agent run; `/ship:roadmap-batch` never starts them.
+- **Vertex spend cap:** Gemini runs fail with `403 Spend cap breached` since 2026-11-24. The F8.2
+  Gemini gate run and every other Gemini step wait for the owner to raise or reset the cap.
 - **E2.3: tag the first release (`0.1.0`).** It pushes a tag and adds `## Release` to `.claude/workflow.md`.
 
 ## Priorities

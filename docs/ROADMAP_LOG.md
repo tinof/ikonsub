@@ -107,6 +107,20 @@ MAX_CONTEXT_HISTORY_TOKENS=1500`. Cost at $4/$20 per MTok, cache reads $0.20, ca
 - Material: `/home/ubuntu/Github/ikonsub-reference/runs-2026-11-24-f81/` (outputs, logs, usage,
   `run_f81.sh`), and `run_arm.py`, `summarize_runs.py` and `build_judge.py` beside it.
 
+## 2026-11-24: F8.2 gate runs (PR #42 open)
+
+- Sonnet 5.5 low, Blue Lights S04E05, the D6.1, F8.2 and F8.3 branches merged, cold cache, Claude
+  defaults (parallel, 4 workers, 120/30/80): 96 s, 24 requests, one cache write of 3,612 tokens (the
+  warm-up works), $0.61. Cues over 17 cps 15.6%, over 20 cps 7.6%, over 25 cps 9; the sequential
+  baseline of 2026-11-20 (no working guard): 15.1%, 7.4%, 11, $0.46.
+- The guard retried 6 of 18 batches on Sonnet, each for one or two lines (`#4`, `#59`, `#68`,
+  `#511`, `#544`, `#574`, `#829`); 4 retries passed and 2 failed on the same line. Whole-batch
+  retries are a larger share of the cost on Sonnet than on Opus (2 to 4 of 29).
+- Not run: Gemini before and after. Both runs stopped at the first request with `403 Spend cap
+  breached for project ... aiplatform.googleapis.com`. The `<history>` sentence and the guard's
+  retry rate on 150-line Gemini batches are unmeasured.
+- Material: `/home/ubuntu/Github/ikonsub-reference/runs-2026-11-24-f82/`. Runs so far: $8.00.
+
 ## 2026-11-24: E3.1 Name the reference episodes (owner decision)
 
 - [E3.1][owner] Name two or three reference episodes, their sources and baseline translations, and
