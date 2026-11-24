@@ -39,8 +39,8 @@ from PySubtrans.MKV.Config import (
     MKVConfig,
     TranslationMode,
     claude_effort,
-    claude_parallel_settings,
     gemini_thinking_level,
+    parallel_claude_settings,
 )
 from PySubtrans.Options import env_bool
 from PySubtrans.SubtitleProject import SubtitleProject
@@ -678,6 +678,10 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
             except ValueError:
                 rate_limit = None
 
+    if min_batch_size > max_batch_size and not os.getenv("MIN_BATCH_SIZE"):
+        # SubtitleBatcher rejects min > max; MAX_BATCH_SIZE alone must stay usable
+        min_batch_size = max_batch_size
+
     # Vertex settings
     settings_vertex: dict[str, str | bool] = {}
     if mode == TranslationMode.GEMINI:
@@ -760,7 +764,7 @@ def translate_srt_file(  # noqa: PLR0915 -- E5.5
         ),
     }
     if mode == TranslationMode.CLAUDE and settings["parallel_batches"]:
-        settings.update(claude_parallel_settings())
+        settings.update(parallel_claude_settings())
     if rate_limit:
         settings["rate_limit"] = rate_limit
     settings.update(settings_vertex)

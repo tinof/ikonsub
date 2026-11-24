@@ -292,6 +292,22 @@ class TestClaudeParallelDefaults(LoggedTestCase):
         self.assertLoggedEqual("history", 500, settings["max_context_history_tokens"])
         self.assertLoggedFalse("warm-up off", settings["parallel_warmup"])
 
+    def test_transubs_max_batch_size_alone_lowers_the_minimum(self):
+        """The mode's minimum must not exceed an explicit MAX_BATCH_SIZE."""
+        for flag, env in (
+            ("claude", {"MAX_BATCH_SIZE": "20"}),
+            ("gpt", {"MAX_BATCH_SIZE": "20"}),
+            ("gemini", {"MAX_BATCH_SIZE": "20", **SMALL_BATCHES}),
+        ):
+            settings = CaptureTransubsSettings(flag, env)
+            self.assertLoggedEqual(f"{flag} sizes", (20, 20), _batch_sizes(settings))
+        explicit = CaptureTransubsSettings(
+            "claude", {"MAX_BATCH_SIZE": "20", "MIN_BATCH_SIZE": "25"}
+        )
+        self.assertLoggedEqual(
+            "explicit minimum kept", (20, 25), _batch_sizes(explicit)
+        )
+
     def test_exsubs_claude_parallel_and_sequential(self):
         self._assert_parallel(
             "exsubs",

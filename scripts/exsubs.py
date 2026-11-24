@@ -49,8 +49,8 @@ from PySubtrans.MKV.Config import (
     MODE_TO_RATE_LIMIT,
     OPENAI_DEFAULT_MODEL,
     claude_effort,
-    claude_parallel_settings,
     gemini_thinking_level,
+    parallel_claude_settings,
 )
 from PySubtrans.Options import env_bool
 from PySubtrans.SubtitleProject import SubtitleProject
@@ -1078,7 +1078,7 @@ def translate_subtitles(  # noqa: PLR0915 -- E5.6
         "max_parallel_workers": parallel_workers,
     }
     if mode == TranslationMode.CLAUDE and parallel_batches:
-        settings.update(claude_parallel_settings())
+        settings.update(parallel_claude_settings())
 
     if rate_limit:
         settings["rate_limit"] = rate_limit
