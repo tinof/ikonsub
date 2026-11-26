@@ -3,6 +3,22 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-26: D1.3 Parallel Gemini batches stream too (PR #45)
+
+- [D1.3][desk][batch] `GeminiClient` (`PySubtrans/Providers/Clients/GeminiClient.py`) streams whenever streaming is enabled, with or without a callback, as
+  `AnthropicClient` does. Gate: mocked-client tests that a parallel batch uses
+  `generate_content_stream` and that a parallel stream ending without `finish_reason` is retried;
+  `make check && make test`.
+- Before: parallel batches call `RequestTranslation` without a callback
+  (`PySubtrans/SubtitleTranslator.py:384`), so `GeminiClient` sent a blocking `generate_content`.
+  D1.2's missing-`finish_reason` retry never ran there, and `request_timeout` capped the whole reply.
+- Resolution: `_get_gemini_response` streams whenever `enable_streaming` is set, with or without a
+  callback, as `AnthropicClient` does; `stream_responses` off still sends one blocking request.
+  `TranslationRequest` is unchanged: with no callback it only accumulates text.
+- Evidence: `tests/PySubtransTests/test_GeminiClientRetry.py::GeminiParallelStreamTests` (the two
+  parallel tests fail on the pre-fix code); `make check && make test` 550 passed; CI on PR #45.
+  CodeRabbit cold review LGTM. Not run: a live parallel Gemini run.
+
 ## 2026-11-20: F7.1 Plain Finnish instructions (PR #37)
 
 - [F7.1][owner][live] Rewrite `instructions_fi.txt` in plain Finnish: one priority order, the context

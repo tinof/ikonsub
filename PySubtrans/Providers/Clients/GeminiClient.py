@@ -405,7 +405,10 @@ class GeminiClient(TranslationClient):
         location: str | None = None,
     ) -> dict[str, Any] | None:
         """
-        Handle both streaming and non-streaming Gemini API calls
+        Handle both streaming and non-streaming Gemini API calls.
+
+        Every request streams when streaming is enabled, so parallel batches, which
+        pass no progress callback, also get the missing-finish-reason retry.
         """
         model = model or self.model
         if not model:
@@ -427,7 +430,7 @@ class GeminiClient(TranslationClient):
             response_modalities=[],
         )
 
-        if not request.is_streaming or not self.enable_streaming:
+        if not self.enable_streaming:
             # Non-streaming: single request
             gcr = gemini_client.models.generate_content(
                 model=model,

@@ -282,3 +282,78 @@ class GeminiStreamRetryTests(LoggedTestCase):
         assert result is not None
         self.assertLoggedEqual("stream calls", 2, calls)
         self.assertLoggedEqual("text", "#1\nHei maailma", result["text"])
+
+
+class GeminiParallelStreamTests(LoggedTestCase):
+    """Validate that a parallel batch, which sends no callback, still streams."""
+
+    def _request(self, sdk: MagicMock, stream_responses: bool = True):
+        client = GeminiClient(
+            SettingsType(
+                {
+                    "instructions": "Verify parallel streams.",
+                    "model": "gemini-3.1-flash-lite",
+                    "max_retries": 3,
+                    "backoff_time": 0.0,
+                    "stream_responses": stream_responses,
+                    "supports_streaming": True,
+                }
+            )
+        )
+        prompt = TranslationPrompt("Translate this", False)
+        prompt.content = "1. Hello"
+        prompt.system_prompt = "Translate to Finnish."
+        with (
+            patch.object(GeminiClient, "_get_client", return_value=sdk),
+            patch("PySubtrans.Providers.Clients.GeminiClient.time.sleep"),
+        ):
+            # SubtitleTranslator's parallel path passes no streaming callback
+            return client.RequestTranslation(prompt)
+
+    def test_parallel_batch_streams(self) -> None:
+        """A request without a callback uses generate_content_stream."""
+        sdk = MagicMock()
+        sdk.models.generate_content_stream.return_value = iter(
+            [_chunk("#1\nHei maailma", FinishReason.STOP)]
+        )
+        translation = self._request(sdk)
+
+        assert translation is not None
+        self.assertLoggedEqual(
+            "stream calls", 1, sdk.models.generate_content_stream.call_count
+        )
+        self.assertLoggedEqual(
+            "blocking calls", 0, sdk.models.generate_content.call_count
+        )
+        self.assertLoggedEqual("text", "#1\nHei maailma", translation.text)
+
+    def test_parallel_stream_without_finish_reason_is_retried(self) -> None:
+        """A parallel stream that ends without a finish reason is sent again."""
+        sdk = MagicMock()
+        sdk.models.generate_content_stream.side_effect = [
+            _truncated_stream(),
+            iter([_chunk("#1\nHei maailma", FinishReason.STOP)]),
+        ]
+        translation = self._request(sdk)
+
+        assert translation is not None
+        self.assertLoggedEqual(
+            "stream calls", 2, sdk.models.generate_content_stream.call_count
+        )
+        self.assertLoggedEqual("text", "#1\nHei maailma", translation.text)
+
+    def test_streaming_off_sends_one_blocking_request(self) -> None:
+        """With stream_responses off, a parallel batch uses generate_content."""
+        sdk = MagicMock()
+        sdk.models.generate_content.return_value = _chunk(
+            "#1\nHei maailma", FinishReason.STOP
+        )
+        translation = self._request(sdk, stream_responses=False)
+
+        assert translation is not None
+        self.assertLoggedEqual(
+            "blocking calls", 1, sdk.models.generate_content.call_count
+        )
+        self.assertLoggedEqual(
+            "stream calls", 0, sdk.models.generate_content_stream.call_count
+        )
