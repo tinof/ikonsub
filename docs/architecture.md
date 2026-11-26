@@ -129,7 +129,7 @@ Several translation clients support streaming responses for real-time translatio
 **Supported Providers:**
 - **OpenAI (Reasoning Models)** (`OpenAIReasoningClient`) - Uses OpenAI's streaming API with event-based response handling
 - **Claude** (`AnthropicClient`) - Always streams; caches the system prompt; `CLAUDE_EFFORT` sets thinking effort; server-side refusal fallback on Sonnet 5.5, Opus 5.x and Fable 5.x (`CLAUDE_FALLBACKS=False` turns it off)
-- **Gemini** (`GeminiClient`) - Uses Google's streaming response format
+- **Gemini** (`GeminiClient`) - Uses Google's streaming response format; parallel batches stream too, without progress updates
 
 **Streaming Architecture:**
 - **`TranslationRequest`** class encapsulates streaming state and logic to maintain stateless clients
