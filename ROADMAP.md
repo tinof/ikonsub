@@ -41,14 +41,18 @@ what it learned changes the plan, and `/ship:roadmap-next` confirms it instead o
 something changed. A **Checked** bullet (date, commit, `file:line`) on each examined item lets a later
 run re-check only what changed since that commit.
 
-### Next up (checked 2026-11-18 at main@999e6f9)
-<!-- roadmap-next: rev=7 scope=all config=4ea1c07a9b1a probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=b00b1cd5cea7 -->
+### Next up (checked 2026-11-26 at main@ab59387)
+<!-- roadmap-next: rev=7 scope=all config=4ea1c07a9b1a probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=0d988b0fda4a -->
 
-1. **E5.14 Write `tools/check_pure_move.py`.** Gate: a fixture pure move passes and a one-line edit
+1. **D1.3 GeminiClient streams parallel batches too.** Gate: mocked-client tests that a parallel
+   batch uses `generate_content_stream` and a parallel stream without `finish_reason` is retried;
+   `make check && make test`. Why: the only startable Focus step; parallel Gemini runs get D1.2's
+   retry. Branch: `fix/d1-3-gemini-parallel-stream`.
+2. **D3.1 Drop the Gemini `v1alpha` and civic-integrity overrides.** Gate: unit tests on the SDK
+   default API version and no civic-integrity setting; `make check && make test`. Why: priority 1,
+   but the Focus line holds it until D3.2 can run on an API key. Branch: `fix/d3-1-gemini-api-version`.
+3. **E5.14 Write `tools/check_pure_move.py`.** Gate: a fixture pure move passes and a one-line edit
    fails. Why: unblocks E5.2-E5.4 and the E1 chain. Branch: `chore/e5-14-check-pure-move`.
-
-**Reassess:** owner-decision (F5.1, PR #32): the owner set the resume behaviour (sidecar state,
-full run on changed settings, cleanup on success); no Focus step is open now.
 
 ### Waiting for the owner
 
