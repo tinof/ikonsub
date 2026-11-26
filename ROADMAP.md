@@ -103,7 +103,7 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
   so Gemini sends a blocking `generate_content` (`GeminiClient.py:431`). D1.2's missing-`finish_reason`
   check never runs there, and `request_timeout` caps the whole response instead of a stalled stream.
   Thoughts are not streamed (`include_thoughts=False`), so the timeout still covers the thinking time.
-- [D1.3][desk] `GeminiClient` streams whenever streaming is enabled, with or without a callback, as
+- [D1.3][desk][batch] `GeminiClient` (`PySubtrans/Providers/Clients/GeminiClient.py`) streams whenever streaming is enabled, with or without a callback, as
   `AnthropicClient` does. Gate: mocked-client tests that a parallel batch uses
   `generate_content_stream` and that a parallel stream ending without `finish_reason` is retried;
   `make check && make test`.
@@ -114,7 +114,8 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 - The API-key client pins `api_version = "v1alpha"` (`PySubtrans/Providers/Clients/GeminiClient.py:587`,
   `PySubtrans/Providers/Provider_Gemini.py:284`); the SDK default is `v1beta`.
   `HARM_CATEGORY_CIVIC_INTEGRITY` (`GeminiClient.py:167`) is deprecated in google-genai.
-- [D3.1][desk] Drop the `v1alpha` overrides and the civic-integrity setting. Gate: unit tests that the
+- [D3.1][desk] Drop the `v1alpha` overrides and the civic-integrity setting in
+  `PySubtrans/Providers/Clients/GeminiClient.py` and `PySubtrans/Providers/Provider_Gemini.py`. Gate: unit tests that the
   API-key client and the model listing use the SDK default API version and send no civic-integrity
   setting; `make check && make test`.
 - [D3.2][owner][live][api-key] One live API-key run with `thinking_level` set that translates a batch
@@ -133,13 +134,15 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 - **Status:** Open; from `development-ideas.md` idea 1.
 - `TranslationParser` extracts line numbers and text with regex patterns that the Finnish pipeline
   depends on (`AGENTS.md`, "Timing annotations and the parser are a matched pair").
-- [F1.1][desk][reassess] Write `docs/structured-output.md`: the response schema per provider (Gemini
+- [F1.1][desk] Write `docs/structured-output.md`: the response schema per provider (Gemini
   `response_schema`, OpenAI Responses `json_schema`, Claude), how `[MERGE N+M]`, timing annotations
   and `names` map onto it, the fallback to `TranslationParser`, and the measurement plan. Gate: the
-  doc merged and the owner's go or no-go in the log.
+  doc merged, `make check`.
+- [F1.6][owner][reassess] Decide go or no-go on structured output from `docs/structured-output.md`.
+  Gate: the decision in the log. Needs: F1.1.
 - [F1.2][desk] Implement it for Gemini behind a `structured_output` setting (default off, registered in
   `Options.default_settings`). Gate: unit tests with a mocked Gemini client, including `[MERGE N+M]`
-  and the fallback to `TranslationParser`. Needs: F1.1.
+  and the fallback to `TranslationParser`. Needs: F1.6.
 - [F1.3][desk] Extend it to OpenAI and Claude, still default off. Gate: the same unit tests per
   provider. Needs: F1.2.
 - [F1.4][owner][live] Measure Gemini structured output on a reference episode. Gate: `subtitle_metrics`
@@ -171,7 +174,8 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 - **Status:** Open; workers share RPM pacing since PR #5, but parallel stays Vertex-only.
 - The `_parallel_batches` docstring still says workers do not share the RPM pacing
   (`scripts/transubs.py:483`).
-- [F4.1][desk][batch] Correct the docstring and the readme on parallel mode with an API key. Gate:
+- [F4.1][desk][batch] Correct the `_parallel_batches` docstring in `scripts/transubs.py` and
+  `readme.md` on parallel mode with an API key. Gate:
   `make check`.
 - [F4.2][owner][live][api-key][reassess] Measure throughput and 429s for parallel and sequential runs on a Gemini API
   key, and set the default from the result. Gate: the measurement in the log. Needs: F4.1.
@@ -211,12 +215,17 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 - **Status:** Open; the first version is `0.1.0` (E2.1, in the log).
 - **Decided 2026-11-17 (owner):** the first ikonsub release is `0.1.0`.
+- **Decided 2026-11-26 (owner):** the resume fingerprint (`PySubtrans/TranslationResume.py:213`)
+  takes the package version, so a `.resume.json` from older code reruns in full after an upgrade. Not
+  taken: the pinned settings version.
 - **Decided 2026-11-17 (owner):** the settings-file version gets its own constant, pinned at
   `v1.5.6` in `PySubtrans/Options.py` (`default_settings["version"]`, the check at `:241-243`), so a
   saved `v1.5.6` file never looks newer than a `0.x` release. Not taken: settings follow the package
   version.
-- [E2.2][desk][batch] Read `PySubtrans.__version__` from `importlib.metadata`, keep the settings
-  version pinned at `v1.5.6` in `Options.py`, and start `CHANGELOG.md`. Gate: a test that
+- [E2.2][desk][batch] Read `PySubtrans.__version__` (`PySubtrans/version.py`) from
+  `importlib.metadata`, keep the settings version pinned at `v1.5.6` in `PySubtrans/Options.py`, keep
+  the package version in the resume fingerprint (`PySubtrans/TranslationResume.py`), and start
+  `CHANGELOG.md`. Gate: a test that
   `__version__` equals `importlib.metadata.version("ikonsub")`, and a test that a saved `v1.5.6`
   settings file is not migrated and stays `v1.5.6`. Needs: E2.1.
 - [E2.3][owner] Tag `0.1.0` and add a `## Release` section to `.claude/workflow.md`. Gate:
@@ -245,28 +254,28 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 - **Status:** Open; ruff `PLR0915` fails new functions over 50 statements and two are split (E5.1,
   E5.7, E5.8, in the log); 3 files over 800 lines and 8 marked functions remain.
-- [E5.2][desk] Split `scripts/exsubs.py` (1476 lines, limit 800) by pure moves; the shared pipeline
+- [E5.2][desk][batch] Split `scripts/exsubs.py` (1476 lines, limit 800) by pure moves; the shared pipeline
   helpers go into one module `scripts/transubs.py` can use. Gate: `make check && make test`, and
   `git diff --color-moved=dimmed-zebra` shows only moved blocks. Needs: E5.14.
-- [E5.3][desk] Split `scripts/transubs.py` (1129 lines, limit 800) by pure moves. Gate: `make check &&
+- [E5.3][desk][batch] Split `scripts/transubs.py` (1129 lines, limit 800) by pure moves. Gate: `make check &&
   make test`, and a diff that shows only moved blocks. Needs: E5.14.
-- [E5.4][desk] Split `PySubtrans/SubtitleTranslator.py` (983 lines, limit 800) by pure moves. Gate:
+- [E5.4][desk][batch] Split `PySubtrans/SubtitleTranslator.py` (983 lines, limit 800) by pure moves. Gate:
   `make check && make test`, and a diff that shows only moved blocks. Needs: E5.14.
 - [E5.5][desk] Split `translate_srt_file` (172 statements, `scripts/transubs.py:546`) by phase. Gate:
   `make check && make test`, behaviour unchanged. Needs: E5.3.
 - [E5.6][desk] Split `translate_subtitles` (132 statements, `scripts/exsubs.py:920`) by phase. Gate:
   `make check && make test`, behaviour unchanged. Needs: E5.2.
-- [E5.9][desk] Split `main` (68 statements, `scripts/exsubs.py:1277`) by phase. Gate: `make check &&
+- [E5.9][desk][batch] Split `main` (68 statements, `scripts/exsubs.py:1277`) by phase. Gate: `make check &&
   make test`, behaviour unchanged. Needs: E5.2.
-- [E5.10][desk] Split `SubtitleTranslator._translate_parallel` (55 statements,
+- [E5.10][desk][batch] Split `SubtitleTranslator._translate_parallel` (55 statements,
   `PySubtrans/SubtitleTranslator.py:229`) by phase. Gate: `make check && make test`, behaviour
   unchanged. Needs: E5.4.
-- [E5.11][desk] Split `process_video_file` (54 statements, `scripts/exsubs.py:752`) by phase. Gate:
+- [E5.11][desk][batch] Split `process_video_file` (54 statements, `scripts/exsubs.py:752`) by phase. Gate:
   `make check && make test`, behaviour unchanged. Needs: E5.2.
-- [E5.12][desk] Split `OpenAIClient._try_send_messages` (56 statements,
+- [E5.12][desk][batch] Split `OpenAIClient._try_send_messages` (56 statements,
   `PySubtrans/Providers/Clients/OpenAIClient.py:104`) by phase. Gate: `make check && make test`,
   behaviour unchanged. Needs: D1.1.
-- [E5.14][desk] Write `tools/check_pure_move.py`, the `move-gate` of `.claude/workflow.md`: for the
+- [E5.14][desk][batch] Write `tools/check_pure_move.py`, the `move-gate` of `.claude/workflow.md`: for the
   changed Python files between `--base` and HEAD, the top-level functions, classes and assignments
   must match by AST before and after (only imports and `__all__` may change); it accepts and logs
   `--step <ID>`. Gate: tests where a fixture pure move passes and a move with one edited line fails;
