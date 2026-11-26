@@ -42,17 +42,16 @@ something changed. A **Checked** bullet (date, commit, `file:line`) on each exam
 run re-check only what changed since that commit.
 
 ### Next up (checked 2026-11-26 at main@ab59387)
-<!-- roadmap-next: rev=7 scope=all config=4ea1c07a9b1a probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=0d988b0fda4a -->
+<!-- roadmap-next: rev=7 scope=all config=4ea1c07a9b1a probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=b907c0e1de31 -->
 
-1. **D1.3 GeminiClient streams parallel batches too.** Gate: mocked-client tests that a parallel
-   batch uses `generate_content_stream` and a parallel stream without `finish_reason` is retried;
-   `make check && make test`. Why: the only startable Focus step; parallel Gemini runs get D1.2's
-   retry. Branch: `fix/d1-3-gemini-parallel-stream`.
-2. **D3.1 Drop the Gemini `v1alpha` and civic-integrity overrides.** Gate: unit tests on the SDK
+1. **D3.1 Drop the Gemini `v1alpha` and civic-integrity overrides.** Gate: unit tests on the SDK
    default API version and no civic-integrity setting; `make check && make test`. Why: priority 1,
    but the Focus line holds it until D3.2 can run on an API key. Branch: `fix/d3-1-gemini-api-version`.
-3. **E5.14 Write `tools/check_pure_move.py`.** Gate: a fixture pure move passes and a one-line edit
+2. **E5.14 Write `tools/check_pure_move.py`.** Gate: a fixture pure move passes and a one-line edit
    fails. Why: unblocks E5.2-E5.4 and the E1 chain. Branch: `chore/e5-14-check-pure-move`.
+
+**Reassess:** owner-decision (D1.3, PR #45): no Focus step can start now; the Focus line is the
+owner's to renew in `/ship:roadmap-steer`.
 
 ### Waiting for the owner
 
@@ -101,16 +100,9 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
 
 ### D1: OpenAI connection drops end the run
 
-- **Status:** Core complete; OpenAI and Gemini retry dropped connections and streams (D1.1, D1.2, in
-  the log). D1.3 brings parallel Gemini batches onto the stream path.
-- Parallel batches call `RequestTranslation` without a callback (`PySubtrans/SubtitleTranslator.py:384`),
-  so Gemini sends a blocking `generate_content` (`GeminiClient.py:431`). D1.2's missing-`finish_reason`
-  check never runs there, and `request_timeout` caps the whole response instead of a stalled stream.
-  Thoughts are not streamed (`include_thoughts=False`), so the timeout still covers the thinking time.
-- [D1.3][desk][batch] `GeminiClient` (`PySubtrans/Providers/Clients/GeminiClient.py`) streams whenever streaming is enabled, with or without a callback, as
-  `AnthropicClient` does. Gate: mocked-client tests that a parallel batch uses
-  `generate_content_stream` and that a parallel stream ending without `finish_reason` is retried;
-  `make check && make test`.
+- **Status:** Core complete; OpenAI and Gemini retry dropped connections and streams, parallel
+  Gemini batches included (D1.1-D1.3, in the log). No step is open; the item stays because the Focus
+  line names D1.
 
 ### D3: Gemini API-key path uses v1alpha and a deprecated harm category
 
