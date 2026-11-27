@@ -57,8 +57,8 @@ run re-check only what changed since that commit.
 Steps that need a decision, material or a test only the owner can provide. Other steps of the
 same item stay startable. `/ship:roadmap-next` reads this list; remove an entry when it is settled.
 
-- **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2, F7.2, F8.5, F9.2: paid live runs.** Run them, or approve a
-  scope and a budget for an agent run; `/ship:roadmap-batch` never starts them.
+- **D3.2, F1.4, F1.5, F2.2, F3.1, F4.2, F7.2, E3.4, F8.5, F9.2: paid live runs.** Run them, or
+  approve a scope and a budget for an agent run; `/ship:roadmap-batch` never starts them.
 - **Vertex spend cap:** Gemini runs fail with `403 Spend cap breached` since 2026-11-24. The F8.2
   Gemini gate run and every other Gemini step wait for the owner to raise or reset the cap.
 - **E2.3: tag the first release (`0.1.0`).** It pushes a tag and adds `## Release` to `.claude/workflow.md`.
@@ -269,7 +269,8 @@ waits until a Gemini API key can run D3.2.
 ### E3: Translation-quality baseline
 
 - **Status:** Partial; the reference set is Blue Lights S04E05 and Cupertino S01E04 (E3.1, in the
-  log; paths under `## Material` in `.claude/workflow.md`). The comparison commands are open.
+  log; paths under `## Material` in `.claude/workflow.md`). The comparison commands are open, and
+  the baselines predate D6.1, so they were made without a working 25 cps guard.
 - [E3.2][desk] Add a `tools/` command that runs `subtitle_metrics` on a new translation and its
   baseline and prints the deltas. Gate: a unit test on fixture files, and one run on a reference
   episode. Needs: E3.1.
@@ -277,6 +278,10 @@ waits until a Gemini API key can run D3.2.
   two translations of one source, with a fixed rubric (meaning, register, idiom, fits the budget) and
   a selectable judge model, so a Claude run can be scored by another family. Gate: a unit test with
   a mocked client, and one run on a reference episode. Needs: E3.1.
+- [E3.4][owner][live] Rerun both reference baselines on `main` after D6.1 (Sonnet 5.5 low, the
+  F7.1 instructions, title and description from `context.json`), so a comparison measures the change
+  and not the guard's retries. Gate: the new `baseline.fi.srt` files at the `## Material` paths and
+  their `subtitle_metrics` in the log. Needs: D6.1.
 
 ### E4: Orphan TODOs
 
