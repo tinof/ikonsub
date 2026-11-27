@@ -69,7 +69,7 @@ measurement every quality change needs, then maintainability, then translation-q
 then throughput and releases. Configuration consistency (D4) ended on 2026-11-27 (owner): one
 default per provider and one boolean parser shipped (in the log).
 
-1. **Run reliability** (D3, D6). A transient provider error or an API change must not end a
+1. **Run reliability** (D3). A transient provider error or an API change must not end a
    run, and a failed run must not start over from zero. Outcome: A dropped connection or a provider
    API change no longer ends a translation, and a failed run picks up where it stopped. Gate: each item's tests, plus one live run per
    provider path that D1 and D3 touch.
@@ -88,7 +88,7 @@ default per provider and one boolean parser shipped (in the log).
    releases with a changelog. Outcome: An API-key user gets the fastest safe batch mode by default,
    and installs a numbered release with a changelog. Gate: a measured default for F4, and a tagged release.
 
-**Focus (set 2026-11-27):** D6, E3, F9.1; the reading-speed guard must fire before any measurement
+**Focus (set 2026-11-27):** E3, F9.1; the reading-speed guard must fire before any measurement
 counts, the baseline tools judge every quality change in one command, and F9.1 retranslates only the
 lines the guard rejects. D6, E3.3 and F9 come with roadmap PR #39, which lands first. D3.1 still
 waits until a Gemini API key can run D3.2.
@@ -107,20 +107,6 @@ waits until a Gemini API key can run D3.2.
   setting; `make check && make test`.
 - [D3.2][owner][live][api-key] One live API-key run with `thinking_level` set that translates a batch
   on `v1beta`; revert D3.1 if it fails. Gate: the run's result in the log. Needs: D3.1.
-
-### D6: The 25 cps reading-speed guard never fires
-
-- **Status:** Open; found 2026-11-24 in a Gemini review and reproduced: a 77-character line on a
-  1-second cue passes validation. Measured (D6.2, in the log): the working guard retries 2 to 4 of
-  29 batches for single lines, 10 to 20% more cost, no drift in that episode.
-- `TranslationParser.ProcessTranslation` validates (`PySubtrans/TranslationParser.py:136`) before
-  `MatchTranslations` sets start and end (`:241-244`). Every line has duration 0 then, so
-  `PySubtrans/SubtitleValidator.py:92` skips the check. Guard 3 of the line-correspondence invariant
-  (`AGENTS.md`) has never run, and every earlier measurement was taken without it.
-- [D6.1][desk] Validate `batch.translated` after `MatchTranslations` and the post-processor in
-  `SubtitleTranslator.ProcessBatchTranslation`. Gate: a test through `ProcessBatchTranslation` where a
-  line over 25 cps raises `ReadingSpeedError` and a `[MERGE]` cue within its extended time does not;
-  `make check && make test`.
 
 ## Features
 
