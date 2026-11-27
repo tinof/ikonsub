@@ -164,7 +164,10 @@ these contracts intact:
   them; (3) `max_translation_cps` (25.0 in both scripts) makes
   `SubtitleValidator` raise `ReadingSpeedError` so over-budget lines (the
   drift signature) trigger a batch retry. Lines of ≤16 raw chars are exempt,
-  matching the prompt annotation's budget floor.
+  matching the prompt annotation's budget floor. The check runs in
+  `SubtitleTranslator.ProcessBatchTranslation`, after `MatchTranslations`:
+  the parser's lines have no timings, so a check inside the parser never
+  fires (it did not until D6.1; `test_ReadingSpeedGuard.py` guards this).
 - **Run `fix-finnish-subs` exactly once** — its fixer chain is not idempotent
   (merges chain further, gap fixing re-shifts timings). Do not reintroduce a
   retry loop.

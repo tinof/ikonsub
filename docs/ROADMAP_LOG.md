@@ -3,6 +3,35 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-27: D6.1 Check reading speed after the timings are attached (PR #40)
+
+- [D6.1][desk] Validate `batch.translated` after `MatchTranslations` and the post-processor in
+  `SubtitleTranslator.ProcessBatchTranslation`. Gate: a test through `ProcessBatchTranslation` where a
+  line over 25 cps raises `ReadingSpeedError` and a `[MERGE]` cue within its extended time does not;
+  `make check && make test`.
+- Resolution: `SubtitleValidator.ValidateReadingSpeed` now runs in `ProcessBatchTranslation` after
+  `MatchTranslations` and the post-processor, so a line over `max_translation_cps` fails the batch
+  and the retry prompt names it (`#12, #45`). A pass over selected lines is judged on those lines,
+  and a retry that merges with `[MERGE]` drops the absorbed line's old translation.
+- Evidence: `tests/PySubtransTests/test_ReadingSpeedGuard.py` (7 tests; the fast-line and retry
+  tests fail on `main`); `make check && make test` 565 passed; CI on PR #40. Review: CodeRabbit F1
+  (selected-lines check) and the Neon extra pass F2 (stale absorbed cue after a merge retry), both
+  FIXED. The live cost is D6.2 below.
+
+### D6: The 25 cps reading-speed guard never fires (moved from the roadmap)
+
+- **Status:** Open; found 2026-11-24 in a Gemini review and reproduced: a 77-character line on a
+  1-second cue passes validation. Measured (D6.2, in the log): the working guard retries 2 to 4 of
+  29 batches for single lines, 10 to 20% more cost, no drift in that episode.
+- `TranslationParser.ProcessTranslation` validates (`PySubtrans/TranslationParser.py:136`) before
+  `MatchTranslations` sets start and end (`:241-244`). Every line has duration 0 then, so
+  `PySubtrans/SubtitleValidator.py:92` skips the check. Guard 3 of the line-correspondence invariant
+  (`AGENTS.md`) has never run, and every earlier measurement was taken without it.
+- [D6.1][desk] Validate `batch.translated` after `MatchTranslations` and the post-processor in
+  `SubtitleTranslator.ProcessBatchTranslation`. Gate: a test through `ProcessBatchTranslation` where a
+  line over 25 cps raises `ReadingSpeedError` and a `[MERGE]` cue within its extended time does not;
+  `make check && make test`.
+
 ## 2026-11-27: E3.2 Compare a translation with its baseline (PR #47)
 
 - [E3.2][desk] Add a `tools/` command that runs `subtitle_metrics` on a new translation and its

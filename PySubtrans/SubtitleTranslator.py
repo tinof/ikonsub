@@ -12,7 +12,7 @@ from PySubtrans.Helpers.ContextHelpers import (
     WithUpcomingLines,
 )
 from PySubtrans.Helpers.Localization import _
-from PySubtrans.Helpers.SubtitleHelpers import MergeTranslations
+from PySubtrans.Helpers.SubtitleHelpers import AbsorbedLineNumbers, MergeTranslations
 from PySubtrans.Helpers.Text import Linearise, SanitiseSummary
 from PySubtrans.Instructions import DEFAULT_TASK_TYPE, Instructions
 from PySubtrans.Options import Options
@@ -691,7 +691,10 @@ class SubtitleTranslator:
         if line_numbers:
             translated = [line for line in translated if line.number in line_numbers]
 
-        batch._translated = MergeTranslations(batch.translated or [], translated)
+        # A line that a [MERGE] in this reply absorbed loses its earlier translation
+        absorbed = AbsorbedLineNumbers(batch.originals, translated)
+        kept = [line for line in batch.translated or [] if line.number not in absorbed]
+        batch._translated = MergeTranslations(kept, translated)
 
         batch.translation = translation
         batch.errors = [
@@ -745,6 +748,14 @@ class SubtitleTranslator:
                     untranslated=len(batch.untranslated or []),
                 )
             )
+
+        # The parser validated these lines before MatchTranslations gave them the source
+        # timings, so reading speed is checked here, on the text that will be delivered.
+        # A pass over selected lines is judged on those lines: a retry keeps no others.
+        delivered = batch.translated or []
+        if line_numbers:
+            delivered = [line for line in delivered if line.number in line_numbers]
+        batch.errors.extend(self.validator.ValidateReadingSpeed(delivered))
 
         if translation.summary and translation.summary.strip():
             self._emit_info(_("Summary: {summary}").format(summary=translation.summary))

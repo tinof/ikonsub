@@ -55,15 +55,10 @@ class SubtitleValidator:
 
         max_characters: int = self.options.get_int("max_characters") or 1000
         max_newlines: int = self.options.get_int("max_newlines") or 10
-        max_translation_cps: float = (
-            self.options.get_float("max_translation_cps") or 0.0
-        )
-
         no_number: list[SubtitleLine] = []
         no_text: list[SubtitleLine] = []
         too_long: list[SubtitleLine] = []
         too_many_newlines: list[SubtitleLine] = []
-        too_fast: list[SubtitleLine] = []
         leaked_annotations: list[SubtitleLine] = []
 
         for line in translated:
@@ -82,17 +77,6 @@ class SubtitleValidator:
 
             if leaked_annotation_pattern.search(line.text):
                 leaked_annotations.append(line)
-
-            if max_translation_cps > 0.0:
-                # Raw character count (spaces included, line breaks not) is the metric
-                # subtitle players and downstream fixers use for reading speed
-                char_count = len(line.text.replace("\n", ""))
-                seconds = line.duration.total_seconds() if line.duration else 0.0
-                # Very short cues get a grace allowance, matching the prompt annotation
-                # budget floor of 16 characters
-                if seconds > 0.0 and char_count > 16:
-                    if char_count / seconds > max_translation_cps:
-                        too_fast.append(line)
 
         errors = []
 
@@ -136,13 +120,50 @@ class SubtitleValidator:
                 )
             )
 
-        if too_fast:
-            errors.append(
-                ReadingSpeedError(
-                    f"{len(too_fast)} translations exceed {max_translation_cps:.0f} "
-                    "characters per second for their display time",
-                    lines=too_fast,
-                )
-            )
+        errors.extend(self.ValidateReadingSpeed(translated))
 
         return errors
+
+    def ValidateReadingSpeed(
+        self, translated: list[SubtitleLine]
+    ) -> list[ReadingSpeedError]:
+        """
+        Find translations too long to read in their display time (max_translation_cps).
+
+        Lines without a display time are skipped. The parser's lines have none until
+        MatchTranslations copies the source timings, so SubtitleTranslator calls this
+        again once a batch is matched.
+        """
+        max_translation_cps: float = (
+            self.options.get_float("max_translation_cps") or 0.0
+        )
+        if max_translation_cps <= 0.0:
+            return []
+
+        too_fast: list[SubtitleLine] = []
+        for line in translated:
+            if not line.text:
+                continue
+
+            # Raw character count (spaces included, line breaks not) is the metric
+            # subtitle players and downstream fixers use for reading speed
+            char_count = len(line.text.replace("\n", ""))
+            seconds = line.duration.total_seconds() if line.duration else 0.0
+            # Very short cues get a grace allowance, matching the prompt annotation
+            # budget floor of 16 characters
+            if seconds > 0.0 and char_count > 16:
+                if char_count / seconds > max_translation_cps:
+                    too_fast.append(line)
+
+        if not too_fast:
+            return []
+
+        # The retry prompt shows this message, so it names the lines to shorten
+        numbers = ", ".join(f"#{line.number}" for line in too_fast)
+        return [
+            ReadingSpeedError(
+                f"{len(too_fast)} translations exceed {max_translation_cps:.0f} "
+                f"characters per second for their display time: {numbers}",
+                lines=too_fast,
+            )
+        ]
