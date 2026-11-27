@@ -63,6 +63,13 @@ result objectively with:
 uv run python tools/subtitle_metrics.py translated.fi.srt --source english.srt
 ```
 
+To compare a new translation with a baseline, add `--baseline`. It prints each
+metric for both files and the delta, with counts as percentages:
+
+```sh
+uv run python tools/subtitle_metrics.py new.fi.srt --baseline baseline.fi.srt --source english.srt
+```
+
 #### `exsubs` Options
 
 | Flag                  | Description                                                                    |

@@ -41,16 +41,15 @@ what it learned changes the plan, and `/ship:roadmap-next` confirms it instead o
 something changed. A **Checked** bullet (date, commit, `file:line`) on each examined item lets a later
 run re-check only what changed since that commit.
 
-### Next up (checked 2026-11-26 at main@ab59387)
-<!-- roadmap-next: rev=7 scope=all config=4ea1c07a9b1a probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=b907c0e1de31 -->
+### Next up (checked 2026-11-27 at main@2a8b296)
+<!-- roadmap-next: rev=7 scope=all config=293e26e9e592 probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=a35b372a6baa -->
 
-1. **D3.1 Drop the Gemini `v1alpha` and civic-integrity overrides.** Gate: unit tests on the SDK
+1. **E3.3 Write `tools/judge_translation.py`.** Gate: a unit test with a mocked client, and one run
+   on a reference episode. Why: the second Focus tool; its gate run is a paid judge call the owner
+   confirms. Branch: `feat/e3-3-judge-translation`.
+2. **D3.1 Drop the Gemini `v1alpha` and civic-integrity overrides.** Gate: unit tests on the SDK
    default API version and no civic-integrity setting; `make check && make test`. Why: priority 1,
    but the Focus line holds it until D3.2 can run on an API key. Branch: `fix/d3-1-gemini-api-version`.
-2. **E5.14 Write `tools/check_pure_move.py`.** Gate: a fixture pure move passes and a one-line edit
-   fails. Why: unblocks E5.2-E5.4 and the E1 chain. Branch: `chore/e5-14-check-pure-move`.
-
-**Reassess:** owner-decision (steering 2026-11-27): Focus is D6, E3, F9.1, and priority 3 ended.
 
 ### Waiting for the owner
 
@@ -268,12 +267,8 @@ waits until a Gemini API key can run D3.2.
 
 ### E3: Translation-quality baseline
 
-- **Status:** Partial; the reference set is Blue Lights S04E05 and Cupertino S01E04 (E3.1, in the
-  log; paths under `## Material` in `.claude/workflow.md`). The comparison commands are open, and
-  the baselines predate D6.1, so they were made without a working 25 cps guard.
-- [E3.2][desk] Add a `tools/` command that runs `subtitle_metrics` on a new translation and its
-  baseline and prints the deltas. Gate: a unit test on fixture files, and one run on a reference
-  episode. Needs: E3.1.
+- **Status:** Partial; reference set (E3.1) and the `subtitle_metrics.py --baseline` comparison
+  (E3.2) are in the log. Open: the judge (E3.3) and baselines rerun with the D6.1 guard (E3.4).
 - [E3.3][desk] `tools/judge_translation.py`: a blind paired judge over a seeded sample of lines from
   two translations of one source, with a fixed rubric (meaning, register, idiom, fits the budget) and
   a selectable judge model, so a Claude run can be scored by another family. Gate: a unit test with
