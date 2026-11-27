@@ -156,6 +156,27 @@ class TestReadingSpeedGuard(SubtitleTestCase):
             "selected line replaced", "Uusi", (batch.translated or [])[1].text
         )
 
+    def test_retry_that_merges_drops_the_absorbed_line(self) -> None:
+        subtitles = _subtitles()
+        scene = subtitles.scenes[0]
+        translator = self._translator(
+            [
+                _response({1: SHORT, 2: THIRTY_CHARS, 3: SHORT}),
+                _response({1: f"[MERGE 1+2] {THIRTY_CHARS}", 3: SHORT}),
+            ]
+        )
+
+        translator.TranslateScene(subtitles, scene)
+
+        batch = scene.batches[0]
+        self.assertLoggedEqual("requests", 2, len(self.prompts))
+        self.assertLoggedEqual("retry passed", [], batch.errors)
+        self.assertLoggedEqual(
+            "absorbed line dropped",
+            [1, 3],
+            [line.number for line in batch.translated or []],
+        )
+
     def test_batch_within_budget_is_not_retried(self) -> None:
         subtitles = _subtitles()
         scene = subtitles.scenes[0]

@@ -87,6 +87,26 @@ def MergeTranslations(
     return out_lines
 
 
+def AbsorbedLineNumbers(
+    originals: list[SubtitleLine], translated: list[SubtitleLine]
+) -> set[int]:
+    """
+    Numbers of the source lines that a [MERGE] line in translated now covers.
+
+    MatchTranslations marks each absorbed source line "[MERGED]" and extends the merged
+    line's end time over it, so an absorbed line lies after a merged line and ends within it.
+    """
+    absorbed = [line for line in originals if line.translation == "[MERGED]"]
+    return {
+        line.number
+        for line in absorbed
+        if any(
+            merged.number < line.number and line.end <= merged.end
+            for merged in translated
+        )
+    }
+
+
 def ResyncTranslatedLines(
     original_lines: list[SubtitleLine], translated_lines: list[SubtitleLine]
 ):

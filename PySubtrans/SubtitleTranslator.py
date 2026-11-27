@@ -12,7 +12,7 @@ from PySubtrans.Helpers.ContextHelpers import (
     WithUpcomingLines,
 )
 from PySubtrans.Helpers.Localization import _
-from PySubtrans.Helpers.SubtitleHelpers import MergeTranslations
+from PySubtrans.Helpers.SubtitleHelpers import AbsorbedLineNumbers, MergeTranslations
 from PySubtrans.Helpers.Text import Linearise, SanitiseSummary
 from PySubtrans.Instructions import DEFAULT_TASK_TYPE, Instructions
 from PySubtrans.Options import Options
@@ -691,7 +691,10 @@ class SubtitleTranslator:
         if line_numbers:
             translated = [line for line in translated if line.number in line_numbers]
 
-        batch._translated = MergeTranslations(batch.translated or [], translated)
+        # A line that a [MERGE] in this reply absorbed loses its earlier translation
+        absorbed = AbsorbedLineNumbers(batch.originals, translated)
+        kept = [line for line in batch.translated or [] if line.number not in absorbed]
+        batch._translated = MergeTranslations(kept, translated)
 
         batch.translation = translation
         batch.errors = [
