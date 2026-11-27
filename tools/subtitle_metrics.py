@@ -300,7 +300,9 @@ def compare_metrics(
         DeltaRow("cues", baseline.cues, new.cues, 0),
         DeltaRow("display lines", baseline.display_lines, new.display_lines, 0),
         DeltaRow("max line length", baseline.max_length, new.max_length, 0),
+        DeltaRow("p50 line length", baseline.length_p50, new.length_p50, 0),
         DeltaRow("p90 line length", baseline.length_p90, new.length_p90, 0),
+        DeltaRow("p99 line length", baseline.length_p99, new.length_p99, 0),
     ]
     rows += [
         rate(
@@ -311,6 +313,16 @@ def compare_metrics(
             baseline.display_lines,
         )
         for limit in LINE_LENGTH_LIMITS
+    ]
+    rows += [
+        rate(
+            f"cues with {count} line{'' if count == 1 else 's'}",
+            new.lines_per_cue[count],
+            new.cues,
+            baseline.lines_per_cue[count],
+            baseline.cues,
+        )
+        for count in LINES_PER_CUE
     ]
     rows.append(
         rate(
@@ -336,6 +348,11 @@ def compare_metrics(
         )
         for threshold in CPS_THRESHOLDS
     ]
+    rows.append(
+        DeltaRow(
+            "min display time (ms)", baseline.min_duration_ms, new.min_duration_ms, 0
+        )
+    )
     rows += [
         rate(
             f"cues < {threshold} ms",
@@ -347,6 +364,7 @@ def compare_metrics(
         for threshold in DURATION_THRESHOLDS_MS
     ]
     rows += [
+        DeltaRow("min gap (ms)", baseline.min_gap_ms, new.min_gap_ms, 0),
         rate(
             f"gaps < {MIN_GAP_MS} ms",
             new.short_gaps,

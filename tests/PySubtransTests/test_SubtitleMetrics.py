@@ -117,6 +117,31 @@ class TestSubtitleMetrics(LoggedTestCase):
             "cue delta vs source", (0.0, -25.0), rows["cue delta vs source (%)"]
         )
 
+    def test_compare_metrics_covers_every_report_metric(self):
+        baseline = subtitle_metrics.compute_metrics(
+            subtitle_metrics.parse_subtitles(self.baseline)
+        )
+        new = subtitle_metrics.compute_metrics(
+            subtitle_metrics.parse_subtitles(self.new)
+        )
+        rows = {
+            row.label: (row.baseline, row.new)
+            for row in subtitle_metrics.compare_metrics(new, baseline)
+        }
+        self.assertLoggedEqual("p50 line length", (12, 12), rows["p50 line length"])
+        self.assertLoggedEqual("p99 line length", (52, 18), rows["p99 line length"])
+        self.assertLoggedEqual(
+            "1-line cues", (75.0, 200.0 / 3), rows["cues with 1 line (%)"]
+        )
+        self.assertLoggedEqual(
+            "2-line cues", (25.0, 100.0 / 3), rows["cues with 2 lines (%)"]
+        )
+        self.assertLoggedEqual("3-line cues", (0.0, 0.0), rows["cues with 3 lines (%)"])
+        self.assertLoggedEqual(
+            "min display time", (950, 1800), rows["min display time (ms)"]
+        )
+        self.assertLoggedEqual("min gap", (50, 0), rows["min gap (ms)"])
+
     def test_compare_metrics_without_source(self):
         metrics = subtitle_metrics.compute_metrics(
             subtitle_metrics.parse_subtitles(self.new)
