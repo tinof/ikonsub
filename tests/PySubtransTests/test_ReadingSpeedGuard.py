@@ -133,6 +133,29 @@ class TestReadingSpeedGuard(SubtitleTestCase):
             (batch.translated or [])[0].text,
         )
 
+    def test_selected_lines_ignore_a_fast_line_outside_the_selection(self) -> None:
+        subtitles = _subtitles()
+        scene = subtitles.scenes[0]
+        batch = scene.batches[0]
+        translator = self._translator(
+            [
+                _response({1: THIRTY_CHARS, 2: "Uusi", 3: SHORT}),
+                _response({1: THIRTY_CHARS, 2: "Uusi", 3: SHORT}),
+            ]
+        )
+        # An earlier pass left a too-fast #1 that this pass may not replace
+        translator.ProcessBatchTranslation(
+            batch, _response({1: THIRTY_CHARS, 2: SHORT, 3: SHORT}), None
+        )
+
+        translator.TranslateScene(subtitles, scene, line_numbers=[2])
+
+        self.assertLoggedEqual("requests", 1, len(self.prompts))
+        self.assertLoggedEqual("no errors", [], batch.errors)
+        self.assertLoggedEqual(
+            "selected line replaced", "Uusi", (batch.translated or [])[1].text
+        )
+
     def test_batch_within_budget_is_not_retried(self) -> None:
         subtitles = _subtitles()
         scene = subtitles.scenes[0]
