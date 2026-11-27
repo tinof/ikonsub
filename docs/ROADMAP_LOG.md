@@ -3,6 +3,24 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-27: E3.2 Compare a translation with its baseline (PR #47)
+
+- [E3.2][desk] Add a `tools/` command that runs `subtitle_metrics` on a new translation and its
+  baseline and prints the deltas. Gate: a unit test on fixture files, and one run on a reference
+  episode. Needs: E3.1.
+- Resolution: `tools/subtitle_metrics.py new.fi.srt --baseline baseline.fi.srt --source source.en.srt`
+  prints each metric for the baseline, the new file and the delta; counts are rates of each file's
+  own cues, lines or gaps. `report()` reads the same `compute_metrics()`, and its output is
+  byte-identical on Blue Lights S04E05 (`cmp` before and after).
+- Evidence: `tests/PySubtransTests/test_SubtitleMetrics.py` (8 tests on synthetic fixtures);
+  `make check && make test` 558 passed; CI on PR #47. Gate run on Blue Lights S04E05, the
+  2026-11-24 `A0-main-seq` run against `baseline.fi.srt`: cues 801 to 810, cues over 15 cps 29.6%
+  to 27.2%, over 24 cps 2.2% to 0.6%. CodeRabbit F1 (omitted metrics) FIXED. Not run: Cupertino.
+- **Decided 2026-11-27 (agent, recommended; owner may override):** E3.2 is a `--baseline` flag on
+  `tools/subtitle_metrics.py`, not a second script: `tools/` is no package, so a second script
+  could not import the metrics from both `uv run python tools/x.py` and the tests without a path hack.
+  Counts are compared as rates, because the two files differ in cue count.
+
 ## 2026-11-27: Steering ends priority 3 and moves D1, D4 and F5 (steering)
 
 - **Decided 2026-11-27 (owner):** priority 3, Configuration consistency, ends: D2 and D4 shipped one

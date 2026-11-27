@@ -42,15 +42,12 @@ something changed. A **Checked** bullet (date, commit, `file:line`) on each exam
 run re-check only what changed since that commit.
 
 ### Next up (checked 2026-11-27 at main@2a8b296)
-<!-- roadmap-next: rev=7 scope=all config=293e26e9e592 probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=9519b90974b5 -->
+<!-- roadmap-next: rev=7 scope=all config=293e26e9e592 probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=a35b372a6baa -->
 
-1. **E3.2 Add a `tools/` command that prints metric deltas against a baseline.** Gate: a unit test on
-   fixture files, and one run on a reference episode. Why: first startable Focus step; every later
-   quality change is judged with it. Branch: `feat/e3-2-baseline-deltas`.
-2. **E3.3 Write `tools/judge_translation.py`.** Gate: a unit test with a mocked client, and one run
+1. **E3.3 Write `tools/judge_translation.py`.** Gate: a unit test with a mocked client, and one run
    on a reference episode. Why: the second Focus tool; its gate run is a paid judge call the owner
    confirms. Branch: `feat/e3-3-judge-translation`.
-3. **D3.1 Drop the Gemini `v1alpha` and civic-integrity overrides.** Gate: unit tests on the SDK
+2. **D3.1 Drop the Gemini `v1alpha` and civic-integrity overrides.** Gate: unit tests on the SDK
    default API version and no civic-integrity setting; `make check && make test`. Why: priority 1,
    but the Focus line holds it until D3.2 can run on an API key. Branch: `fix/d3-1-gemini-api-version`.
 
@@ -270,12 +267,8 @@ waits until a Gemini API key can run D3.2.
 
 ### E3: Translation-quality baseline
 
-- **Status:** Partial; the reference set is Blue Lights S04E05 and Cupertino S01E04 (E3.1, in the
-  log; paths under `## Material` in `.claude/workflow.md`). The comparison commands are open, and
-  the baselines predate D6.1, so they were made without a working 25 cps guard.
-- [E3.2][desk] Add a `tools/` command that runs `subtitle_metrics` on a new translation and its
-  baseline and prints the deltas. Gate: a unit test on fixture files, and one run on a reference
-  episode. Needs: E3.1.
+- **Status:** Partial; reference set (E3.1) and the `subtitle_metrics.py --baseline` comparison
+  (E3.2) are in the log. Open: the judge (E3.3) and baselines rerun with the D6.1 guard (E3.4).
 - [E3.3][desk] `tools/judge_translation.py`: a blind paired judge over a seeded sample of lines from
   two translations of one source, with a fixed rubric (meaning, register, idiom, fits the budget) and
   a selectable judge model, so a Claude run can be scored by another family. Gate: a unit test with
@@ -284,10 +277,6 @@ waits until a Gemini API key can run D3.2.
   F7.1 instructions, title and description from `context.json`), so a comparison measures the change
   and not the guard's retries. Gate: the new `baseline.fi.srt` files at the `## Material` paths and
   their `subtitle_metrics` in the log. Needs: D6.1.
-- **Decided 2026-11-27 (agent, recommended; owner may override):** E3.2 is a `--baseline` flag on
-  `tools/subtitle_metrics.py`, not a second script: `tools/` is no package, so a second script
-  could not import the metrics from both `uv run python tools/x.py` and the tests without a path hack.
-  Counts are compared as rates, because the two files differ in cue count.
 
 ### E4: Orphan TODOs
 
