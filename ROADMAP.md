@@ -41,16 +41,18 @@ what it learned changes the plan, and `/ship:roadmap-next` confirms it instead o
 something changed. A **Checked** bullet (date, commit, `file:line`) on each examined item lets a later
 run re-check only what changed since that commit.
 
-### Next up (checked 2026-11-26 at main@ab59387)
-<!-- roadmap-next: rev=7 scope=all config=4ea1c07a9b1a probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=b907c0e1de31 -->
+### Next up (checked 2026-11-27 at main@2a8b296)
+<!-- roadmap-next: rev=7 scope=all config=293e26e9e592 probes=credentials:ok,gemini-api-key:fail,media-tools:ok ready=9519b90974b5 -->
 
-1. **D3.1 Drop the Gemini `v1alpha` and civic-integrity overrides.** Gate: unit tests on the SDK
+1. **E3.2 Add a `tools/` command that prints metric deltas against a baseline.** Gate: a unit test on
+   fixture files, and one run on a reference episode. Why: first startable Focus step; every later
+   quality change is judged with it. Branch: `feat/e3-2-baseline-deltas`.
+2. **E3.3 Write `tools/judge_translation.py`.** Gate: a unit test with a mocked client, and one run
+   on a reference episode. Why: the second Focus tool; its gate run is a paid judge call the owner
+   confirms. Branch: `feat/e3-3-judge-translation`.
+3. **D3.1 Drop the Gemini `v1alpha` and civic-integrity overrides.** Gate: unit tests on the SDK
    default API version and no civic-integrity setting; `make check && make test`. Why: priority 1,
    but the Focus line holds it until D3.2 can run on an API key. Branch: `fix/d3-1-gemini-api-version`.
-2. **E5.14 Write `tools/check_pure_move.py`.** Gate: a fixture pure move passes and a one-line edit
-   fails. Why: unblocks E5.2-E5.4 and the E1 chain. Branch: `chore/e5-14-check-pure-move`.
-
-**Reassess:** owner-decision (steering 2026-11-27): Focus is D6, E3, F9.1, and priority 3 ended.
 
 ### Waiting for the owner
 
