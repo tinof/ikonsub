@@ -284,6 +284,10 @@ waits until a Gemini API key can run D3.2.
   F7.1 instructions, title and description from `context.json`), so a comparison measures the change
   and not the guard's retries. Gate: the new `baseline.fi.srt` files at the `## Material` paths and
   their `subtitle_metrics` in the log. Needs: D6.1.
+- **Decided 2026-11-27 (agent, recommended; owner may override):** E3.2 is a `--baseline` flag on
+  `tools/subtitle_metrics.py`, not a second script: `tools/` is no package, so a second script
+  could not import the metrics from both `uv run python tools/x.py` and the tests without a path hack.
+  Counts are compared as rates, because the two files differ in cue count.
 
 ### E4: Orphan TODOs
 
