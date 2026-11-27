@@ -3,6 +3,31 @@
 Closed roadmap steps go here as `## <date>: <ID> <title> (PR #<n>)`, with the step's text and its gate
 evidence. Open work is in [`ROADMAP.md`](../ROADMAP.md).
 
+## 2026-11-27: Steering ends priority 3 and moves D1, D4 and F5 (steering)
+
+- **Decided 2026-11-27 (owner):** priority 3, Configuration consistency, ends: D2 and D4 shipped one
+  boolean parser and one default model per provider, and no step was open. D4 moves here with it.
+- D1 and F5 stayed only because the 2026-11-17 Focus named them; the new Focus (D6, E3, F9.1) does
+  not, so they move here too.
+- The agent decisions of 2026-11-17 (E5.1, D4.1) and 2026-11-18 (D1.2) were kept.
+
+### D1: OpenAI connection drops end the run (moved from the roadmap)
+
+- **Status:** Core complete; OpenAI and Gemini retry dropped connections and streams, parallel
+  Gemini batches included (D1.1-D1.3, in the log). No step is open; the item stays because the Focus
+  line names D1.
+
+### D4: Default model names are spread over the entry points (moved from the roadmap)
+
+- **Status:** Core complete; every entry point reads one default per provider from
+  `PySubtrans/MKV/Config.py`, and OpenAI defaults to `gpt-6-luna` (D4.1, D4.2, in the log). No step is
+  open; the item stays because priority 3 names it, and the owner decides whether that priority ends.
+
+### F5: Resume a failed translation (moved from the roadmap)
+
+- **Status:** Core complete; a failed run resumes from its finished batches (F5.1, in the log). No
+  step is open; the item stays because the Focus line names F5.1.
+
 ## 2026-11-26: D1.3 Parallel Gemini batches stream too (PR #45)
 
 - [D1.3][desk][batch] `GeminiClient` (`PySubtrans/Providers/Clients/GeminiClient.py`) streams whenever streaming is enabled, with or without a callback, as
