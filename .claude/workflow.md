@@ -106,7 +106,11 @@ default
 
 ## Material
 
-none
+- `/home/ubuntu/Github/ikonsub-reference/blue-lights-s04e05/source.en.srt`: Blue Lights S04E05, English source (958 cues)
+- `/home/ubuntu/Github/ikonsub-reference/blue-lights-s04e05/baseline.fi.srt`: its Finnish baseline (Sonnet 5.5 low, 2026-11-20, F7.1 instructions)
+- `/home/ubuntu/Github/ikonsub-reference/cupertino-s01e04/source.en.srt`: Cupertino S01E04, English source (927 cues)
+- `/home/ubuntu/Github/ikonsub-reference/cupertino-s01e04/baseline.fi.srt`: its Finnish baseline (Sonnet 5.5 low, 2026-11-20, F7.1 instructions)
+- `/home/ubuntu/Github/ikonsub-reference/context.json`: the title and description passed with each episode
 
 ## Branching
 
@@ -140,7 +144,8 @@ and pytest. Every needed tool is installed on the Oracle host, so `gate-fallback
 `gate-skip` lists only prose docs; `AGENTS.md`/`CLAUDE.md` are excluded on purpose because they carry
 rules agents follow. This host runs Gemini through Vertex with gcloud credentials, so `credentials`
 accepts that as well as API keys. The repo had no tags or release doc on 2026-11-05, so `## Release` is `none`; E2
-in the roadmap sets versioning up. `## Material` stays `none` until E3.1 names the baseline episodes.
+in the roadmap sets versioning up. `## Material` lists the E3.1 reference episodes (owner, 2026-11-24);
+they are copyrighted subtitles and stay outside the repository.
 
 `self-review: allowed` (owner, 2026-11-05) lets `/ship:roadmap-batch` build and review with Claude
 only, with no Codex cross-family review. Steps that touch the Tier 2 paths above (for example E4.1 in
