@@ -50,8 +50,7 @@ run re-check only what changed since that commit.
 2. **E5.14 Write `tools/check_pure_move.py`.** Gate: a fixture pure move passes and a one-line edit
    fails. Why: unblocks E5.2-E5.4 and the E1 chain. Branch: `chore/e5-14-check-pure-move`.
 
-**Reassess:** owner-decision (D1.3, PR #45): no Focus step can start now; the Focus line is the
-owner's to renew in `/ship:roadmap-steer`.
+**Reassess:** owner-decision (steering 2026-11-27): Focus is D6, E3, F9.1, and priority 3 ended.
 
 ### Waiting for the owner
 
@@ -67,42 +66,35 @@ same item stay startable. `/ship:roadmap-next` reads this list; remove an entry 
 ## Priorities
 
 Order (2026-11-05, owner's choice): failures that end or silently degrade a run first, then the
-measurement every quality change needs, then configuration that drifts between entry points, then
-maintainability, then translation-quality features, then throughput and releases.
+measurement every quality change needs, then maintainability, then translation-quality features,
+then throughput and releases. Configuration consistency (D4) ended on 2026-11-27 (owner): one
+default per provider and one boolean parser shipped (in the log).
 
-1. **Run reliability** (D1, D3, F5). A transient provider error or an API change must not end a
+1. **Run reliability** (D3). A transient provider error or an API change must not end a
    run, and a failed run must not start over from zero. Outcome: A dropped connection or a provider
    API change no longer ends a translation, and a failed run picks up where it stopped. Gate: each item's tests, plus one live run per
    provider path that D1 and D3 touch.
 2. **Quality baseline** (E3). A repeatable before/after comparison on named reference episodes.
    Outcome: Any prompt or batching change is judged in one command against the same reference
    episodes. Gate: `tools/` compares a new translation with the baseline in one command.
-3. **Configuration consistency** (D4). One parser for boolean env vars and one source for default
-   models. Outcome: Every command reads the same defaults, and an exported variable means the same
-   thing everywhere. Gate: tests that every entry point reads the same value.
-4. **Maintainability** (E1, E5, E4). One copy of the shared pipeline code, files and functions within
+3. **Maintainability** (E1, E5, E4). One copy of the shared pipeline code, files and functions within
    the size limits, no orphan TODOs. Outcome: The pipeline code exists once, files and functions fit
    the size limits, and no unexplained TODO remains. Gate: `make check` with PLR0915 on and no markers left.
-5. **Translation quality** (F1, F2, F3). Structured output, a global glossary and smarter batching,
+4. **Translation quality** (F1, F2, F3). Structured output, a global glossary and smarter batching,
    each behind a setting until measured. Outcome: Names stay spelled the same through an episode and
    replies are read without regex guesswork, each change proven on the baseline before it becomes
    the default. Gate: `subtitle_metrics` on the E3 baseline no worse, and the
    targeted metric better.
-6. **Throughput and release** (F4, E2). Parallel Gemini batches on an API key, and versioned
+5. **Throughput and release** (F4, E2). Parallel Gemini batches on an API key, and versioned
    releases with a changelog. Outcome: An API-key user gets the fastest safe batch mode by default,
    and installs a numbered release with a changelog. Gate: a measured default for F4, and a tagged release.
 
-**Focus (set 2026-11-17):** D1, F5.1, D4; retries and resume end the failures that stop a run, and
-the owner's `gpt-6-luna` default lands in one constant. D3.1 waits until a Gemini API key can run
-D3.2; priority 1's gate also needs live runs, so desk steps alone do not close it.
+**Focus (set 2026-11-27):** D6, E3, F9.1; the reading-speed guard must fire before any measurement
+counts, the baseline tools judge every quality change in one command, and F9.1 retranslates only the
+lines the guard rejects. D6, E3.3 and F9 come with roadmap PR #39, which lands first. D3.1 still
+waits until a Gemini API key can run D3.2.
 
 ## Defects
-
-### D1: OpenAI connection drops end the run
-
-- **Status:** Core complete; OpenAI and Gemini retry dropped connections and streams, parallel
-  Gemini batches included (D1.1-D1.3, in the log). No step is open; the item stays because the Focus
-  line names D1.
 
 ### D3: Gemini API-key path uses v1alpha and a deprecated harm category
 
@@ -116,12 +108,6 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
   setting; `make check && make test`.
 - [D3.2][owner][live][api-key] One live API-key run with `thinking_level` set that translates a batch
   on `v1beta`; revert D3.1 if it fails. Gate: the run's result in the log. Needs: D3.1.
-
-### D4: Default model names are spread over the entry points
-
-- **Status:** Core complete; every entry point reads one default per provider from
-  `PySubtrans/MKV/Config.py`, and OpenAI defaults to `gpt-6-luna` (D4.1, D4.2, in the log). No step is
-  open; the item stays because priority 3 names it, and the owner decides whether that priority ends.
 
 ## Features
 
@@ -175,11 +161,6 @@ D3.2; priority 1's gate also needs live runs, so desk steps alone do not close i
   `make check`.
 - [F4.2][owner][live][api-key][reassess] Measure throughput and 429s for parallel and sequential runs on a Gemini API
   key, and set the default from the result. Gate: the measurement in the log. Needs: F4.1.
-
-### F5: Resume a failed translation
-
-- **Status:** Core complete; a failed run resumes from its finished batches (F5.1, in the log). No
-  step is open; the item stays because the Focus line names F5.1.
 
 ### F7: The Finnish instructions are written for older models
 
