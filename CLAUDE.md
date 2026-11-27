@@ -183,7 +183,8 @@ these contracts intact:
 - **Measure, don't eyeball:** `tools/subtitle_metrics.py` reports raw-character
   line lengths, CPS, display times, dialogue-dash counts, and cue-count delta
   vs the source. Run it before/after on a real episode for any change touching
-  translation quality, and compare against the kept baseline artifacts.
+  translation quality, and compare against the kept baseline artifacts
+  (`--baseline FILE` prints baseline, new and delta per metric).
 
 ## Information
 
